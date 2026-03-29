@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Multi-Tenant ────────────────────────────────────────────
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  active      Boolean  @default(true)
+  brandColor  String   @default("#16a34a")
+  logoUrl     String?
+  locale      String   @default("en")
+  seasonStart String?  // ISO date string e.g. "2026-04-01"
+  seasonEnd   String?
+  openingTime String   @default("08:00")
+  closingTime String   @default("20:00")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users          User[]
+  greens         Green[]
+  bookings       Booking[]
+  featureFlags   FeatureFlag[]
+  tenantPayments TenantPayment[]
+  tasks          MaintenanceTask[]
+  notifications  Notification[]
+}
+
+// ─── Auth & RBAC ─────────────────────────────────────────────
+
+enum Role {
+  GUEST
+  USER
+  MAINTENANCE
+  TENANT_ADMIN
+  PLATFORM_ADMIN
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  passwordHash   String
+  role           Role     @default(USER)
+  tenantId       String?
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bookings            Booking[]
+  assignedTasks       MaintenanceTask[] @relation("AssignedTo")
+  submittedTasks      MaintenanceTask[] @relation("SubmittedBy")
+  taskNotes           TaskNote[]
+  notifications       Notification[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── Feature Flags ───────────────────────────────────────────
+
+model FeatureFlag {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  key      String
+  enabled  Boolean @default(false)
+
+  @@unique([tenantId, key])
+}
+
+// ─── Greens & Rinks ─────────────────────────────────────────
+
+model Green {
+  id       String @id @default(cuid())
+  name     String
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  rinks    Rink[]
+}
+
+model Rink {
+  id      String @id @default(cuid())
+  name    String
+  greenId String
+  green   Green  @relation(fields: [greenId], references: [id])
+
+  bookingSlots BookingSlot[]
+}
+
+// ─── Booking ─────────────────────────────────────────────────
+
+enum BookingStatus {
+  REQUESTED
+  APPROVED
+  RESERVED
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  date      String        // ISO date "2026-05-10"
+  status    BookingStatus @default(REQUESTED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  slots          BookingSlot[]
+  waitlistEntries WaitlistEntry[]
+  payment        BookingPayment?
+}
+
+model BookingSlot {
+  id        String @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  rinkId    String
+  rink      Rink   @relation(fields: [rinkId], references: [id])
+  timeSlot  String // e.g. "10:00-12:00"
+  playerName String?
+}
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([bookingId, createdAt])
+}
+
+// ─── Payments ────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model BookingPayment {
+  id          String        @id @default(cuid())
+  bookingId   String        @unique
+  booking     Booking       @relation(fields: [bookingId], references: [id])
+  amount      Int           // in pence/cents
+  currency    String        @default("GBP")
+  status      PaymentStatus @default(PENDING)
+  checkoutUrl String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model TenantPayment {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  amount    Int
+  currency  String        @default("GBP")
+  status    PaymentStatus @default(PENDING)
+  invoiceRef String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// ─── Maintenance ─────────────────────────────────────────────
+
+enum TaskCategory {
+  GENERAL
+  RINK_SURFACE
+  EQUIPMENT
+  FACILITIES
+  SAFETY
+  GROUNDS
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  SUBMITTED
+  ASSIGNED
+  IN_PROGRESS
+  CLOSED
+  REOPENED
+}
+
+model MaintenanceTask {
+  id           String       @id @default(cuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  title        String
+  description  String
+  category     TaskCategory @default(GENERAL)
+  priority     TaskPriority @default(MEDIUM)
+  status       TaskStatus   @default(SUBMITTED)
+  submittedById String
+  submittedBy  User         @relation("SubmittedBy", fields: [submittedById], references: [id])
+  assignedToId String?
+  assignedTo   User?        @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  notes TaskNote[]
+}
+
+model TaskNote {
+  id     String   @id @default(cuid())
+  taskId String
+  task   MaintenanceTask @relation(fields: [taskId], references: [id])
+  userId String
+  user   User     @relation(fields: [userId], references: [id])
+  text   String
+  createdAt DateTime @default(now())
+}
+
+// ─── Notifications ───────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // e.g. "WAITLIST_AVAILABLE", "TASK_ASSIGNED", "BOOKING_APPROVED"
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,146 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Tenant = { id: string; name: string; slug: string };
+
+type Booking = {
+  id: string;
+  date: string;
+  status: string;
+  user: { id: string; name: string; email: string };
+  slots: { rink: { name: string }; timeSlot: string; playerName?: string }[];
+  payment?: { status: string; amount: number };
+};
+
+export default function AdminPage() {
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState("");
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [filter, setFilter] = useState("ALL");
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+
+  // Detect platform admin by trying tenant list endpoint
+  useEffect(() => {
+    fetch("/api/admin/tenants")
+      .then((r) => { if (r.ok) { setIsPlatformAdmin(true); return r.json(); } return null; })
+      .then((data) => { if (Array.isArray(data)) setTenants(data); })
+      .catch(() => {});
+  }, []);
+
+  function loadBookings(tenantId?: string) {
+    const url = tenantId
+      ? `/api/bookings?tenantId=${encodeURIComponent(tenantId)}`
+      : "/api/bookings";
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => setBookings(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }
+
+  // Load bookings when tenant selection changes (or immediately for tenant admins)
+  useEffect(() => {
+    if (isPlatformAdmin && !selectedTenant) {
+      setBookings([]);
+      return;
+    }
+    loadBookings(selectedTenant || undefined);
+  }, [selectedTenant, isPlatformAdmin]);
+
+  async function updateStatus(id: string, status: string) {
+    await fetch(`/api/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    loadBookings(selectedTenant || undefined);
+  }
+
+  const filtered = filter === "ALL" ? bookings : bookings.filter((b) => b.status === filter);
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Admin — Booking Management</h1>
+
+      {isPlatformAdmin && (
+        <div>
+          <label className="text-sm font-medium text-gray-700 mr-2">Tenant:</label>
+          <select
+            value={selectedTenant}
+            onChange={(e) => { setSelectedTenant(e.target.value); setFilter("ALL"); }}
+            className="rounded border p-2 text-sm"
+          >
+            <option value="">— Select a club —</option>
+            {tenants.map((t) => (
+              <option key={t.id} value={t.id}>{t.name} (/{t.slug})</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {isPlatformAdmin && !selectedTenant ? (
+        <p className="text-gray-400">Select a tenant above to view their bookings.</p>
+      ) : (
+        <>
+          <div className="flex gap-2 flex-wrap">
+        {["ALL", "REQUESTED", "APPROVED", "RESERVED", "CONFIRMED", "CANCELLED"].map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`text-xs px-3 py-1 rounded ${filter === s ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700"}`}
+          >
+            {s} {s !== "ALL" && `(${bookings.filter((b) => b.status === s).length})`}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {filtered.map((b) => (
+          <div key={b.id} className="rounded-xl border bg-white p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-semibold">{b.date}</p>
+                <p className="text-sm text-gray-500">{b.user.name ?? b.user.email}</p>
+                <p className="text-xs text-gray-400">
+                  {b.slots.map((s) => `${s.rink.name} ${s.timeSlot}${s.playerName ? ` (${s.playerName})` : ""}`).join(", ")}
+                </p>
+                {b.payment && (
+                  <p className="text-xs mt-1">
+                    Payment: £{(b.payment.amount / 100).toFixed(2)} — {b.payment.status}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 items-end">
+                <span className={`text-xs font-medium px-2 py-1 rounded ${
+                  b.status === "CONFIRMED" ? "bg-green-100 text-green-700" :
+                  b.status === "CANCELLED" ? "bg-red-100 text-red-700" :
+                  "bg-yellow-100 text-yellow-700"
+                }`}>{b.status}</span>
+                <div className="flex gap-1 mt-1">
+                  {b.status === "REQUESTED" && (
+                    <>
+                      <button onClick={() => updateStatus(b.id, "APPROVED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Approve</button>
+                      <button onClick={() => updateStatus(b.id, "CANCELLED")} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">Reject</button>
+                    </>
+                  )}
+                  {b.status === "APPROVED" && (
+                    <button onClick={() => updateStatus(b.id, "RESERVED")} className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Send to Payment</button>
+                  )}
+                  {b.status === "RESERVED" && (
+                    <button onClick={() => updateStatus(b.id, "CONFIRMED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Confirm</button>
+                  )}
+                  {["APPROVED", "RESERVED", "CONFIRMED"].includes(b.status) && (
+                    <button onClick={() => updateStatus(b.id, "CANCELLED")} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200">Cancel</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && <p className="text-gray-400">No bookings match this filter.</p>}
+      </div>
+        </>
+      )}
+    </div>
+  );
+}
