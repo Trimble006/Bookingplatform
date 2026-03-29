@@ -15,7 +15,7 @@ export default function NotificationsPage() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
 
   function load() {
-    fetch("/api/notifications").then((r) => r.json()).then(setNotifs).catch(() => {});
+    fetch("/api/notifications").then((r) => r.json()).then((d) => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
   }
 
   useEffect(() => { load(); }, []);

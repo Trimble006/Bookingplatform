@@ -27,7 +27,7 @@ export default function PlatformPaymentsPage() {
   useEffect(() => {
     fetch("/api/admin/payments")
       .then((r) => r.json())
-      .then(setPayments)
+      .then((d) => setPayments(Array.isArray(d) ? d : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

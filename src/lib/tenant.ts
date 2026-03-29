@@ -1,21 +1,32 @@
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from "next/server";
+import { hasRole } from "@/lib/roles";
+import { jsonError } from "@/lib/api-utils";
+import type { Role } from "@prisma/client";
 
 /**
- * Resolve a tenant from a slug (subdomain or path segment).
- * Returns null when the tenant doesn't exist or is deactivated.
+ * Resolve tenantId from session + optional ?tenantId= query param.
+ * Platform admins can target any tenant via the param.
+ * Returns { tenantId, error } — if error is set, return it from the handler.
+ * When a platform admin has no tenant selected, returns an empty JSON array response.
  */
-export async function resolveTenant(slug: string) {
-  return prisma.tenant.findFirst({
-    where: { slug, active: true },
-  });
-}
+export function resolveTenantId(
+  session: { user: { tenantId?: string | null; role: Role } },
+  req: NextRequest,
+): { tenantId: string; error: null } | { tenantId: null; error: NextResponse } {
+  let tenantId = session.user.tenantId ?? null;
 
-/**
- * Guard: ensure a user belongs to the given tenant.
- * Throws if the user's tenantId doesn't match.
- */
-export function assertTenantAccess(userTenantId: string | null | undefined, tenantId: string) {
-  if (!userTenantId || userTenantId !== tenantId) {
-    throw new Error("Tenant access denied");
+  if (hasRole(session.user.role, "PLATFORM_ADMIN")) {
+    const param = req.nextUrl.searchParams.get("tenantId");
+    if (param) {
+      tenantId = param;
+    } else if (!tenantId) {
+      return { tenantId: null, error: NextResponse.json([]) };
+    }
   }
+
+  if (!tenantId) {
+    return { tenantId: null, error: jsonError("No tenant context", 400) };
+  }
+
+  return { tenantId, error: null };
 }

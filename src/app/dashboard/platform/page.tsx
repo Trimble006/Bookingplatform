@@ -20,7 +20,7 @@ export default function PlatformAdminPage() {
   const [error, setError] = useState("");
 
   function load() {
-    fetch("/api/admin/tenants").then((r) => r.json()).then(setTenants).catch(() => {});
+    fetch("/api/admin/tenants").then((r) => r.json()).then((d) => setTenants(Array.isArray(d) ? d : [])).catch(() => {});
   }
 
   useEffect(() => { load(); }, []);

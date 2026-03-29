@@ -2,22 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
+import { resolveTenantId } from "@/lib/tenant";
 
 /** List tasks — maintenance sees own, admin sees all. */
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  let tenantId = session.user.tenantId;
-
-  // Platform admins can query any tenant via ?tenantId=
-  if (hasRole(session.user.role, "PLATFORM_ADMIN")) {
-    const param = req.nextUrl.searchParams.get("tenantId");
-    if (param) tenantId = param;
-    else if (!tenantId) return NextResponse.json([]);
-  }
-
-  if (!tenantId) return jsonError("No tenant context", 400);
+  const { tenantId, error: tErr } = resolveTenantId(session, req);
+  if (tErr) return tErr;
 
   const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
   const isMaintenance = session.user.role === "MAINTENANCE";
@@ -43,8 +36,8 @@ export async function POST(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  const tenantId = session.user.tenantId;
-  if (!tenantId) return jsonError("No tenant context", 400);
+  const { tenantId, error: tErr } = resolveTenantId(session, req);
+  if (tErr) return tErr;
 
   const { title, description, category, priority } = await req.json();
   if (!title || !description) return jsonError("title and description required");

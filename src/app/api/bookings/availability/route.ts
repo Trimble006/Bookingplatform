@@ -1,23 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, jsonError } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { resolveTenantId } from "@/lib/tenant";
 
 /** Get availability grid: all rinks with booking status for a given date. */
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  let tenantId = session.user.tenantId;
-
-  // Platform admins can query any tenant via ?tenantId=
-  if (hasRole(session.user.role, "PLATFORM_ADMIN")) {
-    const param = req.nextUrl.searchParams.get("tenantId");
-    if (param) tenantId = param;
-    else if (!tenantId) return NextResponse.json([]);
-  }
-
-  if (!tenantId) return jsonError("No tenant context", 400);
+  const { tenantId, error: tErr } = resolveTenantId(session, req);
+  if (tErr) return tErr;
 
   const date = req.nextUrl.searchParams.get("date");
   if (!date) return jsonError("date query param required");
