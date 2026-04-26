@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isFeatureEnabled } from "@/lib/features";
 import HeroSection from "@/components/content/HeroSection";
 import AboutSection from "@/components/content/AboutSection";
 import PhotoSection from "@/components/content/PhotoSection";
