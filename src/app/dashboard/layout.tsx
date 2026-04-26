@@ -7,12 +7,18 @@ import { useEffect, useState } from "react";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [unread, setUnread] = useState(0);
+  const [eventsEnabled, setEventsEnabled] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
     fetch("/api/notifications?unread=true")
       .then((r) => r.json())
       .then((n) => setUnread(Array.isArray(n) ? n.length : 0))
+      .catch(() => {});
+    // Check if events feature is enabled (a quick probe — empty array means disabled)
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((d) => setEventsEnabled(d && typeof d === "object" && !Array.isArray(d)))
       .catch(() => {});
   }, [status]);
 
@@ -26,6 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <h2 className="text-lg font-bold mb-4">WL Booking</h2>
         <Link href="/dashboard" className="hover:bg-green-700 rounded px-3 py-2">Dashboard</Link>
         <Link href="/dashboard/bookings" className="hover:bg-green-700 rounded px-3 py-2">Bookings</Link>
+        {eventsEnabled && <Link href="/dashboard/events" className="hover:bg-green-700 rounded px-3 py-2">Events</Link>}
         <Link href="/dashboard/maintenance" className="hover:bg-green-700 rounded px-3 py-2">Maintenance</Link>
         <Link href="/dashboard/notifications" className="hover:bg-green-700 rounded px-3 py-2 flex justify-between">
           Notifications

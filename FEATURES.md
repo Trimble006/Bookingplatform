@@ -64,7 +64,16 @@
 - **Toggle visibility** — enable/disable individual content blocks
 
 ## Events & Weather
-- **Structured events** — cross-tenant event visibility
+- **Structured events** — full Event model with title, description, date/time, category, format, player count, capacity, entry fee, contact info, image URL
+- **Event categories** — social, competition, league, open day, tournament, other
+- **Tournament details** — optional format (knockout, American, league, Canadian) and player count (singles, pairs, triples, fours)
+- **Draft → Published workflow** — simple two-state lifecycle with publish/unpublish transitions
+- **Visibility control** — events can be members-only or public; public events visible to unauthenticated visitors
+- **Cross-tenant event sharing** — automatic opt-in via `eventsShareExternal` (outbound) and `eventsShowExternal` (inbound) feature flags
+- **Public landing page display** — upcoming published events shown on tenant homepage with EventCard grid
+- **Dashboard management** — full CRUD with category/format/player-count fields, status transitions, external events tab
+- **Feature-gated** — entire events stack gated behind `events` flag (API + dashboard nav + landing page)
+- **Audit trail** — `event.created`, `event.updated`, `event.published`, `event.unpublished`, `event.deleted` actions logged
 - **Weather integration**  — forecast display on booking page tied to venue lat/lng
 
 ## Progressive Web App
