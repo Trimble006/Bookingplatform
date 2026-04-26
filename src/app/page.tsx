@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isFeatureEnabled } from "@/lib/features";
 import HeroSection from "@/components/content/HeroSection";
 import AboutSection from "@/components/content/AboutSection";
 import PhotoSection from "@/components/content/PhotoSection";
@@ -27,14 +26,11 @@ export default async function HomePage() {
   let externalEventItems: typeof eventItems = [];
 
   if (tenantId) {
-    const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
-    if (flagOn) {
-      sections = await prisma.contentSection.findMany({
-        where: { tenantId, status: "PUBLISHED", enabled: true },
-        orderBy: { order: "asc" },
-        select: { id: true, type: true, title: true, content: true },
-      });
-    }
+    sections = await prisma.contentSection.findMany({
+      where: { tenantId, status: "PUBLISHED", enabled: true },
+      orderBy: { order: "asc" },
+      select: { id: true, type: true, title: true, content: true },
+    });
 
     // Events — show published events for authenticated members
     const eventsOn = await isFeatureEnabled(tenantId, "events");
