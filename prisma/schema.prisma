@@ -48,6 +48,7 @@ model User {
   name           String?
   passwordHash   String
   role           Role     @default(USER)
+  suspended      Boolean  @default(false)
   tenantId       String?
   tenant         Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt      DateTime @default(now())

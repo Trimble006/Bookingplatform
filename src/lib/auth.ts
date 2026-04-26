@@ -26,6 +26,9 @@ export const authOptions: NextAuthOptions = {
         // Block login for deactivated tenants (platform admins have no tenant)
         if (user.tenant && !user.tenant.active) return null;
 
+        // Block login for suspended users
+        if (user.suspended) return null;
+
         return {
           id: user.id,
           email: user.email,

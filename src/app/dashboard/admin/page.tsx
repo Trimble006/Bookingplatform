@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
   // Detect platform admin by trying tenant list endpoint
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function AdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    setSuccessMsg(`Booking ${status.toLowerCase()} successfully.`);
     loadBookings(selectedTenant || undefined);
   }
 
@@ -61,6 +63,8 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Admin — Booking Management</h1>
+
+      {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
       {isPlatformAdmin && (
         <div>

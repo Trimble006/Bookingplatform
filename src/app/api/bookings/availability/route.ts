@@ -14,24 +14,38 @@ export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date");
   if (!date) return jsonError("date query param required");
 
-  const greens = await prisma.green.findMany({
-    where: { tenantId },
-    include: {
-      rinks: {
-        include: {
-          bookingSlots: {
-            where: {
-              booking: {
-                date,
-                status: { in: ["APPROVED", "RESERVED", "CONFIRMED"] },
+  const [tenant, greens] = await Promise.all([
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { openingTime: true, closingTime: true, seasonStart: true, seasonEnd: true },
+    }),
+    prisma.green.findMany({
+      where: { tenantId },
+      include: {
+        rinks: {
+          include: {
+            bookingSlots: {
+              where: {
+                booking: {
+                  date,
+                  status: { in: ["APPROVED", "RESERVED", "CONFIRMED"] },
+                },
               },
+              select: { timeSlot: true, playerName: true, bookingId: true },
             },
-            select: { timeSlot: true, playerName: true, bookingId: true },
           },
         },
       },
-    },
-  });
+    }),
+  ]);
 
-  return NextResponse.json(greens);
+  return NextResponse.json({
+    config: {
+      openingTime: tenant?.openingTime ?? "09:00",
+      closingTime: tenant?.closingTime ?? "18:00",
+      seasonStart: tenant?.seasonStart ?? null,
+      seasonEnd: tenant?.seasonEnd ?? null,
+    },
+    greens,
+  });
 }

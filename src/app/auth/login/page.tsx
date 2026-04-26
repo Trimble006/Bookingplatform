@@ -1,11 +1,13 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,6 +27,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-xl bg-white p-8 shadow">
         <h1 className="text-2xl font-bold text-center">Sign In</h1>
+        {registered && <p className="text-green-600 text-sm text-center">Registration successful! Please sign in.</p>}
         {error && <p className="text-red-600 text-sm text-center">{error}</p>}
         <input
           type="email"

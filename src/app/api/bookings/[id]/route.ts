@@ -30,9 +30,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return jsonError("Forbidden", 403);
   }
 
-  // Only admins can approve/confirm
-  if (["APPROVED", "CONFIRMED"].includes(newStatus) && !hasRole(session.user.role, "TENANT_ADMIN")) {
-    return jsonError("Only admins can approve or confirm bookings", 403);
+  // Only admins can approve/reserve/confirm
+  if (["APPROVED", "RESERVED", "CONFIRMED"].includes(newStatus) && !hasRole(session.user.role, "TENANT_ADMIN")) {
+    return jsonError("Only admins can approve, reserve, or confirm bookings", 403);
+  }
+
+  // Users can cancel their own bookings (REQUESTED or APPROVED only)
+  if (newStatus === "CANCELLED" && !hasRole(session.user.role, "TENANT_ADMIN")) {
+    if (booking.userId !== session.user.id) {
+      return jsonError("Forbidden", 403);
+    }
+    if (!["REQUESTED", "APPROVED"].includes(booking.status)) {
+      return jsonError("You can only cancel bookings that are requested or approved", 400);
+    }
   }
 
   const allowed = VALID_TRANSITIONS[booking.status];

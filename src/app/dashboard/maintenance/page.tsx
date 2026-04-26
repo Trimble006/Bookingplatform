@@ -31,6 +31,7 @@ export default function MaintenancePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [form, setForm] = useState({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
   const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
+  const [successMsg, setSuccessMsg] = useState("");
 
   // Detect platform admin
   useEffect(() => {
@@ -55,12 +56,14 @@ export default function MaintenancePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSuccessMsg("");
     await fetch("/api/maintenance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     setForm({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
+    setSuccessMsg("Task submitted successfully!");
     loadTasks(selectedTenant || undefined);
   }
 
@@ -70,6 +73,7 @@ export default function MaintenancePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    setSuccessMsg(`Task status updated to ${status.replace("_", " ").toLowerCase()}.`);
     loadTasks(selectedTenant || undefined);
   }
 
@@ -83,12 +87,15 @@ export default function MaintenancePage() {
       body: JSON.stringify({ text }),
     });
     setNoteTexts((prev) => ({ ...prev, [taskId]: "" }));
+    setSuccessMsg("Note added.");
     loadTasks(selectedTenant || undefined);
   }
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Maintenance</h1>
+
+      {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
       {isPlatformAdmin && (
         <div>

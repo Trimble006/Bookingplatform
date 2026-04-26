@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Tenant = {
   id: string;
@@ -18,6 +19,7 @@ export default function PlatformAdminPage() {
     name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en",
   });
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   function load() {
     fetch("/api/admin/tenants").then((r) => r.json()).then((d) => setTenants(Array.isArray(d) ? d : [])).catch(() => {});
@@ -28,6 +30,7 @@ export default function PlatformAdminPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccess("");
     const res = await fetch("/api/admin/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -38,6 +41,7 @@ export default function PlatformAdminPage() {
       setError(data.error);
     } else {
       setForm({ name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en" });
+      setSuccess("Club created successfully!");
       load();
     }
   }
@@ -48,6 +52,7 @@ export default function PlatformAdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !active }),
     });
+    setSuccess(`Tenant ${!active ? "activated" : "deactivated"} successfully.`);
     load();
   }
 
@@ -58,6 +63,7 @@ export default function PlatformAdminPage() {
       <form onSubmit={handleCreate} className="rounded-xl bg-white p-6 shadow space-y-3">
         <h2 className="font-semibold">Create Club</h2>
         {error && <p className="text-red-600 text-sm">{error}</p>}
+        {success && <p className="text-green-600 text-sm">{success}</p>}
         <div className="grid grid-cols-2 gap-3">
           <input placeholder="Club name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded border p-2" required />
           <input placeholder="Slug" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded border p-2" required />
@@ -78,7 +84,7 @@ export default function PlatformAdminPage() {
         {tenants.map((t) => (
           <div key={t.id} className="rounded-xl border bg-white p-4 flex justify-between items-center">
             <div>
-              <h3 className="font-semibold">{t.name} <span className="text-xs text-gray-400">/{t.slug}</span></h3>
+              <h3 className="font-semibold"><Link href={`/dashboard/platform/tenants/${t.id}`} className="hover:underline">{t.name}</Link> <span className="text-xs text-gray-400">/{t.slug}</span></h3>
               <p className="text-xs text-gray-500">{t._count?.users ?? 0} users · {t._count?.greens ?? 0} greens · {t.locale}</p>
             </div>
             <button

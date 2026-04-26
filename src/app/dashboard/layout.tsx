@@ -31,8 +31,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           Notifications
           {unread > 0 && <span className="bg-red-500 text-xs rounded-full px-2 py-0.5">{unread}</span>}
         </Link>
-        {isAdmin && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Admin</Link>}
-        {isPlatformAdmin && <Link href="/dashboard/platform" className="hover:bg-green-700 rounded px-3 py-2">Platform</Link>}
+        {isAdmin && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
+        {isAdmin && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
+        {isPlatformAdmin && <Link href="/dashboard/platform" className="hover:bg-green-700 rounded px-3 py-2">Tenant Admin</Link>}
         {isPlatformAdmin && <Link href="/dashboard/platform/payments" className="hover:bg-green-700 rounded px-3 py-2">Payments</Link>}
         <div className="mt-auto">
           <button onClick={() => signOut({ callbackUrl: "/" })} className="w-full text-left hover:bg-green-700 rounded px-3 py-2">

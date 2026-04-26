@@ -13,6 +13,7 @@ type Notification = {
 
 export default function NotificationsPage() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
+  const [successMsg, setSuccessMsg] = useState("");
 
   function load() {
     fetch("/api/notifications").then((r) => r.json()).then((d) => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
@@ -35,6 +36,7 @@ export default function NotificationsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ all: true }),
     });
+    setSuccessMsg("All notifications marked as read.");
     load();
   }
 
@@ -44,6 +46,7 @@ export default function NotificationsPage() {
         <h1 className="text-2xl font-bold">Notifications</h1>
         <button onClick={markAllRead} className="text-sm text-green-600 hover:underline">Mark all read</button>
       </div>
+      {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
       {notifs.map((n) => (
         <div
           key={n.id}
