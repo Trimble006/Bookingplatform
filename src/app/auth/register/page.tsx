@@ -1,12 +1,26 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "", name: "", tenantSlug: "" });
+  const searchParams = useSearchParams();
+  const clubSlug = searchParams.get("club") ?? "";
+  const [form, setForm] = useState({ email: "", password: "", name: "", tenantSlug: clubSlug });
+  const [clubName, setClubName] = useState("");
   const [error, setError] = useState("");
+
+  // Pre-fill club slug from query param and fetch club name
+  useEffect(() => {
+    if (clubSlug) {
+      setForm((f) => ({ ...f, tenantSlug: clubSlug }));
+      fetch(`/api/public/club/${encodeURIComponent(clubSlug)}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d?.name) setClubName(d.name); })
+        .catch(() => {});
+    }
+  }, [clubSlug]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +41,9 @@ export default function RegisterPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-xl bg-white p-8 shadow">
-        <h1 className="text-2xl font-bold text-center">Register</h1>
+        <h1 className="text-2xl font-bold text-center">
+          {clubName ? `Join ${clubName}` : "Register"}
+        </h1>
         {error && <p className="text-red-600 text-sm text-center">{error}</p>}
         <input type="text" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full rounded-lg border p-3" />
         <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full rounded-lg border p-3" required />
@@ -41,5 +57,17 @@ export default function RegisterPage() {
         </p>
       </form>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex min-h-screen items-center justify-center p-4">
+        <p className="text-gray-400">Loading...</p>
+      </main>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

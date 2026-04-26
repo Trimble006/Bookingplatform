@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -175,64 +176,26 @@ export default function BookingsPage() {
       {/* Availability grid */}
       <section>
         <h2 className="text-lg font-semibold">Availability</h2>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="mt-2 rounded border p-2"
-          {...(tenantConfig?.seasonStart ? { min: tenantConfig.seasonStart } : {})}
-          {...(tenantConfig?.seasonEnd ? { max: tenantConfig.seasonEnd } : {})}
+        <AvailabilityGrid
+          greens={availability.map((green: any) => ({
+            id: green.id,
+            name: green.name,
+            rinks: (green.rinks ?? []).map((rink: any) => ({
+              id: rink.id,
+              name: rink.name,
+              bookedSlots: (rink.bookingSlots ?? []).map((s: any) => s.timeSlot),
+            })),
+          }))}
+          config={{
+            openingTime: tenantConfig?.openingTime ?? "09:00",
+            closingTime: tenantConfig?.closingTime ?? "18:00",
+            seasonStart: tenantConfig?.seasonStart ?? null,
+            seasonEnd: tenantConfig?.seasonEnd ?? null,
+          }}
+          date={date}
+          onDateChange={setDate}
+          onSlotClick={(rink, slot) => openBookingModal(rink, slot)}
         />
-        {tenantConfig?.seasonStart && tenantConfig?.seasonEnd && (
-          <span className="ml-3 text-xs text-gray-400">
-            Season: {tenantConfig.seasonStart} – {tenantConfig.seasonEnd}
-          </span>
-        )}
-        <div className="mt-4 space-y-6">
-          {availability.map((green: any) => (
-            <div key={green.id}>
-              <h3 className="font-medium text-green-700 mb-2">{green.name}</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr>
-                      <th className="border bg-gray-50 px-3 py-2 text-left text-gray-600 font-medium">Time</th>
-                      {green.rinks?.map((rink: any) => (
-                        <th key={rink.id} className="border bg-gray-50 px-3 py-2 text-center font-medium">{rink.name}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timeSlots.map((slot) => (
-                      <tr key={slot}>
-                        <td className="border px-3 py-2 font-medium text-gray-600 whitespace-nowrap">{slot}</td>
-                        {green.rinks?.map((rink: any) => {
-                          const booked = (rink.bookingSlots ?? []).find((s: any) => s.timeSlot === slot);
-                          return booked ? (
-                            <td key={rink.id} className="border px-3 py-2 bg-red-100 text-red-700 text-center text-xs">
-                              {booked.playerName || "Booked"}
-                            </td>
-                          ) : (
-                            <td
-                              key={rink.id}
-                              className="border px-3 py-2 bg-green-50 text-green-700 text-center text-xs cursor-pointer hover:bg-green-200 transition-colors"
-                              role="button"
-                              aria-label={`Book ${rink.name} at ${slot}`}
-                              onClick={() => openBookingModal(rink, slot)}
-                            >
-                              Open
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-          {availability.length === 0 && <p className="text-gray-400">No greens configured for this club.</p>}
-        </div>
       </section>
 
       {/* Bookings list */}
