@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
+import { useTrack } from "@/components/TrackingProvider";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -36,6 +37,9 @@ export default function BookingsPage() {
 
   const isPlatformAdmin = session?.user?.role === "PLATFORM_ADMIN";
   const isAdmin = (session?.user as any)?.role === "TENANT_ADMIN" || isPlatformAdmin;
+  const { trackFeature, trackAction } = useTrack();
+
+  useEffect(() => { trackFeature("booking.grid_opened", "Booking"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch tenant list only for platform admins
   useEffect(() => {
@@ -105,6 +109,7 @@ export default function BookingsPage() {
       return;
     }
     setSuccessMsg(`Booking ${status.toLowerCase()} successfully.`);
+    trackAction(`booking.${status.toLowerCase()}`, "Booking", id);
     loadData(selectedTenant || undefined);
   }
 
@@ -137,6 +142,7 @@ export default function BookingsPage() {
       } else {
         setBookingRink(null);
         setSuccessMsg("Booking requested successfully!");
+        trackAction("booking.created", "Booking");
         loadData(selectedTenant || undefined);
       }
     } catch {

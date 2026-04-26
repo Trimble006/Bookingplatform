@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTrack } from "@/components/TrackingProvider";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -32,6 +33,9 @@ export default function MaintenancePage() {
   const [form, setForm] = useState({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
   const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState("");
+  const { trackFeature } = useTrack();
+
+  useEffect(() => { trackFeature("maintenance.dashboard_opened", "MaintenanceTask"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Detect platform admin
   useEffect(() => {
@@ -64,6 +68,7 @@ export default function MaintenancePage() {
     });
     setForm({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
     setSuccessMsg("Task submitted successfully!");
+    trackFeature("maintenance.task_submitted", "MaintenanceTask");
     loadTasks(selectedTenant || undefined);
   }
 

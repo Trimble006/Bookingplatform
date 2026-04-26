@@ -35,6 +35,7 @@ model Tenant {
   events          Event[]
   channels        Channel[]
   messages        Message[]
+  trackingEvents  TrackingEvent[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -73,6 +74,7 @@ model User {
   channelMemberships  ChannelMember[]
   messages            Message[]
   createdChannels     Channel[]        @relation("ChannelCreatedBy")
+  trackingEvents      TrackingEvent[]
 }
 
 model PasswordResetToken {
@@ -475,4 +477,39 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ─── Feature Tracking (Observability) ────────────────────────
+
+enum TrackingEventType {
+  PAGE_VIEW
+  FEATURE_USE
+  INTERACTION
+  SESSION_START
+}
+
+model TrackingEvent {
+  id                 String            @id @default(cuid())
+  timestamp          DateTime          @default(now())
+  tenantId           String?
+  tenant             Tenant?           @relation(fields: [tenantId], references: [id])
+  userId             String?
+  user               User?             @relation(fields: [userId], references: [id])
+  sessionFingerprint String
+  eventType          TrackingEventType
+  path               String
+  action             String?
+  entity             String?
+  entityId           String?
+  browserFamily      String
+  browserVersion     String?
+  osFamily           String
+  deviceType         String
+  isPWA              Boolean           @default(false)
+  meta               String?
+
+  @@index([tenantId, timestamp])
+  @@index([eventType, timestamp])
+  @@index([path, timestamp])
+  @@index([sessionFingerprint])
 }

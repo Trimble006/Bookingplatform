@@ -8,6 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session, status } = useSession();
   const [unread, setUnread] = useState(0);
   const [eventsEnabled, setEventsEnabled] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -19,6 +20,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetch("/api/events")
       .then((r) => r.json())
       .then((d) => setEventsEnabled(d && typeof d === "object" && !Array.isArray(d)))
+      .catch(() => {});
+    // Analytics is always visible for admins (platform admin always, tenant admin if flag enabled)
+    fetch("/api/tracking/stats?period=7d")
+      .then((r) => { if (r.ok) setAnalyticsEnabled(true); })
       .catch(() => {});
   }, [status]);
 
@@ -45,6 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {isPlatformAdmin && <Link href="/dashboard/platform" className="hover:bg-green-700 rounded px-3 py-2">Tenant Admin</Link>}
         {isPlatformAdmin && <Link href="/dashboard/platform/payments" className="hover:bg-green-700 rounded px-3 py-2">Payments</Link>}
         <Link href="/dashboard/audit" className="hover:bg-green-700 rounded px-3 py-2">{isAdmin ? "Audit Log" : "My Activity"}</Link>
+        {analyticsEnabled && <Link href="/dashboard/analytics" className="hover:bg-green-700 rounded px-3 py-2">Analytics</Link>}
         <div className="mt-auto">
           <button onClick={() => signOut({ callbackUrl: "/" })} className="w-full text-left hover:bg-green-700 rounded px-3 py-2">
             Sign Out

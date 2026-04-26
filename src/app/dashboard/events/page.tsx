@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTrack } from "@/components/TrackingProvider";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -99,6 +100,9 @@ export default function EventsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [successMsg, setSuccessMsg] = useState("");
+  const { trackFeature } = useTrack();
+
+  useEffect(() => { trackFeature("events.dashboard_opened", "Event"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch("/api/admin/tenants")

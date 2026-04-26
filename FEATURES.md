@@ -98,6 +98,21 @@
 - **Standalone dashboard** — `/dashboard/audit` with filters (action domain, date range, PII-only, entity search) and pagination
 - **Fire-and-forget logging** — audit writes are non-blocking; failures never impact user operations
 
+## Feature Tracking (Observability)
+- **TrackingEvent model** — captures page views, feature usage, interactions, and session starts with browser/device/PWA metadata
+- **Anonymous + authenticated** — tracks all visitors; anonymous users get a privacy-safe daily-rotating SHA-256 fingerprint (no PII stored)
+- **Server-side UA parsing** — lightweight regex-based browser/OS/device detection from `User-Agent` header (no external dependencies, prevents client spoofing)
+- **PWA detection** — identifies users on installed PWA vs browser via `display-mode: standalone` and `navigator.standalone`
+- **Batched event ingestion** — client queues events, flushes every 5s or on page visibility change; uses `navigator.sendBeacon()` on unload for reliability
+- **Rate-limited POST endpoint** — `/api/tracking` accepts up to 50 events per request, IP-based throttle (10 req/10s)
+- **Aggregated stats API** — `/api/tracking/stats` returns grouped counts (by browser, device, path, event type, PWA status) over configurable periods (7d/30d/90d)
+- **Analytics dashboard** — `/dashboard/analytics` with summary cards, daily traffic bar chart, browser/device breakdown, PWA vs browser split, top pages, feature usage ranking, top interactions
+- **Role-scoped access** — tenant admins see own tenant data; platform admins see cross-tenant with tenant filter
+- **Feature-gated** — dashboard visibility gated behind `analytics` feature flag per tenant; tracking itself is always on for platform-level insights
+- **TrackingProvider + useTrack()** — React context provider auto-tracks page views on route changes, exposes `trackFeature()` and `trackAction()` hooks
+- **Instrumented features** — booking grid, events dashboard, maintenance dashboard, messaging all emit `FEATURE_USE` events; booking create/status changes emit `INTERACTION` events
+- **Fire-and-forget pattern** — tracking writes are non-blocking; failures never impact user operations
+
 ## Platform Admin (Superadmin)
 - **Tenant CRUD** — create clubs with branding, greens, admin user, locale
 - **Activate/deactivate** tenants on the fly

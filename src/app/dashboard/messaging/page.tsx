@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useTrack } from "@/components/TrackingProvider";
 import ChannelList from "@/components/messaging/ChannelList";
 import MessageThread from "@/components/messaging/MessageThread";
 import MessageInput from "@/components/messaging/MessageInput";
@@ -40,6 +41,9 @@ export default function MessagingPage() {
   const [tenantUsers, setTenantUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
   const [featureDisabled, setFeatureDisabled] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const { trackFeature } = useTrack();
+
+  useEffect(() => { trackFeature("messaging.opened", "Channel"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const role = (session?.user as any)?.role;
   const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";

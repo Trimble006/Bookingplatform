@@ -103,7 +103,7 @@ async function main() {
   });
 
   // Feature flags
-  for (const key of ["liveStreaming", "messaging", "events", "eventsShareExternal", "eventsShowExternal"]) {
+  for (const key of ["liveStreaming", "messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics"]) {
     await prisma.featureFlag.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key } },
       update: {},
