@@ -8,6 +8,7 @@ import AboutSection from "@/components/content/AboutSection";
 import PhotoSection from "@/components/content/PhotoSection";
 import MapSection from "@/components/content/MapSection";
 import ContactSection from "@/components/content/ContactSection";
+import EventCard from "@/components/events/EventCard";
 
 const SECTION_COMPONENTS: Record<string, React.ComponentType<{ title: string; content: string }>> = {
   HERO: HeroSection,
@@ -22,6 +23,9 @@ export default async function HomePage() {
   const tenantId = session?.user?.tenantId;
 
   let sections: { id: string; type: string; title: string; content: string }[] = [];
+  let eventItems: { id: string; title: string; description: string; category: string; format: string | null; playerCount: string | null; date: string; startTime: string; endTime: string | null; location: string | null; capacity: number | null; entryFee: number | null; currency: string; imageUrl: string | null; visibility: string; tenant: { name: string } }[] = [];
+  let externalEventItems: typeof eventItems = [];
+
   if (tenantId) {
     const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
     if (flagOn) {
@@ -31,15 +35,71 @@ export default async function HomePage() {
         select: { id: true, type: true, title: true, content: true },
       });
     }
+
+    // Events — show published events (PUBLIC for guests, all published for members)
+    const eventsOn = await isFeatureEnabled(tenantId, "events");
+    if (eventsOn) {
+      const today = new Date().toISOString().slice(0, 10);
+      eventItems = await prisma.event.findMany({
+        where: {
+          tenantId,
+          status: "PUBLISHED",
+          ...(session ? {} : { visibility: "PUBLIC" }),
+          date: { gte: today },
+        },
+        include: { tenant: { select: { name: true } } },
+        orderBy: { date: "asc" },
+      });
+
+      // Cross-tenant public events
+      const showExternal = await isFeatureEnabled(tenantId, "eventsShowExternal");
+      if (showExternal) {
+        const sharingFlags = await prisma.featureFlag.findMany({
+          where: { key: "eventsShareExternal", enabled: true, tenantId: { not: tenantId } },
+          select: { tenantId: true },
+        });
+        const sharingTenantIds = sharingFlags.map((f) => f.tenantId);
+        if (sharingTenantIds.length > 0) {
+          externalEventItems = await prisma.event.findMany({
+            where: {
+              tenantId: { in: sharingTenantIds },
+              status: "PUBLISHED",
+              visibility: "PUBLIC",
+              date: { gte: today },
+            },
+            include: { tenant: { select: { name: true } } },
+            orderBy: { date: "asc" },
+          });
+        }
+      }
+    }
   }
 
-  if (sections.length > 0) {
+  const allEvents = [...eventItems, ...externalEventItems.map((e) => ({ ...e, tenantName: e.tenant.name }))];
+
+  if (sections.length > 0 || allEvents.length > 0) {
     return (
       <main className="min-h-screen">
         {sections.map((s) => {
           const Component = SECTION_COMPONENTS[s.type];
           return Component ? <Component key={s.id} title={s.title} content={s.content} /> : null;
         })}
+        {allEvents.length > 0 && (
+          <section className="max-w-6xl mx-auto px-4 py-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Upcoming Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allEvents.map((ev) => (
+                <EventCard
+                  key={ev.id}
+                  event={{
+                    ...ev,
+                    tenantName: "tenantName" in ev ? (ev as any).tenantName : undefined,
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     );
   }

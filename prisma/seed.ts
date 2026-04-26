@@ -103,12 +103,66 @@ async function main() {
   });
 
   // Feature flags
-  for (const key of ["liveStreaming", "messaging", "events"]) {
+  for (const key of ["liveStreaming", "messaging", "events", "eventsShareExternal", "eventsShowExternal"]) {
     await prisma.featureFlag.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key } },
       update: {},
       create: { tenantId: tenant.id, key, enabled: false },
     });
+  }
+
+  // Sample events
+  const tenantAdmin = await prisma.user.findUnique({ where: { email: "admin@lakeview.club" } });
+  if (tenantAdmin) {
+    const existingEvents = await prisma.event.count({ where: { tenantId: tenant.id } });
+    if (existingEvents === 0) {
+      await prisma.event.createMany({
+        data: [
+          {
+            tenantId: tenant.id,
+            title: "Summer Open Day",
+            description: "Come and try bowls! Free taster sessions for new players of all ages.",
+            category: "OPEN_DAY",
+            date: "2026-06-15",
+            startTime: "10:00",
+            endTime: "16:00",
+            visibility: "PUBLIC",
+            status: "PUBLISHED",
+            createdById: tenantAdmin.id,
+          },
+          {
+            tenantId: tenant.id,
+            title: "Club Pairs Championship",
+            description: "Annual pairs knockout competition. Entry fee includes lunch.",
+            category: "COMPETITION",
+            format: "KNOCKOUT",
+            playerCount: "PAIRS",
+            date: "2026-07-12",
+            startTime: "09:00",
+            endTime: "17:00",
+            capacity: 32,
+            entryFee: 1500,
+            contactName: "Lakeview Admin",
+            contactEmail: "admin@lakeview.club",
+            visibility: "MEMBERS_ONLY",
+            status: "PUBLISHED",
+            createdById: tenantAdmin.id,
+          },
+          {
+            tenantId: tenant.id,
+            title: "Friday Social Roll-Up",
+            description: "Casual Friday afternoon social bowling. All welcome, no need to book.",
+            category: "SOCIAL",
+            date: "2026-06-20",
+            startTime: "14:00",
+            endTime: "17:00",
+            visibility: "MEMBERS_ONLY",
+            status: "DRAFT",
+            createdById: tenantAdmin.id,
+          },
+        ],
+      });
+    }
   }
 
   console.log("Seed complete.");
