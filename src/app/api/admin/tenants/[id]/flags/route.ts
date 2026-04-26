@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { setFeatureFlag, getTenantFlags } from "@/lib/features";
+import { logAudit } from "@/lib/audit";
 
 /** List feature flags for a tenant. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -29,5 +30,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const flag = await setFeatureFlag(id, key, enabled);
+
+  logAudit({ session, action: "admin.feature_flag.toggled", entity: "FeatureFlag", entityId: flag.id, tenantId: id, meta: { key, enabled } });
+
   return NextResponse.json(flag);
 }

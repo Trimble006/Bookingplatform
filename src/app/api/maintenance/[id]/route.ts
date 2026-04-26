@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { createNotification } from "@/lib/notifications";
+import { logAudit } from "@/lib/audit";
 import { TaskStatus } from "@prisma/client";
 
 const VALID_TRANSITIONS: Record<string, TaskStatus[]> = {
@@ -73,5 +74,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.maintenanceTask.update({ where: { id }, data });
+
+  const auditAction = body.assignedToId !== undefined ? "task.assigned" : body.status ? `task.${body.status.toLowerCase()}` : "task.updated";
+  logAudit({ session, action: auditAction, entity: "MaintenanceTask", entityId: id, tenantId: task.tenantId, meta: data });
+
   return NextResponse.json(updated);
 }

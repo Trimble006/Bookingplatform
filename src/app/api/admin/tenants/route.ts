@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { logAudit } from "@/lib/audit";
 
 /** List all tenants (platform admin). */
 export async function GET() {
@@ -73,6 +74,8 @@ export async function POST(req: NextRequest) {
       },
       include: { users: { select: { id: true, email: true, role: true } }, greens: { include: { rinks: true } } },
     });
+
+    logAudit({ session, action: "admin.tenant.created", entity: "Tenant", entityId: tenant.id, tenantId: tenant.id, meta: { name, slug } });
 
     return NextResponse.json(tenant, { status: 201 });
   } catch (err: unknown) {

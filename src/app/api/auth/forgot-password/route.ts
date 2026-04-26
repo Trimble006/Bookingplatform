@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 /** Request a password reset token. */
 export async function POST(req: NextRequest) {
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
   await prisma.passwordResetToken.create({
     data: { token, userId: user.id, expiresAt },
   });
+
+  logAudit({ session: { user: { id: user.id, role: user.role, tenantId: user.tenantId } }, action: "auth.password_reset_request", entity: "User", entityId: user.id, tenantId: user.tenantId });
 
   // TODO: send email with reset link containing `token`
   // For MVP we return the token in the response body (dev only).

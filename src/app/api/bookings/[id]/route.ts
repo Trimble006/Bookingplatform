@@ -4,6 +4,7 @@ import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { getPaymentEngine } from "@/lib/payment";
 import { createNotification } from "@/lib/notifications";
+import { logAudit } from "@/lib/audit";
 import { BookingStatus } from "@prisma/client";
 
 const VALID_TRANSITIONS: Record<string, BookingStatus[]> = {
@@ -77,6 +78,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.booking.update({ where: { id }, data: { status: newStatus } });
+
+  logAudit({ session, action: `booking.${newStatus.toLowerCase()}`, entity: "Booking", entityId: id, tenantId: booking.tenantId, meta: { from: booking.status, to: newStatus } });
 
   // Notify user of status changes
   if (booking.userId !== session.user.id) {

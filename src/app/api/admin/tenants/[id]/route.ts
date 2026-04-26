@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { logAudit } from "@/lib/audit";
 
 /** Get a single tenant. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -45,6 +46,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const tenant = await prisma.tenant.update({ where: { id }, data: allowed });
+
+    const action = allowed.active === true ? "admin.tenant.activated" : allowed.active === false ? "admin.tenant.deactivated" : "admin.tenant.updated";
+    logAudit({ session, action, entity: "Tenant", entityId: id, tenantId: id, meta: allowed });
+
     return NextResponse.json(tenant);
   } catch (err: unknown) {
     if (typeof err === "object" && err !== null && "code" in err) {

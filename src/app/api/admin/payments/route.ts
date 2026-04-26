@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail } from "@/lib/api-utils";
+import { logAudit } from "@/lib/audit";
 
 /** List all tenant payments (platform admin). */
 export async function GET() {
@@ -13,5 +14,8 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     include: { tenant: { select: { name: true } } },
   });
+
+  logAudit({ session, action: "pii.payment_list_viewed", entity: "TenantPayment", piiAccess: true, meta: { count: payments.length } });
+
   return NextResponse.json(payments);
 }
