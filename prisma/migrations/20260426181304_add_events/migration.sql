@@ -1,38 +1,6 @@
 /*
-  Warnings:
-
-  - You are about to drop the `Channel` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ChannelMember` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Message` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `MessageReadCursor` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `PushSubscription` table. If the table is not empty, all the data it contains will be lost.
-
+  Add Events model
 */
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "Channel";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "ChannelMember";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "Message";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "MessageReadCursor";
-PRAGMA foreign_keys=on;
-
--- DropTable
-PRAGMA foreign_keys=off;
-DROP TABLE "PushSubscription";
-PRAGMA foreign_keys=on;
-
 -- CreateTable
 CREATE TABLE "Event" (
     "id" TEXT NOT NULL PRIMARY KEY,
