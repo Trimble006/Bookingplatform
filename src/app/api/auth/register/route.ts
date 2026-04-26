@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const { email, password, name, tenantSlug } = await req.json();
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
     data: { email, name, passwordHash, tenantId, role: "USER" },
     select: { id: true, email: true, name: true, role: true, tenantId: true },
   });
+
+  logAudit({ session: { user: { id: user.id, role: user.role, tenantId: user.tenantId } }, action: "auth.register", entity: "User", entityId: user.id, tenantId: user.tenantId });
 
   return NextResponse.json(user, { status: 201 });
 }

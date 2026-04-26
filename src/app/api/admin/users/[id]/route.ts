@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
+import { logAudit } from "@/lib/audit";
 
 /** Get a single user with details. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +38,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!isPlatformAdmin && user.tenantId !== session.user.tenantId) {
     return jsonError("Forbidden", 403);
   }
+
+  logAudit({ session, action: "pii.user_detail_viewed", entity: "User", entityId: user.id, piiAccess: true, tenantId: user.tenantId });
 
   return NextResponse.json(user);
 }
@@ -90,6 +93,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data: allowed,
       select: { id: true, email: true, name: true, role: true, suspended: true },
     });
+
+    const auditAction = allowed.suspended === true ? "admin.user.suspended" : allowed.suspended === false ? "admin.user.activated" : "admin.user.updated";
+    logAudit({ session, action: auditAction, entity: "User", entityId: id, tenantId: target.tenantId, meta: allowed });
+
     return NextResponse.json(updated);
   } catch {
     return jsonError("Failed to update user", 500);

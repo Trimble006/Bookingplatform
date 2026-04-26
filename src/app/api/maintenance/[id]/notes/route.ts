@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { logAudit } from "@/lib/audit";
 
 /** Add a timestamped note to a task. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: { taskId: id, userId: session.user.id, text },
     include: { user: { select: { name: true } } },
   });
+
+  logAudit({ session, action: "task.note_added", entity: "MaintenanceTask", entityId: id, tenantId: task.tenantId });
 
   return NextResponse.json(note, { status: 201 });
 }

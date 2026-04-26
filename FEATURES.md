@@ -80,6 +80,15 @@
 - **Password reset** — token-based forgot/reset flow
 - **Registration** with email/password
 
+## Audit Trail
+- **AuditEvent model** — every significant action logged with actor, role snapshot, tenant, entity, timestamp, and freeform `meta` JSON
+- **PII access tracking** — explicit `piiAccess` flag on events where personal data was surfaced (user lists, player names, user detail views)
+- **Role-scoped visibility** — users see own history, tenant admins see all tenant activity, platform admins see everything
+- **Dot-notation action vocabulary** — `auth.*`, `booking.*`, `task.*`, `payment.*`, `admin.*`, `pii.*`
+- **Full instrumentation** — all API routes (bookings, auth, maintenance, admin, payments) emit audit events on mutations and PII access
+- **Standalone dashboard** — `/dashboard/audit` with filters (action domain, date range, PII-only, entity search) and pagination
+- **Fire-and-forget logging** — audit writes are non-blocking; failures never impact user operations
+
 ## Platform Admin (Superadmin)
 - **Tenant CRUD** — create clubs with branding, greens, admin user, locale
 - **Activate/deactivate** tenants on the fly

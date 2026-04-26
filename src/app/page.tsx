@@ -1,6 +1,49 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { isFeatureEnabled } from "@/lib/features";
+import HeroSection from "@/components/content/HeroSection";
+import AboutSection from "@/components/content/AboutSection";
+import PhotoSection from "@/components/content/PhotoSection";
+import MapSection from "@/components/content/MapSection";
+import ContactSection from "@/components/content/ContactSection";
 
-export default function HomePage() {
+const SECTION_COMPONENTS: Record<string, React.ComponentType<{ title: string; content: string }>> = {
+  HERO: HeroSection,
+  ABOUT: AboutSection,
+  PHOTO: PhotoSection,
+  MAP: MapSection,
+  CONTACT: ContactSection,
+};
+
+export default async function HomePage() {
+  const session = await getServerSession(authOptions) as { user: { tenantId?: string | null } } | null;
+  const tenantId = session?.user?.tenantId;
+
+  let sections: { id: string; type: string; title: string; content: string }[] = [];
+  if (tenantId) {
+    const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
+    if (flagOn) {
+      sections = await prisma.contentSection.findMany({
+        where: { tenantId, status: "PUBLISHED", enabled: true },
+        orderBy: { order: "asc" },
+        select: { id: true, type: true, title: true, content: true },
+      });
+    }
+  }
+
+  if (sections.length > 0) {
+    return (
+      <main className="min-h-screen">
+        {sections.map((s) => {
+          const Component = SECTION_COMPONENTS[s.type];
+          return Component ? <Component key={s.id} title={s.title} content={s.content} /> : null;
+        })}
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
       <h1 className="text-4xl font-bold tracking-tight text-green-700">WL Booking</h1>

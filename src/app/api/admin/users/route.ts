@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
+import { logAudit } from "@/lib/audit";
 
 /** List users scoped to the caller's tenant (or by tenantId for platform admins). */
 export async function GET(req: NextRequest) {
@@ -30,6 +31,8 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  logAudit({ session, action: "pii.user_list_viewed", entity: "User", piiAccess: true, tenantId, meta: { count: users.length } });
 
   return NextResponse.json(users);
 }

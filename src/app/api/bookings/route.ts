@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
+import { logAudit } from "@/lib/audit";
 
 /** List bookings. Platform admins pass ?tenantId= to pick a tenant. */
 export async function GET(req: NextRequest) {
@@ -18,6 +19,11 @@ export async function GET(req: NextRequest) {
     include: { slots: { include: { rink: true } }, user: { select: { id: true, name: true, email: true } }, payment: true },
     orderBy: { date: "desc" },
   });
+
+  if (isAdmin) {
+    logAudit({ session, action: "pii.booking_players_viewed", entity: "Booking", piiAccess: true, tenantId, meta: { count: bookings.length } });
+  }
+
   return NextResponse.json(bookings);
 }
 
@@ -73,6 +79,8 @@ export async function POST(req: NextRequest) {
     },
     include: { slots: true },
   });
+
+  logAudit({ session, action: "booking.created", entity: "Booking", entityId: booking.id, tenantId, meta: { date, slotCount: slots.length } });
 
   return NextResponse.json(booking, { status: 201 });
 }
