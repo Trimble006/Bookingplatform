@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isFeatureEnabled } from "@/lib/features";
 import HeroSection from "@/components/content/HeroSection";
 import AboutSection from "@/components/content/AboutSection";
 import PhotoSection from "@/components/content/PhotoSection";
@@ -23,14 +22,11 @@ export default async function HomePage() {
 
   let sections: { id: string; type: string; title: string; content: string }[] = [];
   if (tenantId) {
-    const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
-    if (flagOn) {
-      sections = await prisma.contentSection.findMany({
-        where: { tenantId, status: "PUBLISHED", enabled: true },
-        orderBy: { order: "asc" },
-        select: { id: true, type: true, title: true, content: true },
-      });
-    }
+    sections = await prisma.contentSection.findMany({
+      where: { tenantId, status: "PUBLISHED", enabled: true },
+      orderBy: { order: "asc" },
+      select: { id: true, type: true, title: true, content: true },
+    });
   }
 
   if (sections.length > 0) {

@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
-import { isFeatureEnabled } from "@/lib/features";
 import { logAudit } from "@/lib/audit";
 
 /** Valid status transitions: from → allowed targets */
@@ -49,9 +48,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!hasRole(session.user.role, "TENANT_ADMIN")) {
     return jsonError("Forbidden", 403);
   }
-
-  const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
-  if (!flagOn) return jsonError("Content management is not enabled for this tenant", 403);
 
   const existing = await prisma.contentSection.findFirst({ where: { id, tenantId } });
   if (!existing) return jsonError("Not found", 404);

@@ -32,6 +32,8 @@ model Tenant {
   notifications  Notification[]
   auditEvents    AuditEvent[]
   contentSections ContentSection[]
+  channels       Channel[]
+  messages       Message[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -65,6 +67,9 @@ model User {
   auditEvents         AuditEvent[]
   createdSections     ContentSection[] @relation("CreatedBy")
   updatedSections     ContentSection[] @relation("UpdatedBy")
+  channelMemberships  ChannelMember[]
+  messages            Message[]
+  createdChannels     Channel[]       @relation("ChannelCreatedBy")
 }
 
 model PasswordResetToken {
@@ -314,4 +319,92 @@ model ContentSection {
   updatedAt   DateTime      @updatedAt
 
   @@index([tenantId, status])
+}
+
+// ─── Messaging ───────────────────────────────────────────────
+
+enum ChannelType {
+  PUBLIC
+  PRIVATE
+  GROUP
+  DIRECT
+}
+
+enum ChannelMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Channel {
+  id          String      @id @default(cuid())
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  type        ChannelType @default(PUBLIC)
+  createdById String
+  createdBy   User        @relation("ChannelCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  members     ChannelMember[]
+  messages    Message[]
+  readCursors MessageReadCursor[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, type])
+}
+
+model ChannelMember {
+  id         String            @id @default(cuid())
+  channelId  String
+  channel    Channel           @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User              @relation(fields: [userId], references: [id])
+  role       ChannelMemberRole @default(MEMBER)
+  mutedUntil DateTime?
+  joinedAt   DateTime          @default(now())
+
+  @@unique([channelId, userId])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  channelId String
+  channel   Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  body      String
+  pinned    Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([channelId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model MessageReadCursor {
+  id                String   @id @default(cuid())
+  channelId         String
+  channel           Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId            String
+  lastReadMessageId String
+  updatedAt         DateTime @updatedAt
+
+  @@unique([channelId, userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
-import { isFeatureEnabled } from "@/lib/features";
 import { logAudit } from "@/lib/audit";
 
 const VALID_TYPES = ["HERO", "ABOUT", "PHOTO", "MAP", "CONTACT"] as const;
@@ -17,9 +16,6 @@ export async function GET(req: NextRequest) {
 
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
-
-  const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
-  if (!flagOn) return NextResponse.json([]);
 
   const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
 
@@ -49,9 +45,6 @@ export async function POST(req: NextRequest) {
   if (!hasRole(session.user.role, "TENANT_ADMIN")) {
     return jsonError("Forbidden", 403);
   }
-
-  const flagOn = await isFeatureEnabled(tenantId, "contentManagement");
-  if (!flagOn) return jsonError("Content management is not enabled for this tenant", 403);
 
   const body = await req.json();
   const { type, title, content, enabled, order } = body;
