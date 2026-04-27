@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -190,9 +191,14 @@ export default function ContentPage() {
         ))}
       </div>
 
-      <button onClick={openCreate} className="mb-4 rounded bg-green-600 text-white px-4 py-2 hover:bg-green-700">
-        + New Section
-      </button>
+      <div className="flex gap-2 mb-4">
+        <button onClick={openCreate} className="rounded bg-green-600 text-white px-4 py-2 hover:bg-green-700">
+          + New Section
+        </button>
+        <Link href="/dashboard/content/preview" className="rounded border border-green-600 text-green-700 px-4 py-2 hover:bg-green-50 inline-flex items-center gap-1">
+          Preview Page
+        </Link>
+      </div>
 
       {/* Create / Edit form */}
       {showForm && (
