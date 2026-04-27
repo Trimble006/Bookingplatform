@@ -162,7 +162,7 @@ export default async function HomePage() {
             {publicClubs.map((club) => (
               <Link
                 key={club.id}
-                href={`/club/${club.slug}`}
+                href={`/${club.slug}`}
                 className="flex items-center gap-4 rounded-lg border bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div
@@ -189,7 +189,7 @@ export default async function HomePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {publicEvents.map((ev) => (
-              <Link key={ev.id} href={`/club/${ev.tenant.slug}`} className="block">
+              <Link key={ev.id} href={`/${ev.tenant.slug}`} className="block">
                 <EventCard event={{ ...ev, tenantName: ev.tenant.name }} />
               </Link>
             ))}

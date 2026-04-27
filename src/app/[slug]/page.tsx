@@ -101,7 +101,7 @@ export default async function PublicClubPage({ params }: Params) {
       {availabilityOn && (
         <section className="max-w-6xl mx-auto px-4 py-8 text-center">
           <Link
-            href={`/club/${slug}/availability`}
+            href={`/${slug}/availability`}
             className="inline-block rounded-lg bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700"
           >
             Check Availability

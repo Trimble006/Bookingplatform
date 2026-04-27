@@ -78,7 +78,7 @@ export default function GlobalEventsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {events.map((ev) => (
-              <Link key={ev.id} href={`/club/${ev.tenant.slug}`} className="block">
+              <Link key={ev.id} href={`/${ev.tenant.slug}`} className="block">
                 <EventCard
                   event={{
                     ...ev,

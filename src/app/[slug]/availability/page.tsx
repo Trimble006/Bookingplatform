@@ -22,7 +22,7 @@ export default async function PublicAvailabilityPage({ params }: Params) {
   return (
     <main className="min-h-screen">
       <header className="px-6 py-6 text-center" style={{ backgroundColor: tenant.brandColor }}>
-        <Link href={`/club/${slug}`} className="text-white/80 hover:text-white text-sm">
+        <Link href={`/${slug}`} className="text-white/80 hover:text-white text-sm">
           &larr; Back to {tenant.name}
         </Link>
         <h1 className="text-2xl font-bold text-white mt-2">Availability — {tenant.name}</h1>

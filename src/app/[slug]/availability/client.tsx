@@ -30,7 +30,7 @@ export default function PublicAvailabilityClient({ slug }: Props) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">{error}</p>
-        <Link href={`/club/${slug}`} className="text-green-600 hover:underline mt-4 inline-block">
+        <Link href={`/${slug}`} className="text-green-600 hover:underline mt-4 inline-block">
           Back to club page
         </Link>
       </div>
