@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 
 type Tenant = { id: string; name: string; slug: string };
@@ -48,6 +49,7 @@ const CONTENT_TEMPLATES: Record<string, object> = {
 };
 
 export default function ContentPage() {
+  const { data: session } = useSession();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -57,13 +59,16 @@ export default function ContentPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ type: "HERO" as string, title: "", content: "{}" });
   const [successMsg, setSuccessMsg] = useState("");
+  const role = (session?.user as any)?.role;
 
   useEffect(() => {
+    if (role !== "PLATFORM_ADMIN") return;
+    setIsPlatformAdmin(true);
     fetch("/api/admin/tenants")
-      .then((r) => { if (r.ok) { setIsPlatformAdmin(true); return r.json(); } return null; })
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (Array.isArray(data)) setTenants(data); })
       .catch(() => {});
-  }, []);
+  }, [role]);
 
   function loadSections(tenantId?: string) {
     const qs = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : "";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
 
 type Tenant = { id: string; name: string; slug: string };
@@ -33,17 +34,23 @@ export default function MaintenancePage() {
   const [form, setForm] = useState({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
   const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const { data: session } = useSession();
   const { trackFeature } = useTrack();
 
   useEffect(() => { trackFeature("maintenance.dashboard_opened", "MaintenanceTask"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Detect platform admin
+  const isPlatformAdminRole = (session?.user as any)?.role === "PLATFORM_ADMIN";
+
+  // Fetch tenant list for platform admins
   useEffect(() => {
+    if (!isPlatformAdminRole) return;
+    setIsPlatformAdmin(true);
     fetch("/api/admin/tenants")
-      .then((r) => { if (r.ok) { setIsPlatformAdmin(true); return r.json(); } return null; })
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (Array.isArray(data)) setTenants(data); })
       .catch(() => {});
-  }, []);
+  }, [isPlatformAdminRole]);
 
   function loadTasks(tenantId?: string) {
     const qs = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : "";
@@ -61,11 +68,17 @@ export default function MaintenancePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSuccessMsg("");
-    await fetch("/api/maintenance", {
+    setErrorMsg("");
+    const res = await fetch("/api/maintenance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorMsg(data.error ?? "Failed to submit task");
+      return;
+    }
     setForm({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
     setSuccessMsg("Task submitted successfully!");
     trackFeature("maintenance.task_submitted", "MaintenanceTask");
@@ -73,11 +86,17 @@ export default function MaintenancePage() {
   }
 
   async function handleStatusTransition(taskId: string, status: string) {
-    await fetch(`/api/maintenance/${taskId}`, {
+    setErrorMsg("");
+    const res = await fetch(`/api/maintenance/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorMsg(data.error ?? "Failed to update task status");
+      return;
+    }
     setSuccessMsg(`Task status updated to ${status.replace("_", " ").toLowerCase()}.`);
     loadTasks(selectedTenant || undefined);
   }
@@ -86,11 +105,17 @@ export default function MaintenancePage() {
     e.preventDefault();
     const text = noteTexts[taskId]?.trim();
     if (!text) return;
-    await fetch(`/api/maintenance/${taskId}/notes`, {
+    setErrorMsg("");
+    const res = await fetch(`/api/maintenance/${taskId}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorMsg(data.error ?? "Failed to add note");
+      return;
+    }
     setNoteTexts((prev) => ({ ...prev, [taskId]: "" }));
     setSuccessMsg("Note added.");
     loadTasks(selectedTenant || undefined);
@@ -100,6 +125,7 @@ export default function MaintenancePage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Maintenance</h1>
 
+      {errorMsg && <p className="text-red-600 text-sm rounded bg-red-50 border border-red-200 px-4 py-2">{errorMsg}</p>}
       {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
       {isPlatformAdmin && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
 
 type Tenant = { id: string; name: string; slug: string };
@@ -100,16 +101,22 @@ export default function EventsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [successMsg, setSuccessMsg] = useState("");
+  const [formError, setFormError] = useState("");
+  const { data: session } = useSession();
+  const role = (session?.user as any)?.role;
+  const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";
   const { trackFeature } = useTrack();
 
   useEffect(() => { trackFeature("events.dashboard_opened", "Event"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (role !== "PLATFORM_ADMIN") return;
+    setIsPlatformAdmin(true);
     fetch("/api/admin/tenants")
-      .then((r) => { if (r.ok) { setIsPlatformAdmin(true); return r.json(); } return null; })
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (Array.isArray(data)) setTenants(data); })
       .catch(() => {});
-  }, []);
+  }, [role]);
 
   function loadEvents(tenantId?: string) {
     const qs = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : "";
@@ -126,7 +133,7 @@ export default function EventsPage() {
 
   function flash(msg: string) {
     setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(""), 3000);
+    setTimeout(() => setSuccessMsg(""), 5000);
   }
 
   function openCreate() {
@@ -161,6 +168,13 @@ export default function EventsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError("");
+
+    if (form.endTime && form.startTime && form.endTime <= form.startTime) {
+      setFormError("End time must be after start time");
+      return;
+    }
+
     const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
 
     const payload: Record<string, unknown> = {
@@ -207,7 +221,14 @@ export default function EventsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) { flash(`Status → ${newStatus}`); loadEvents(selectedTenant || undefined); }
+    if (res.ok) {
+      const label = newStatus === "DRAFT" ? "Event unpublished" : newStatus === "PUBLISHED" ? "Event published" : `Status updated to ${newStatus}`;
+      flash(label);
+      loadEvents(selectedTenant || undefined);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setFormError(data.error ?? "Failed to update event status");
+    }
   }
 
   async function handleDelete(id: string) {
@@ -265,14 +286,17 @@ export default function EventsPage() {
             ))}
           </div>
 
-          <button onClick={openCreate} className="mb-4 rounded bg-green-600 text-white px-4 py-2 hover:bg-green-700">
-            + New Event
-          </button>
+          {isAdmin && (
+            <button onClick={openCreate} className="mb-4 rounded bg-green-600 text-white px-4 py-2 hover:bg-green-700">
+              + New Event
+            </button>
+          )}
 
           {/* Create / Edit form */}
           {showForm && (
             <form onSubmit={handleSubmit} className="mb-6 border rounded p-4 bg-gray-50 space-y-3">
               <h2 className="font-semibold text-lg">{editingId ? "Edit Event" : "New Event"}</h2>
+              {formError && <div className="rounded bg-red-100 text-red-800 px-4 py-2 text-sm">{formError}</div>}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -322,7 +346,7 @@ export default function EventsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">End Time</label>
-                  <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="border rounded px-2 py-1 w-full" />
+                  <input type="time" value={form.endTime} onChange={(e) => { setForm({ ...form, endTime: e.target.value }); setFormError(""); }} min={form.startTime || undefined} className="border rounded px-2 py-1 w-full" />
                 </div>
               </div>
 
@@ -405,19 +429,19 @@ export default function EventsPage() {
                     {ev.location && <span className="text-xs text-gray-500">📍 {ev.location}</span>}
 
                     {/* Status transitions */}
-                    {ev.status === "DRAFT" && (
+                    {isAdmin && ev.status === "DRAFT" && (
                       <button onClick={() => transitionStatus(ev.id, "PUBLISHED")} className="px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700 text-xs">
                         Publish
                       </button>
                     )}
-                    {ev.status === "PUBLISHED" && (
+                    {isAdmin && ev.status === "PUBLISHED" && (
                       <button onClick={() => transitionStatus(ev.id, "DRAFT")} className="px-2 py-0.5 rounded bg-yellow-600 text-white hover:bg-yellow-700 text-xs">
                         Unpublish
                       </button>
                     )}
 
-                    <button onClick={() => openEdit(ev)} className="px-2 py-0.5 rounded border hover:bg-gray-100 text-xs">Edit</button>
-                    <button onClick={() => handleDelete(ev.id)} className="px-2 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50 text-xs">Delete</button>
+                    {isAdmin && <button onClick={() => openEdit(ev)} className="px-2 py-0.5 rounded border hover:bg-gray-100 text-xs">Edit</button>}
+                    {isAdmin && <button onClick={() => handleDelete(ev.id)} className="px-2 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50 text-xs">Delete</button>}
                   </div>
                 </div>
               ))}

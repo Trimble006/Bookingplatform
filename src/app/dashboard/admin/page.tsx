@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -14,20 +15,24 @@ type Booking = {
 };
 
 export default function AdminPage() {
+  const { data: session } = useSession();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const role = (session?.user as any)?.role;
 
-  // Detect platform admin by trying tenant list endpoint
+  // Fetch tenant list for platform admins
   useEffect(() => {
+    if (role !== "PLATFORM_ADMIN") return;
+    setIsPlatformAdmin(true);
     fetch("/api/admin/tenants")
-      .then((r) => { if (r.ok) { setIsPlatformAdmin(true); return r.json(); } return null; })
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (Array.isArray(data)) setTenants(data); })
       .catch(() => {});
-  }, []);
+  }, [role]);
 
   function loadBookings(tenantId?: string) {
     const url = tenantId

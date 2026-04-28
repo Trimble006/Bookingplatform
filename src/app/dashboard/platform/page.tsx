@@ -47,11 +47,16 @@ export default function PlatformAdminPage() {
   }
 
   async function toggleActive(id: string, active: boolean) {
-    await fetch(`/api/admin/tenants/${id}`, {
+    const res = await fetch(`/api/admin/tenants/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !active }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Failed to update tenant status");
+      return;
+    }
     setSuccess(`Tenant ${!active ? "activated" : "deactivated"} successfully.`);
     load();
   }
