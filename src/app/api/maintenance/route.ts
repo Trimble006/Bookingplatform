@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
@@ -21,7 +21,9 @@ export async function GET(req: NextRequest) {
     const tasks = await prisma.maintenanceTask.findMany({
       where: {
         tenantId,
-        ...(!isAdmin && isMaintenance ? { assignedToId: session.user.id } : {}),
+        ...(!isAdmin && isMaintenance
+          ? { OR: [{ assignedToId: session.user.id }, { submittedById: session.user.id }] }
+          : {}),
         ...(!isAdmin && !isMaintenance ? { submittedById: session.user.id } : {}),
       },
       include: {
@@ -37,10 +39,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Submit a new task. */
+/** Submit a new task. Requires at least MAINTENANCE role. */
 export async function POST(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
+
+  const roleErr = assertRoleOrFail(session, "MAINTENANCE");
+  if (roleErr) return roleErr;
 
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;

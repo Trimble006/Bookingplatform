@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrFail, assertRoleOrFail } from "@/lib/api-utils";
+import { getSessionOrFail } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
 import { hasRole } from "@/lib/roles";
 
@@ -7,8 +7,10 @@ export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
-  if (roleErr) return roleErr;
+  // Allow TENANT_ADMIN and PLATFORM_ADMIN (who ranks higher)
+  if (!hasRole(session.user.role, "TENANT_ADMIN")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const sp = req.nextUrl.searchParams;
   const period = sp.get("period") ?? "7d";
