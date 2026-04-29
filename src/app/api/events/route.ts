@@ -108,6 +108,9 @@ export async function POST(req: NextRequest) {
   if (visibility && !VALID_VISIBILITIES.includes(visibility)) {
     return jsonError(`Invalid visibility. Must be one of: ${VALID_VISIBILITIES.join(", ")}`);
   }
+  if (endTime && startTime && endTime <= startTime) {
+    return jsonError("End time must be after start time");
+  }
 
   const event = await prisma.event.create({
     data: {

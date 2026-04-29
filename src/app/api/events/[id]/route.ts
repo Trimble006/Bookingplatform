@@ -89,6 +89,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (visibility && !VALID_VISIBILITIES.includes(visibility)) {
     return jsonError(`Invalid visibility. Must be one of: ${VALID_VISIBILITIES.join(", ")}`);
   }
+  const effectiveStart = startTime ?? existing.startTime;
+  const effectiveEnd = endTime !== undefined ? endTime : existing.endTime;
+  if (effectiveEnd && effectiveStart && effectiveEnd <= effectiveStart) {
+    return jsonError("End time must be after start time");
+  }
 
   const event = await prisma.event.update({
     where: { id },

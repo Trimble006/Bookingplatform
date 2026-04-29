@@ -209,6 +209,44 @@ describe("POST /api/events", () => {
     expect(body.playerCount).toBe("PAIRS");
     expect(body.visibility).toBe("PUBLIC");
   });
+
+  test("rejects endTime before startTime", async () => {
+    mockSessionReturn = adminSession();
+    const req = makeJsonRequest(`http://localhost/api/events?tenantId=${tenantId}`, {
+      ...validEvent,
+      startTime: "14:00",
+      endTime: "10:00",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("End time must be after start time");
+  });
+
+  test("rejects endTime equal to startTime", async () => {
+    mockSessionReturn = adminSession();
+    const req = makeJsonRequest(`http://localhost/api/events?tenantId=${tenantId}`, {
+      ...validEvent,
+      startTime: "10:00",
+      endTime: "10:00",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  test("accepts valid endTime after startTime", async () => {
+    mockSessionReturn = adminSession();
+    const req = makeJsonRequest(`http://localhost/api/events?tenantId=${tenantId}`, {
+      ...validEvent,
+      title: "Valid Times Event",
+      startTime: "10:00",
+      endTime: "12:00",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.endTime).toBe("12:00");
+  });
 });
 
 // ── PATCH /api/events/[id] ────────────────────────────────
@@ -294,6 +332,18 @@ describe("PATCH /api/events/[id]", () => {
     );
     const res = await PATCH(req, { params: Promise.resolve({ id: "nonexistent-id" }) });
     expect(res.status).toBe(404);
+  });
+
+  test("rejects updating endTime to before startTime", async () => {
+    mockSessionReturn = adminSession();
+    const req = makePatchRequest(
+      `http://localhost/api/events/${draftEventId}?tenantId=${tenantId}`,
+      { endTime: "08:00" },
+    );
+    const res = await PATCH(req, { params: Promise.resolve({ id: draftEventId }) });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("End time must be after start time");
   });
 });
 
