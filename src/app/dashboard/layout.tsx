@@ -22,9 +22,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .then((d) => setEventsEnabled(d && typeof d === "object" && !Array.isArray(d)))
       .catch(() => {});
     // Analytics is always visible for admins (platform admin always, tenant admin if flag enabled)
-    fetch("/api/tracking/stats?period=7d")
-      .then((r) => { if (r.ok) setAnalyticsEnabled(true); })
-      .catch(() => {});
+    const userRole = (session?.user as any)?.role;
+    if (userRole === "TENANT_ADMIN" || userRole === "PLATFORM_ADMIN") {
+      fetch("/api/tracking/stats?period=7d")
+        .then((r) => { if (r.ok) setAnalyticsEnabled(true); })
+        .catch(() => {});
+    }
   }, [status]);
 
   const role = (session?.user as any)?.role;

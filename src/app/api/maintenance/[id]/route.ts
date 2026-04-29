@@ -24,7 +24,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const task = await prisma.maintenanceTask.findUnique({ where: { id } });
   if (!task) return jsonError("Not found", 404);
-  if (task.tenantId !== session.user.tenantId) return jsonError("Forbidden", 403);
+
+  // Platform admins can operate on any tenant's tasks; others must match tenant
+  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
+  if (!isPlatformAdmin && task.tenantId !== session.user.tenantId) return jsonError("Forbidden", 403);
 
   const data: Record<string, unknown> = {};
 

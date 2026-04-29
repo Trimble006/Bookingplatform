@@ -12,7 +12,10 @@ export async function GET() {
 
   const tenantId = session.user.tenantId;
   if (!tenantId) {
-    return jsonError("No tenant context", 400);
+    // Platform admins without tenant context get an empty stream
+    return new NextResponse("event: connected\ndata: {}\n\n", {
+      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform" },
+    });
   }
 
   if (!(await isFeatureEnabled(tenantId, "messaging"))) {
