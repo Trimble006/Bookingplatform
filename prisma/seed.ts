@@ -103,7 +103,16 @@ async function main() {
   });
 
   // Feature flags
-  for (const key of ["liveStreaming", "messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics"]) {
+  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability"];
+  const disabledFlags = ["liveStreaming"];
+  for (const key of enabledFlags) {
+    await prisma.featureFlag.upsert({
+      where: { tenantId_key: { tenantId: tenant.id, key } },
+      update: {},
+      create: { tenantId: tenant.id, key, enabled: true },
+    });
+  }
+  for (const key of disabledFlags) {
     await prisma.featureFlag.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key } },
       update: {},
