@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── Multi-Tenant ────────────────────────────────────────────
@@ -17,21 +16,21 @@ model Tenant {
   brandColor  String   @default("#16a34a")
   logoUrl     String?
   locale      String   @default("en")
-  seasonStart String?  // ISO date string e.g. "2026-04-01"
+  seasonStart String? // ISO date string e.g. "2026-04-01"
   seasonEnd   String?
   openingTime String   @default("08:00")
   closingTime String   @default("20:00")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users          User[]
-  greens         Green[]
-  bookings       Booking[]
-  featureFlags   FeatureFlag[]
-  tenantPayments TenantPayment[]
-  tasks          MaintenanceTask[]
-  notifications  Notification[]
-  auditEvents    AuditEvent[]
+  users           User[]
+  greens          Green[]
+  bookings        Booking[]
+  featureFlags    FeatureFlag[]
+  tenantPayments  TenantPayment[]
+  tasks           MaintenanceTask[]
+  notifications   Notification[]
+  auditEvents     AuditEvent[]
   contentSections ContentSection[]
   events          Event[]
   channels        Channel[]
@@ -50,31 +49,31 @@ enum Role {
 }
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String?
-  passwordHash   String
-  role           Role     @default(USER)
-  suspended      Boolean  @default(false)
-  tenantId       String?
-  tenant         Tenant?  @relation(fields: [tenantId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         Role     @default(USER)
+  suspended    Boolean  @default(false)
+  tenantId     String?
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   bookings            Booking[]
-  assignedTasks       MaintenanceTask[] @relation("AssignedTo")
-  submittedTasks      MaintenanceTask[] @relation("SubmittedBy")
+  assignedTasks       MaintenanceTask[]    @relation("AssignedTo")
+  submittedTasks      MaintenanceTask[]    @relation("SubmittedBy")
   taskNotes           TaskNote[]
   notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
   auditEvents         AuditEvent[]
-  createdSections     ContentSection[] @relation("CreatedBy")
-  updatedSections     ContentSection[] @relation("UpdatedBy")
-  createdEvents       Event[]          @relation("EventCreatedBy")
-  updatedEvents       Event[]          @relation("EventUpdatedBy")
+  createdSections     ContentSection[]     @relation("CreatedBy")
+  updatedSections     ContentSection[]     @relation("UpdatedBy")
+  createdEvents       Event[]              @relation("EventCreatedBy")
+  updatedEvents       Event[]              @relation("EventUpdatedBy")
   channelMemberships  ChannelMember[]
   messages            Message[]
-  createdChannels     Channel[]        @relation("ChannelCreatedBy")
+  createdChannels     Channel[]            @relation("ChannelCreatedBy")
   trackingEvents      TrackingEvent[]
 }
 
@@ -135,23 +134,23 @@ model Booking {
   tenant    Tenant        @relation(fields: [tenantId], references: [id])
   userId    String
   user      User          @relation(fields: [userId], references: [id])
-  date      String        // ISO date "2026-05-10"
+  date      String // ISO date "2026-05-10"
   status    BookingStatus @default(REQUESTED)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  slots          BookingSlot[]
+  slots           BookingSlot[]
   waitlistEntries WaitlistEntry[]
-  payment        BookingPayment?
+  payment         BookingPayment?
 }
 
 model BookingSlot {
-  id        String @id @default(cuid())
-  bookingId String
-  booking   Booking @relation(fields: [bookingId], references: [id])
-  rinkId    String
-  rink      Rink   @relation(fields: [rinkId], references: [id])
-  timeSlot  String // e.g. "10:00-12:00"
+  id         String  @id @default(cuid())
+  bookingId  String
+  booking    Booking @relation(fields: [bookingId], references: [id])
+  rinkId     String
+  rink       Rink    @relation(fields: [rinkId], references: [id])
+  timeSlot   String // e.g. "10:00-12:00"
   playerName String?
 }
 
@@ -178,7 +177,7 @@ model BookingPayment {
   id          String        @id @default(cuid())
   bookingId   String        @unique
   booking     Booking       @relation(fields: [bookingId], references: [id])
-  amount      Int           // in pence/cents
+  amount      Int // in pence/cents
   currency    String        @default("GBP")
   status      PaymentStatus @default(PENDING)
   checkoutUrl String?
@@ -187,15 +186,15 @@ model BookingPayment {
 }
 
 model TenantPayment {
-  id        String        @id @default(cuid())
-  tenantId  String
-  tenant    Tenant        @relation(fields: [tenantId], references: [id])
-  amount    Int
-  currency  String        @default("GBP")
-  status    PaymentStatus @default(PENDING)
+  id         String        @id @default(cuid())
+  tenantId   String
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  amount     Int
+  currency   String        @default("GBP")
+  status     PaymentStatus @default(PENDING)
   invoiceRef String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 // ─── Maintenance ─────────────────────────────────────────────
@@ -226,32 +225,32 @@ enum TaskStatus {
 }
 
 model MaintenanceTask {
-  id           String       @id @default(cuid())
-  tenantId     String
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  title        String
-  description  String
-  category     TaskCategory @default(GENERAL)
-  priority     TaskPriority @default(MEDIUM)
-  status       TaskStatus   @default(SUBMITTED)
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  title         String
+  description   String
+  category      TaskCategory @default(GENERAL)
+  priority      TaskPriority @default(MEDIUM)
+  status        TaskStatus   @default(SUBMITTED)
   submittedById String
-  submittedBy  User         @relation("SubmittedBy", fields: [submittedById], references: [id])
-  assignedToId String?
-  assignedTo   User?        @relation("AssignedTo", fields: [assignedToId], references: [id])
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  submittedBy   User         @relation("SubmittedBy", fields: [submittedById], references: [id])
+  assignedToId  String?
+  assignedTo    User?        @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   notes TaskNote[]
 }
 
 model TaskNote {
-  id     String   @id @default(cuid())
-  taskId String
-  task   MaintenanceTask @relation(fields: [taskId], references: [id])
-  userId String
-  user   User     @relation(fields: [userId], references: [id])
-  text   String
-  createdAt DateTime @default(now())
+  id        String          @id @default(cuid())
+  taskId    String
+  task      MaintenanceTask @relation(fields: [taskId], references: [id])
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  text      String
+  createdAt DateTime        @default(now())
 }
 
 // ─── Notifications ───────────────────────────────────────────
@@ -262,7 +261,7 @@ model Notification {
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // e.g. "WAITLIST_AVAILABLE", "TASK_ASSIGNED", "BOOKING_APPROVED"
+  type      String // e.g. "WAITLIST_AVAILABLE", "TASK_ASSIGNED", "BOOKING_APPROVED"
   title     String
   body      String
   read      Boolean  @default(false)
@@ -279,11 +278,11 @@ model AuditEvent {
   actorId   String
   actor     User     @relation(fields: [actorId], references: [id])
   actorRole Role
-  action    String   // dot-notation e.g. "booking.created"
-  entity    String   // model name e.g. "Booking"
+  action    String // dot-notation e.g. "booking.created"
+  entity    String // model name e.g. "Booking"
   entityId  String?
   piiAccess Boolean  @default(false)
-  meta      String?  // JSON string for flexible payload
+  meta      String? // JSON string for flexible payload
 
   @@index([tenantId, timestamp])
   @@index([actorId, timestamp])
@@ -316,7 +315,7 @@ model ContentSection {
   enabled     Boolean       @default(true)
   order       Int           @default(0)
   title       String
-  content     String        // JSON blob — shape varies by section type
+  content     String // JSON blob — shape varies by section type
   createdById String
   createdBy   User          @relation("CreatedBy", fields: [createdById], references: [id])
   updatedById String?
@@ -359,33 +358,33 @@ enum EventVisibility {
 }
 
 model Event {
-  id            String          @id @default(cuid())
-  tenantId      String
-  tenant        Tenant          @relation(fields: [tenantId], references: [id])
-  title         String
-  description   String
-  category      EventCategory   @default(SOCIAL)
-  format        EventFormat?
-  playerCount   PlayerCount?
-  date          String          // ISO date "2026-06-15"
-  startTime     String          // "HH:mm"
-  endTime       String?
-  location      String?
-  capacity      Int?
-  entryFee      Int?            // in pence
-  currency      String          @default("GBP")
-  imageUrl      String?
-  contactName   String?
-  contactEmail  String?
-  contactPhone  String?
-  visibility    EventVisibility @default(MEMBERS_ONLY)
-  status        String          @default("DRAFT") // DRAFT | PUBLISHED
-  createdById   String
-  createdBy     User            @relation("EventCreatedBy", fields: [createdById], references: [id])
-  updatedById   String?
-  updatedBy     User?           @relation("EventUpdatedBy", fields: [updatedById], references: [id])
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id           String          @id @default(cuid())
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  title        String
+  description  String
+  category     EventCategory   @default(SOCIAL)
+  format       EventFormat?
+  playerCount  PlayerCount?
+  date         String // ISO date "2026-06-15"
+  startTime    String // "HH:mm"
+  endTime      String?
+  location     String?
+  capacity     Int?
+  entryFee     Int? // in pence
+  currency     String          @default("GBP")
+  imageUrl     String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  visibility   EventVisibility @default(MEMBERS_ONLY)
+  status       String          @default("DRAFT") // DRAFT | PUBLISHED
+  createdById  String
+  createdBy    User            @relation("EventCreatedBy", fields: [createdById], references: [id])
+  updatedById  String?
+  updatedBy    User?           @relation("EventUpdatedBy", fields: [updatedById], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([tenantId, date])
   @@index([tenantId, status])
