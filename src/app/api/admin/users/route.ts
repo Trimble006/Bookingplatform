@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     ? req.nextUrl.searchParams.get("tenantId") ?? session.user.tenantId
     : session.user.tenantId;
 
-  if (!tenantId) return jsonError("No tenant specified", 400);
+  if (!tenantId) return NextResponse.json([]);
 
   const users = await prisma.user.findMany({
     where: { tenantId },

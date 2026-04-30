@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
       // Daily event counts
       prisma.$queryRawUnsafe<{ day: string; count: number }[]>(
-        `SELECT date(timestamp) as day, COUNT(*) as count FROM TrackingEvent WHERE timestamp >= ? ${tenantFilter ? "AND tenantId = ?" : ""} GROUP BY day ORDER BY day`,
+        `SELECT timestamp::date as day, COUNT(*) as count FROM "TrackingEvent" WHERE timestamp >= $1 ${tenantFilter ? `AND "tenantId" = $2` : ""} GROUP BY day ORDER BY day`,
         since.toISOString(),
         ...(tenantFilter ? [tenantFilter] : []),
       ),
