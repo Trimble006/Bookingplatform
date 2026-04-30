@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 
 // On Vercel, VERCEL_URL is auto-set (without protocol). Use as fallback for NEXTAUTH_URL.
-if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+if ((!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.includes("example.com")) && process.env.VERCEL_URL) {
   process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
 }
 
