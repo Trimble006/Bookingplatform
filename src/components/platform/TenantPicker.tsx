@@ -1,0 +1,104 @@
+"use client";
+
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+
+type Tenant = {
+  id: string;
+  name: string;
+  slug: string;
+  brandColor: string;
+};
+
+/**
+ * Tenant picker for platform admins. Selecting a tenant POSTs to
+ * /api/platform/impersonation, updates the NextAuth session with the new
+ * `actingAs` claim, then routes to the club homepage.
+ */
+export default function TenantPicker({ tenants }: { tenants: Tenant[] }) {
+  const { update } = useSession();
+  const router = useRouter();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function pick(tenant: Tenant) {
+    setError(null);
+    setBusyId(tenant.id);
+    try {
+      const res = await fetch("/api/platform/impersonation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId: tenant.id, reason: reason.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not start impersonation.");
+        setBusyId(null);
+        return;
+      }
+      // Push the new actingAs claim into the JWT/session.
+      await update({ actingAs: data.actingAs });
+      router.push("/" + tenant.slug);
+      router.refresh();
+    } catch {
+      setError("Network error starting impersonation.");
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl bg-white p-4 shadow-sm">
+        <label htmlFor="reason" className="block text-sm font-medium text-gray-700">
+          Reason (optional)
+        </label>
+        <input
+          id="reason"
+          type="text"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Investigating booking issue #1234"
+          className="mt-1 w-full rounded border p-2 text-sm"
+          maxLength={500}
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Recorded against the impersonation log for audit purposes.
+        </p>
+      </div>
+
+      {error && (
+        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <h2 className="text-lg font-semibold text-gray-800">Clubs</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {tenants.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => pick(t)}
+            disabled={busyId !== null}
+            className="flex items-center gap-4 rounded-xl border bg-white p-6 shadow-sm hover:shadow-md transition-shadow text-left disabled:opacity-50"
+          >
+            <div
+              className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold"
+              style={{ backgroundColor: t.brandColor }}
+            >
+              {t.name.charAt(0)}
+            </div>
+            <div>
+              <p className="font-semibold text-green-700">{t.name}</p>
+              <p className="text-xs text-gray-500">
+                {busyId === t.id ? "Starting impersonation…" : `Act as TENANT_ADMIN of ${t.name}`}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

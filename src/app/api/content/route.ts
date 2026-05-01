@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
 
   const sections = await prisma.contentSection.findMany({
     where: {
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
 
-  if (!hasRole(session.user.role, "TENANT_ADMIN")) {
+  if (!hasRole(getEffective(session).role, "TENANT_ADMIN")) {
     return jsonError("Forbidden", 403);
   }
 

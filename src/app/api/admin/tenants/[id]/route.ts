@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, assertRoleOrFail, rejectIfImpersonating, jsonError } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
 
 /** Get a single tenant. */
@@ -9,6 +9,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
   if (roleErr) return roleErr;
+  const impErr = rejectIfImpersonating(session);
+  if (impErr) return impErr;
 
   const { id } = await params;
   try {
@@ -29,6 +31,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
   if (roleErr) return roleErr;
+  const impErr = rejectIfImpersonating(session);
+  if (impErr) return impErr;
 
   const { id } = await params;
   let data: Record<string, unknown>;

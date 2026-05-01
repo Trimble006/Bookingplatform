@@ -62,12 +62,10 @@ export default function ContentPage() {
   const role = (session?.user as any)?.role;
 
   useEffect(() => {
-    if (role !== "PLATFORM_ADMIN") return;
-    setIsPlatformAdmin(true);
-    fetch("/api/admin/tenants")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (Array.isArray(data)) setTenants(data); })
-      .catch(() => {});
+    // Platform admins only reach this page while impersonating; the layout
+    // enforces this. The legacy tenant-picker UI is therefore disabled.
+    void role;
+    setIsPlatformAdmin(false);
   }, [role]);
 
   function loadSections(tenantId?: string) {

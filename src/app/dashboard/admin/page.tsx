@@ -26,12 +26,9 @@ export default function AdminPage() {
 
   // Fetch tenant list for platform admins
   useEffect(() => {
-    if (role !== "PLATFORM_ADMIN") return;
-    setIsPlatformAdmin(true);
-    fetch("/api/admin/tenants")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (Array.isArray(data)) setTenants(data); })
-      .catch(() => {});
+    // Platform admins reach this page only while impersonating; layout enforces it.
+    void role;
+    setIsPlatformAdmin(false);
   }, [role]);
 
   function loadBookings(tenantId?: string) {

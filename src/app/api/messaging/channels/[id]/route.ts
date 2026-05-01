@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
 import { hasRole } from "@/lib/roles";
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   if (!isAdmin && !(await isMember(id, session.user.id))) {
     return jsonError("Not a member of this channel", 403);
   }
@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   const membership = await isMember(id, session.user.id);
   if (!isAdmin && membership?.role !== "OWNER") {
     return jsonError("Only channel owner or admin can update channels", 403);
@@ -83,7 +83,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     return jsonError("Messaging is not enabled for this club", 403);
   }
 
-  const roleErr = hasRole(session.user.role, "TENANT_ADMIN");
+  const roleErr = hasRole(getEffective(session).role, "TENANT_ADMIN");
   if (!roleErr) {
     return jsonError("Only admins can delete channels", 403);
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, assertEffectiveRoleOrFail, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
   if (roleErr) return roleErr;
 
   const { tenantId, error: tErr } = resolveTenantId(session, req);
@@ -53,7 +53,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
   if (roleErr) return roleErr;
 
   const { tenantId, error: tErr } = resolveTenantId(session, req);

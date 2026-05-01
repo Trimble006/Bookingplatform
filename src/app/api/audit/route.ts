@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { getSessionOrFail, getEffective } from "@/lib/api-utils";
+import { hasRole, isPlatformAdmin as isPlatformAdminRole } from "@/lib/roles";
 import type { Prisma } from "@prisma/client";
 
-/** List audit events — scoped by role. */
+/** List audit events — scoped by role.
+ *
+ *  - Real PLATFORM_ADMIN (NOT impersonating): sees all events platform-wide; may filter by `?tenantId=`.
+ *  - PLATFORM_ADMIN currently impersonating: scoped to the impersonated tenant.
+ *  - TENANT_ADMIN: scoped to own tenant.
+ *  - Everyone else: only their own events.
+ */
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
@@ -16,15 +22,16 @@ export async function GET(req: NextRequest) {
 
   const where: Prisma.AuditEventWhereInput = {};
 
-  // Role-scoped visibility
-  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
-  const isTenantAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const eff = getEffective(session);
+  const isRealPlatformAdmin = isPlatformAdminRole(session.user.role);
+  const canSeeTenant = hasRole(eff.role, "TENANT_ADMIN");
 
-  if (isPlatformAdmin) {
+  if (isRealPlatformAdmin && !eff.isImpersonating) {
+    // Cross-tenant view; optional explicit tenant filter.
     const tenantId = params.get("tenantId");
     if (tenantId) where.tenantId = tenantId;
-  } else if (isTenantAdmin) {
-    where.tenantId = session.user.tenantId;
+  } else if (canSeeTenant && eff.tenantId) {
+    where.tenantId = eff.tenantId;
   } else {
     // Regular users see only their own events
     where.actorId = session.user.id;
@@ -46,7 +53,7 @@ export async function GET(req: NextRequest) {
   }
 
   const actorId = params.get("actorId");
-  if (actorId && (isPlatformAdmin || isTenantAdmin)) where.actorId = actorId;
+  if (actorId && (isRealPlatformAdmin || canSeeTenant)) where.actorId = actorId;
 
   const piiAccess = params.get("piiAccess");
   if (piiAccess === "true") where.piiAccess = true;
@@ -65,5 +72,21 @@ export async function GET(req: NextRequest) {
     prisma.auditEvent.count({ where }),
   ]);
 
-  return NextResponse.json({ events, total, page, limit });
+  // Resolve impersonated-tenant names for display
+  const actingTenantIds = Array.from(
+    new Set(events.map((e) => e.actingAsTenantId).filter((v): v is string => Boolean(v))),
+  );
+  const actingTenants = actingTenantIds.length
+    ? await prisma.tenant.findMany({
+        where: { id: { in: actingTenantIds } },
+        select: { id: true, name: true, slug: true },
+      })
+    : [];
+  const tenantMap = new Map(actingTenants.map((t) => [t.id, t]));
+  const enriched = events.map((e) => ({
+    ...e,
+    actingAsTenant: e.actingAsTenantId ? tenantMap.get(e.actingAsTenantId) ?? null : null,
+  }));
+
+  return NextResponse.json({ events: enriched, total, page, limit });
 }

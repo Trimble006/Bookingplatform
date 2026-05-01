@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
 import { hasRole } from "@/lib/roles";
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   if (!isAdmin && !(await isMember(id, session.user.id))) {
     return jsonError("Not a member of this channel", 403);
   }

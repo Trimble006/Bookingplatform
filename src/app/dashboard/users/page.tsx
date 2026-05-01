@@ -27,7 +27,8 @@ export default function UsersPage() {
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
 
-  const isPlatformAdmin = (session?.user as any)?.role === "PLATFORM_ADMIN";
+  const isPlatformAdmin = false; // platform admins only reach this page while impersonating; layout enforces this
+  void session;
 
   // Fetch tenant list for platform admins
   useEffect(() => {

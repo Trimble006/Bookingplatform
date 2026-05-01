@@ -20,6 +20,8 @@ model Tenant {
   seasonEnd   String?
   openingTime String   @default("08:00")
   closingTime String   @default("20:00")
+  latitude    Float?
+  longitude   Float?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -36,6 +38,7 @@ model Tenant {
   channels        Channel[]
   messages        Message[]
   trackingEvents  TrackingEvent[]
+  impersonations  Impersonation[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -75,6 +78,7 @@ model User {
   messages            Message[]
   createdChannels     Channel[]            @relation("ChannelCreatedBy")
   trackingEvents      TrackingEvent[]
+  impersonations      Impersonation[]
 }
 
 model PasswordResetToken {
@@ -271,22 +275,48 @@ model Notification {
 // ─── Audit Trail ─────────────────────────────────────────────
 
 model AuditEvent {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  actorId   String
-  actor     User     @relation(fields: [actorId], references: [id])
-  actorRole Role
-  action    String // dot-notation e.g. "booking.created"
-  entity    String // model name e.g. "Booking"
-  entityId  String?
-  piiAccess Boolean  @default(false)
-  meta      String? // JSON string for flexible payload
+  id                String   @id @default(cuid())
+  timestamp         DateTime @default(now())
+  tenantId          String?
+  tenant            Tenant?  @relation(fields: [tenantId], references: [id])
+  actorId           String
+  actor             User     @relation(fields: [actorId], references: [id])
+  actorRole         Role
+  // When set, the action was performed by `actor` (a PLATFORM_ADMIN) while
+  // impersonating a tenant context. `actingAsTenantId` is the impersonated tenant
+  // and `actingAsRole` is the role the platform admin assumed (typically TENANT_ADMIN).
+  actingAsTenantId  String?
+  actingAsRole      Role?
+  impersonationId   String?
+  action            String // dot-notation e.g. "booking.created"
+  entity            String // model name e.g. "Booking"
+  entityId          String?
+  piiAccess         Boolean  @default(false)
+  meta              String? // JSON string for flexible payload
 
   @@index([tenantId, timestamp])
   @@index([actorId, timestamp])
   @@index([entity, entityId])
+  @@index([impersonationId])
+}
+
+// ─── Platform Admin Impersonation ────────────────────────────
+
+/// Records a platform admin assuming a tenant role to act on behalf of a club.
+/// Created when impersonation starts; `endedAt` set when explicitly exited.
+model Impersonation {
+  id              String    @id @default(cuid())
+  platformUserId  String
+  platformUser    User      @relation(fields: [platformUserId], references: [id])
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  assumedRole     Role      @default(TENANT_ADMIN)
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  reason          String?
+
+  @@index([platformUserId, startedAt])
+  @@index([tenantId, startedAt])
 }
 
 // ─── Content Management ──────────────────────────────────────
