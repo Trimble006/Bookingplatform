@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return jsonError("Invalid JSON body");
   }
-  const { name, slug, brandColor, logoUrl, locale, adminEmail, adminPassword, greens } = body;
+  const { name, slug, brandColor, logoUrl, locale, adminEmail, adminPassword, greens, latitude, longitude } = body;
 
   if (!name || !slug || !adminEmail || !adminPassword) {
     return jsonError("name, slug, adminEmail, adminPassword are required");
@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
         brandColor: brandColor ?? "#16a34a",
         logoUrl,
         locale: locale ?? "en",
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
         users: {
           create: {
             email: adminEmail,

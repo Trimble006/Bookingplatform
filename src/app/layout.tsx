@@ -3,7 +3,7 @@ import Providers from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "WL Booking",
+  title: "Club Management Platform",
   description: "Multi-tenant bowling club booking platform",
 };
 

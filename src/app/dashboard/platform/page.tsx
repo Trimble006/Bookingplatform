@@ -17,6 +17,7 @@ export default function PlatformAdminPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [form, setForm] = useState({
     name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en",
+    latitude: "", longitude: "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -34,13 +35,17 @@ export default function PlatformAdminPage() {
     const res = await fetch("/api/admin/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        latitude: form.latitude ? parseFloat(form.latitude) : undefined,
+        longitude: form.longitude ? parseFloat(form.longitude) : undefined,
+      }),
     });
     if (!res.ok) {
       const data = await res.json();
       setError(data.error);
     } else {
-      setForm({ name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en" });
+      setForm({ name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en", latitude: "", longitude: "" });
       setSuccess("Club created successfully!");
       load();
     }
@@ -81,6 +86,8 @@ export default function PlatformAdminPage() {
             <option value="fr">Français</option>
             <option value="gd">Gàidhlig</option>
           </select>
+          <input type="text" placeholder="Latitude" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} className="rounded border p-2" />
+          <input type="text" placeholder="Longitude" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} className="rounded border p-2" />
         </div>
         <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Create</button>
       </form>

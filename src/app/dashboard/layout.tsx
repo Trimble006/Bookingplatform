@@ -9,6 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [unread, setUnread] = useState(0);
   const [eventsEnabled, setEventsEnabled] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
+  const [showWeatherBanner, setShowWeatherBanner] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -28,6 +29,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .then((r) => { if (r.ok) setAnalyticsEnabled(true); })
         .catch(() => {});
     }
+    // Check if tenant admin needs to configure weather (lat/lng missing)
+    if (userRole === "TENANT_ADMIN") {
+      fetch("/api/bookings/weather?date=" + new Date().toISOString().slice(0, 10))
+        .then((r) => r.json())
+        .then((d) => {
+          if (d && d.available === false) setShowWeatherBanner(true);
+        })
+        .catch(() => {});
+    }
   }, [status]);
 
   const role = (session?.user as any)?.role;
@@ -37,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <aside className="w-56 bg-green-800 text-white flex flex-col p-4 gap-2">
-        <h2 className="text-lg font-bold mb-4">WL Booking</h2>
+        <h2 className="text-lg font-bold mb-4">Club Management Platform</h2>
         <Link href="/dashboard" className="hover:bg-green-700 rounded px-3 py-2">Dashboard</Link>
         <Link href="/dashboard/bookings" className="hover:bg-green-700 rounded px-3 py-2">Bookings</Link>
         {eventsEnabled && <Link href="/dashboard/events" className="hover:bg-green-700 rounded px-3 py-2">Events</Link>}
@@ -48,6 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {unread > 0 && <span className="bg-red-500 text-xs rounded-full px-2 py-0.5">{unread}</span>}
         </Link>
         {isAdmin && <Link href="/dashboard/content" className="hover:bg-green-700 rounded px-3 py-2">Content</Link>}
+        {isAdmin && <Link href="/dashboard/greens" className="hover:bg-green-700 rounded px-3 py-2">Greens</Link>}
         {isAdmin && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
         {isAdmin && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
         {isPlatformAdmin && <Link href="/dashboard/platform" className="hover:bg-green-700 rounded px-3 py-2">Tenant Admin</Link>}
@@ -60,7 +71,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+      <main className="flex-1 p-6">
+        {showWeatherBanner && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-2 text-sm text-amber-800">
+            <span>📍</span>
+            <span>Set your venue location to enable weather forecasts on the booking page.</span>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

@@ -7,7 +7,7 @@ interface Booking {
   id: string;
   date: string;
   status: string;
-  slots: { rink: { name: string }; timeSlot: string }[];
+  slots: { rink: { name: string }; timeSlot: string; greenName?: string }[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -68,7 +68,7 @@ export default function UpcomingBookings() {
                   {new Date(b.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {b.slots.map((s) => `${s.rink.name} @ ${s.timeSlot}`).join(", ")}
+                  {b.slots.map((s) => `${s.greenName ? s.greenName + " — " : ""}${s.rink.name} @ ${s.timeSlot}`).join(", ")}
                 </p>
               </div>
               <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${STATUS_COLORS[b.status] ?? "bg-gray-100 text-gray-600"}`}>

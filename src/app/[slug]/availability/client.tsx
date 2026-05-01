@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
+import WeatherCard from "@/components/booking/WeatherCard";
 
 type Props = { slug: string };
 
@@ -11,6 +12,7 @@ export default function PublicAvailabilityClient({ slug }: Props) {
   const [greens, setGreens] = useState<any[]>([]);
   const [config, setConfig] = useState<any>(null);
   const [error, setError] = useState("");
+  const [weather, setWeather] = useState<any>(null);
 
   useEffect(() => {
     setError("");
@@ -24,6 +26,10 @@ export default function PublicAvailabilityClient({ slug }: Props) {
         setConfig(d.config ?? null);
       })
       .catch(() => setError("Availability is not available for this club."));
+    fetch(`/api/public/club/${encodeURIComponent(slug)}/weather?date=${date}`)
+      .then((r) => r.json())
+      .then((d) => setWeather(d))
+      .catch(() => setWeather(null));
   }, [slug, date]);
 
   if (error) {
@@ -43,6 +49,7 @@ export default function PublicAvailabilityClient({ slug }: Props) {
 
   return (
     <div>
+      <WeatherCard weather={weather} />
       <AvailabilityGrid
         greens={greens}
         config={config}

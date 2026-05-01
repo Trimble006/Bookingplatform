@@ -46,7 +46,7 @@ export default async function HomePage() {
     <main className="min-h-screen">
       {/* Hero */}
       <section className="flex flex-col items-center justify-center p-8 py-16 bg-gradient-to-b from-green-50 to-white">
-        <h1 className="text-4xl font-bold tracking-tight text-green-700">WL Booking</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-green-700">Club Management Platform</h1>
         <p className="mt-4 text-lg text-gray-600">Multi-tenant bowling club platform</p>
         <div className="mt-8 flex gap-4">
           {isAuthenticated ? (

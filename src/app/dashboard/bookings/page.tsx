@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
+import WeatherCard from "@/components/booking/WeatherCard";
 import { useTrack } from "@/components/TrackingProvider";
 
 type Tenant = { id: string; name: string; slug: string };
@@ -11,7 +12,7 @@ type Booking = {
   id: string;
   date: string;
   status: string;
-  slots: { rink: { name: string }; timeSlot: string; playerName?: string }[];
+  slots: { rink: { name: string }; timeSlot: string; playerName?: string; greenName?: string }[];
   user?: { id: string; name: string; email: string };
   payment?: { id: string; status: string; amount: number; checkoutUrl?: string };
 };
@@ -26,6 +27,7 @@ export default function BookingsPage() {
   const [tenantConfig, setTenantConfig] = useState<{
     openingTime: string; closingTime: string; seasonStart: string | null; seasonEnd: string | null;
   } | null>(null);
+  const [weather, setWeather] = useState<any>(null);
 
   // Booking modal state
   const [bookingRink, setBookingRink] = useState<{ id: string; name: string; bookedSlots: string[] } | null>(null);
@@ -68,6 +70,10 @@ export default function BookingsPage() {
         }
       })
       .catch(() => {});
+    fetch(`/api/bookings/weather?date=${date}${qs}`)
+      .then((r) => r.json())
+      .then((d) => setWeather(d))
+      .catch(() => setWeather(null));
   }
 
   // Reload when tenant selection or date changes
@@ -182,6 +188,7 @@ export default function BookingsPage() {
       {/* Availability grid */}
       <section>
         <h2 className="text-lg font-semibold">Availability</h2>
+        <WeatherCard weather={weather} />
         <AvailabilityGrid
           greens={availability.map((green: any) => ({
             id: green.id,
@@ -216,7 +223,7 @@ export default function BookingsPage() {
                   <p className="text-xs text-gray-400">{b.user.name ?? b.user.email}</p>
                 )}
                 <p className="text-sm text-gray-500">
-                  {b.slots.map((s) => `${s.rink.name} ${s.timeSlot}`).join(", ")}
+                  {b.slots.map((s) => `${s.greenName ? s.greenName + " — " : ""}${s.rink.name} ${s.timeSlot}`).join(", ")}
                 </p>
               </div>
               <div className="flex flex-col gap-1 items-end">

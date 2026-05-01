@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
   const rinkIds: string[] = slots.map((s: any) => s.rinkId);
   const rinks = await prisma.rink.findMany({
     where: { id: { in: rinkIds }, green: { tenantId } },
+    include: { green: { select: { name: true } } },
   });
   if (rinks.length !== rinkIds.length) {
     return jsonError("One or more rinks not found for this club", 404);
@@ -70,11 +71,15 @@ export async function POST(req: NextRequest) {
       date,
       status: "REQUESTED",
       slots: {
-        create: (slots as { rinkId: string; timeSlot: string; playerName?: string }[]).map((s) => ({
-          rinkId: s.rinkId,
-          timeSlot: s.timeSlot,
-          playerName: s.playerName ?? null,
-        })),
+        create: (slots as { rinkId: string; timeSlot: string; playerName?: string }[]).map((s) => {
+          const rink = rinks.find((r) => r.id === s.rinkId);
+          return {
+            rinkId: s.rinkId,
+            timeSlot: s.timeSlot,
+            playerName: s.playerName ?? null,
+            greenName: rink?.green?.name ?? null,
+          };
+        }),
       },
     },
     include: { slots: true },
