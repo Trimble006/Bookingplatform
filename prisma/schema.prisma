@@ -20,22 +20,27 @@ model Tenant {
   seasonEnd   String?
   openingTime String   @default("08:00")
   closingTime String   @default("20:00")
+  latitude    Float?
+  longitude   Float?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users           User[]
-  greens          Green[]
-  bookings        Booking[]
-  featureFlags    FeatureFlag[]
-  tenantPayments  TenantPayment[]
-  tasks           MaintenanceTask[]
-  notifications   Notification[]
-  auditEvents     AuditEvent[]
-  contentSections ContentSection[]
-  events          Event[]
-  channels        Channel[]
-  messages        Message[]
-  trackingEvents  TrackingEvent[]
+  users              User[]
+  greens             Green[]
+  bookings           Booking[]
+  featureFlags       FeatureFlag[]
+  tenantPayments     TenantPayment[]
+  tasks              MaintenanceTask[]
+  notifications      Notification[]
+  auditEvents        AuditEvent[]
+  contentSections    ContentSection[]
+  events             Event[]
+  channels           Channel[]
+  messages           Message[]
+  trackingEvents     TrackingEvent[]
+  subscription       TenantSubscription?
+  streamSessions     StreamSession[]
+  streamTokens       StreamToken[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -75,6 +80,9 @@ model User {
   messages            Message[]
   createdChannels     Channel[]            @relation("ChannelCreatedBy")
   trackingEvents      TrackingEvent[]
+  createdStreams      StreamSession[]      @relation("StreamCreatedBy")
+  streamViewers       StreamViewer[]       @relation("StreamViewers")
+  createdTokens       StreamToken[]        @relation("TokenCreatedBy")
 }
 
 model PasswordResetToken {
@@ -114,7 +122,117 @@ model Rink {
   greenId String
   green   Green  @relation(fields: [greenId], references: [id])
 
-  bookingSlots BookingSlot[]
+  bookingSlots   BookingSlot[]
+  streamSessions StreamSession[]
+}
+
+// ─── Live Streaming ──────────────────────────────────────────
+
+enum StreamingTier {
+  NONE
+  BRONZE
+  SILVER
+  GOLD
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum StreamStatus {
+  IDLE
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+enum StreamVisibility {
+  MEMBERS_ONLY
+  PUBLIC
+}
+
+enum StreamAccessMethod {
+  AUTHENTICATED
+  TOKEN_LINK
+}
+
+model TenantSubscription {
+  id                   String             @id @default(cuid())
+  tenantId             String             @unique
+  tenant               Tenant             @relation(fields: [tenantId], references: [id])
+  tier                 StreamingTier      @default(NONE)
+  maxConcurrentStreams Int                @default(0)
+  archiveRetentionDays Int                @default(0)
+  priceMonthlyPence    Int                @default(0)
+  status               SubscriptionStatus @default(ACTIVE)
+  activeSince          DateTime           @default(now())
+  expiresAt            DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model StreamSession {
+  id           String           @id @default(cuid())
+  tenantId     String
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  rinkId       String
+  rink         Rink             @relation(fields: [rinkId], references: [id])
+  eventId      String?
+  event        Event?           @relation(fields: [eventId], references: [id])
+  title        String
+  status       StreamStatus     @default(IDLE)
+  visibility   StreamVisibility @default(MEMBERS_ONLY)
+  streamKey    String           @unique @default(cuid())
+  archiveUrl   String?
+  thumbnailUrl String?
+  createdById  String
+  createdBy    User             @relation("StreamCreatedBy", fields: [createdById], references: [id])
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  viewers StreamViewer[]
+  tokens  StreamToken[]
+
+  @@index([tenantId, status])
+  @@index([rinkId, status])
+}
+
+model StreamViewer {
+  id                 String             @id @default(cuid())
+  streamSessionId    String
+  streamSession      StreamSession      @relation(fields: [streamSessionId], references: [id])
+  userId             String?
+  user               User?              @relation("StreamViewers", fields: [userId], references: [id])
+  sessionFingerprint String
+  accessMethod       StreamAccessMethod @default(AUTHENTICATED)
+  tokenId            String?
+  joinedAt           DateTime           @default(now())
+  leftAt             DateTime?
+  durationSeconds    Int?
+
+  @@index([streamSessionId, joinedAt])
+  @@index([userId])
+}
+
+model StreamToken {
+  id              String        @id @default(cuid())
+  streamSessionId String
+  streamSession   StreamSession @relation(fields: [streamSessionId], references: [id])
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  token           String        @unique @default(cuid())
+  expiresAt       DateTime
+  maxUses         Int?
+  useCount        Int           @default(0)
+  createdById     String
+  createdBy       User          @relation("TokenCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@index([token])
 }
 
 // ─── Booking ─────────────────────────────────────────────────
@@ -152,6 +270,7 @@ model BookingSlot {
   rink       Rink    @relation(fields: [rinkId], references: [id])
   timeSlot   String // e.g. "10:00-12:00"
   playerName String?
+  greenName  String? // Cached green name at time of booking
 }
 
 model WaitlistEntry {
@@ -385,6 +504,8 @@ model Event {
   updatedBy    User?           @relation("EventUpdatedBy", fields: [updatedById], references: [id])
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  streamSessions StreamSession[]
 
   @@index([tenantId, date])
   @@index([tenantId, status])
