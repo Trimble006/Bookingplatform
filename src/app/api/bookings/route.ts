@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError, assertRoleOrFail } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
