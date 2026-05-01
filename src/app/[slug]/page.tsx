@@ -40,10 +40,16 @@ export default async function PublicClubPage({ params }: Params) {
   if (!tenant || !tenant.active) notFound();
 
   // Check if the visitor is an authenticated member
-  const session = await getServerSession(authOptions) as { user: { role?: string } } | null;
+  const session = (await getServerSession(authOptions)) as
+    | { user: { role?: string; tenantId?: string | null; actingAs?: { role?: string; tenantId?: string } | null } }
+    | null;
   const isAuthenticated = !!session?.user;
   const role = (session?.user as any)?.role;
-  const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";
+  const acting = (session?.user as any)?.actingAs ?? null;
+  // Effective admin gating: a platform admin only counts as admin while
+  // impersonating a TENANT_ADMIN of THIS tenant.
+  const effectiveRole = acting && acting.tenantId === tenant.id ? acting.role : role;
+  const isAdmin = effectiveRole === "TENANT_ADMIN";
 
   // Fetch content sections — authenticated members always see them, guests need publicContent flag
   let sections: { id: string; type: string; title: string; content: string }[] = [];

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
 import WeatherCard from "@/components/booking/WeatherCard";
 import { useTrack } from "@/components/TrackingProvider";
+import { getClientEffectiveRole } from "@/lib/effective-role-client";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -48,8 +49,12 @@ export default function BookingsPage() {
   const [showOverride, setShowOverride] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
 
-  const isPlatformAdmin = session?.user?.role === "PLATFORM_ADMIN";
-  const isAdmin = (session?.user as any)?.role === "TENANT_ADMIN" || isPlatformAdmin;
+  const eff = getClientEffectiveRole(session);
+  // Non-impersonating platform admins are redirected away from this page by
+  // the dashboard layout, so the legacy tenant-picker UI is now dead. We keep
+  // the variable to avoid a structural rewrite.
+  const isPlatformAdmin = false;
+  const isAdmin = eff.isTenantAdminEffective;
   const { trackFeature, trackAction } = useTrack();
 
   useEffect(() => { trackFeature("booking.grid_opened", "Booking"); }, []); // eslint-disable-line react-hooks/exhaustive-deps

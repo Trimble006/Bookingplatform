@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { getSessionOrFail, assertEffectiveRoleOrFail, getEffective } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
 
-/** List users scoped to the caller's tenant (or by tenantId for platform admins). */
-export async function GET(req: NextRequest) {
+/** List users scoped to the caller's effective tenant context. */
+export async function GET(_req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
-  const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
   if (roleErr) return roleErr;
 
-  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
-  const tenantId = isPlatformAdmin
-    ? req.nextUrl.searchParams.get("tenantId") ?? session.user.tenantId
-    : session.user.tenantId;
-
+  const tenantId = getEffective(session).tenantId;
   if (!tenantId) return NextResponse.json([]);
 
   const users = await prisma.user.findMany({

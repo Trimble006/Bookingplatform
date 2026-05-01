@@ -1,26 +1,38 @@
-import { assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import {
+  assertRoleOrFail,
+  assertEffectiveRoleOrFail,
+  rejectIfImpersonating,
+  jsonError,
+} from "@/lib/api-utils";
 import type { AppSession } from "@/lib/api-utils";
 
 // We test getSessionOrFail separately since it needs to mock getServerSession.
 // assertRoleOrFail and jsonError are pure functions that can be tested directly.
 
-function mockSession(role: string): AppSession {
+function mockSession(role: string, opts: { tenantId?: string | null; actingAs?: any } = {}): AppSession {
   return {
     user: {
       id: "u1",
       email: "test@test.com",
       name: "Test",
       role: role as any,
-      tenantId: "t1",
+      tenantId: opts.tenantId === undefined ? "t1" : opts.tenantId,
+      actingAs: opts.actingAs ?? null,
     },
   };
 }
 
-// ── assertRoleOrFail ──────────────────────────────────────
+// ── assertRoleOrFail (real-role gate) ─────────────────────
 
 describe("assertRoleOrFail", () => {
-  test("returns null when role is sufficient (PLATFORM_ADMIN >= TENANT_ADMIN)", () => {
-    expect(assertRoleOrFail(mockSession("PLATFORM_ADMIN"), "TENANT_ADMIN")).toBeNull();
+  test("PLATFORM_ADMIN does NOT satisfy a TENANT_ADMIN gate (orthogonal)", async () => {
+    const response = assertRoleOrFail(mockSession("PLATFORM_ADMIN", { tenantId: null }), "TENANT_ADMIN");
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(403);
+  });
+
+  test("PLATFORM_ADMIN satisfies a PLATFORM_ADMIN gate", () => {
+    expect(assertRoleOrFail(mockSession("PLATFORM_ADMIN", { tenantId: null }), "PLATFORM_ADMIN")).toBeNull();
   });
 
   test("returns null when role matches exactly (USER >= USER)", () => {
@@ -49,6 +61,74 @@ describe("assertRoleOrFail", () => {
     const response = assertRoleOrFail(mockSession("MAINTENANCE"), "TENANT_ADMIN");
     expect(response).not.toBeNull();
     expect(response!.status).toBe(403);
+  });
+});
+
+// ── assertEffectiveRoleOrFail (impersonation-aware) ───────
+
+describe("assertEffectiveRoleOrFail", () => {
+  test("non-impersonating PLATFORM_ADMIN gets 403 PLATFORM_ADMIN_NO_CONTEXT for tenant gate", async () => {
+    const response = assertEffectiveRoleOrFail(
+      mockSession("PLATFORM_ADMIN", { tenantId: null }),
+      "TENANT_ADMIN",
+    );
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(403);
+    const body = await response!.json();
+    expect(body.error).toBe("PLATFORM_ADMIN_NO_CONTEXT");
+  });
+
+  test("PLATFORM_ADMIN while impersonating TENANT_ADMIN passes tenant gate", () => {
+    const response = assertEffectiveRoleOrFail(
+      mockSession("PLATFORM_ADMIN", {
+        tenantId: null,
+        actingAs: {
+          tenantId: "t-acted",
+          role: "TENANT_ADMIN",
+          impersonationId: "imp-1",
+          startedAt: new Date().toISOString(),
+        },
+      }),
+      "TENANT_ADMIN",
+    );
+    expect(response).toBeNull();
+  });
+
+  test("regular TENANT_ADMIN passes tenant gate", () => {
+    expect(assertEffectiveRoleOrFail(mockSession("TENANT_ADMIN"), "TENANT_ADMIN")).toBeNull();
+  });
+
+  test("USER fails tenant-admin gate with generic 403", async () => {
+    const response = assertEffectiveRoleOrFail(mockSession("USER"), "TENANT_ADMIN");
+    expect(response!.status).toBe(403);
+    const body = await response!.json();
+    expect(body.error).toBe("Forbidden");
+  });
+});
+
+// ── rejectIfImpersonating ─────────────────────────────────
+
+describe("rejectIfImpersonating", () => {
+  test("returns null when not impersonating", () => {
+    expect(rejectIfImpersonating(mockSession("PLATFORM_ADMIN", { tenantId: null }))).toBeNull();
+  });
+
+  test("returns 409 EXIT_IMPERSONATION_REQUIRED when impersonating", async () => {
+    const response = rejectIfImpersonating(
+      mockSession("PLATFORM_ADMIN", {
+        tenantId: null,
+        actingAs: {
+          tenantId: "t-acted",
+          role: "TENANT_ADMIN",
+          impersonationId: "imp-1",
+          startedAt: new Date().toISOString(),
+        },
+      }),
+    );
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(409);
+    const body = await response!.json();
+    expect(body.error).toBe("EXIT_IMPERSONATION_REQUIRED");
   });
 });
 

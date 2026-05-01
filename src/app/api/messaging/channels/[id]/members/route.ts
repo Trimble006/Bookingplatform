@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
 import { hasRole } from "@/lib/roles";
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   if (!isAdmin && !(await isMember(id, session.user.id))) {
     return jsonError("Not a member of this channel", 403);
   }
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   const membership = await isMember(id, session.user.id);
   if (!isAdmin && (!membership || membership.role === "MEMBER")) {
     return jsonError("Only channel admins/owners or tenant admins can add members", 403);
@@ -96,7 +96,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   const isSelf = targetUserId === session.user.id;
 
   if (!isSelf) {
-    const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+    const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
     const membership = await isMember(id, session.user.id);
     if (!isAdmin && (!membership || membership.role === "MEMBER")) {
       return jsonError("Only channel admins/owners or tenant admins can remove members", 403);
@@ -136,7 +136,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   const membership = await isMember(id, session.user.id);
   if (!isAdmin && (!membership || membership.role === "MEMBER")) {
     return jsonError("Only channel admins/owners or tenant admins can mute members", 403);

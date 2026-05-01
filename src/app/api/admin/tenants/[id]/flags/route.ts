@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, assertRoleOrFail, rejectIfImpersonating, jsonError } from "@/lib/api-utils";
 import { setFeatureFlag, getTenantFlags } from "@/lib/features";
 import { logAudit } from "@/lib/audit";
 
@@ -10,6 +10,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
   if (roleErr) return roleErr;
+  const impErr = rejectIfImpersonating(session);
+  if (impErr) return impErr;
 
   const { id } = await params;
   const flags = await getTenantFlags(id);
@@ -22,6 +24,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
   if (roleErr) return roleErr;
+  const impErr = rejectIfImpersonating(session);
+  if (impErr) return impErr;
 
   const { id } = await params;
   const { key, enabled } = await req.json();

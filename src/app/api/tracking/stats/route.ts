@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrFail } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
-import { hasRole } from "@/lib/roles";
+import { hasRole, isPlatformAdmin as isPlatformAdminRole } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  // Allow TENANT_ADMIN and PLATFORM_ADMIN (who ranks higher)
-  if (!hasRole(session.user.role, "TENANT_ADMIN")) {
+  // Allow real TENANT_ADMIN+ in their tenant, or PLATFORM_ADMIN cross-tenant view.
+  const eff = getEffective(session);
+  const isRealPlatformAdmin = isPlatformAdminRole(session.user.role);
+  if (!isRealPlatformAdmin && !hasRole(eff.role, "TENANT_ADMIN")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -23,18 +25,17 @@ export async function GET(req: NextRequest) {
   since.setDate(since.getDate() - days);
 
   // Tenant scoping
-  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
   let tenantFilter: string | undefined;
 
-  if (isPlatformAdmin && paramTenantId) {
-    tenantFilter = paramTenantId;
-  } else if (!isPlatformAdmin) {
-    tenantFilter = session.user.tenantId ?? undefined;
+  if (isRealPlatformAdmin && !eff.isImpersonating) {
+    // Cross-tenant view; optional explicit tenant filter.
+    if (paramTenantId) tenantFilter = paramTenantId;
+  } else {
+    tenantFilter = eff.tenantId ?? undefined;
     if (!tenantFilter) {
       return NextResponse.json({ error: "No tenant context" }, { status: 400 });
     }
   }
-  // If platform admin with no tenantId param → cross-tenant (no filter)
 
   const where = {
     timestamp: { gte: since },

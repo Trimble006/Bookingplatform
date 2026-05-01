@@ -40,7 +40,7 @@ export default function MaintenancePage() {
 
   useEffect(() => { trackFeature("maintenance.dashboard_opened", "MaintenanceTask"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isPlatformAdminRole = (session?.user as any)?.role === "PLATFORM_ADMIN";
+  const isPlatformAdminRole = false; // platform admins only reach this page while impersonating; layout enforces this
 
   // Fetch tenant list for platform admins
   useEffect(() => {

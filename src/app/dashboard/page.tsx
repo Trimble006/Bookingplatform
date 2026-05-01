@@ -2,14 +2,25 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
+import TenantPicker from "@/components/platform/TenantPicker";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions) as { user: { id: string; name?: string | null; email: string; role: string; tenantId?: string | null } } | null;
+  const session = (await getServerSession(authOptions)) as
+    | {
+        user: {
+          id: string;
+          name?: string | null;
+          email: string;
+          role: string;
+          tenantId?: string | null;
+          actingAs?: { tenantId: string; tenantSlug: string; impersonationId: string } | null;
+        };
+      }
+    | null;
 
   if (!session?.user) redirect("/auth/login");
 
-  // Members with a tenant — redirect to their club homepage
+  // Members of a tenant — straight to their club homepage.
   if (session.user.tenantId) {
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.user.tenantId },
@@ -18,7 +29,24 @@ export default async function DashboardPage() {
     if (tenant) redirect("/" + tenant.slug);
   }
 
-  // Platform admin (no tenantId) — show tenant picker
+  // Platform admin: only auto-redirect to the club homepage if the session's
+  // impersonation claim is still backed by an OPEN row in the DB. A stale JWT
+  // (e.g. user closed the tab without clicking "Exit") would otherwise yank
+  // them into a tenant they didn't just pick — show the picker instead.
+  let staleImpersonation = false;
+  if (session.user.role === "PLATFORM_ADMIN" && session.user.actingAs) {
+    const row = await prisma.impersonation.findUnique({
+      where: { id: session.user.actingAs.impersonationId },
+      select: { endedAt: true, platformUserId: true },
+    });
+    const isOpen = !!row && row.endedAt === null && row.platformUserId === session.user.id;
+    if (isOpen) {
+      redirect("/" + session.user.actingAs.tenantSlug);
+    }
+    staleImpersonation = true;
+  }
+
+  // Platform admin (no tenant, not impersonating) — show the impersonation picker.
   const tenants = await prisma.tenant.findMany({
     where: { active: true },
     select: { id: true, name: true, slug: true, brandColor: true },
@@ -26,29 +54,20 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Platform Dashboard</h1>
-      <p className="mt-2 text-gray-600">
-        Welcome, {session.user.name ?? session.user.email}
-      </p>
-      <h2 className="mt-8 text-lg font-semibold text-gray-800">Clubs</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {tenants.map((t) => (
-          <Link
-            key={t.id}
-            href={"/" + t.slug}
-            className="flex items-center gap-4 rounded-xl border bg-white p-6 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div
-              className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold"
-              style={{ backgroundColor: t.brandColor }}
-            >
-              {t.name.charAt(0)}
-            </div>
-            <span className="font-semibold text-green-700">{t.name}</span>
-          </Link>
-        ))}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Platform Dashboard</h1>
+        <p className="mt-2 text-gray-600">
+          Welcome, {session.user.name ?? session.user.email}. Pick a club to act on its behalf.
+          Your real identity is preserved in every audit log entry.
+        </p>
+        {staleImpersonation && (
+          <p className="mt-2 rounded bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+            A previous impersonation session has ended. Pick a club to start a new one.
+          </p>
+        )}
       </div>
+      <TenantPicker tenants={tenants} clearStaleClaim={staleImpersonation} />
     </div>
   );
 }

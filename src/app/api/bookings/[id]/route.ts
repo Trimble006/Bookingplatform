@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { getPaymentEngine } from "@/lib/payment";
 import { createNotification } from "@/lib/notifications";
@@ -26,18 +26,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const booking = await prisma.booking.findUnique({ where: { id }, include: { payment: true } });
   if (!booking) return jsonError("Not found", 404);
 
-  // Tenant isolation
-  if (booking.tenantId !== session.user.tenantId && !hasRole(session.user.role, "PLATFORM_ADMIN")) {
+  // Tenant isolation: must be same tenant via real membership OR active impersonation.
+  // A non-impersonating PLATFORM_ADMIN no longer has cross-tenant power here.
+  const eff = getEffective(session);
+  if (booking.tenantId !== eff.tenantId) {
+    if (session.user.role === "PLATFORM_ADMIN" && !eff.isImpersonating) {
+      return jsonError("PLATFORM_ADMIN_NO_CONTEXT", 403);
+    }
     return jsonError("Forbidden", 403);
   }
 
-  // Only admins can approve/reserve/confirm
-  if (["APPROVED", "RESERVED", "CONFIRMED"].includes(newStatus) && !hasRole(session.user.role, "TENANT_ADMIN")) {
+  // Only admins (or platform admins impersonating as tenant admin) can approve/reserve/confirm
+  if (["APPROVED", "RESERVED", "CONFIRMED"].includes(newStatus) && !hasRole(eff.role, "TENANT_ADMIN")) {
     return jsonError("Only admins can approve, reserve, or confirm bookings", 403);
   }
 
   // Users can cancel their own bookings (REQUESTED or APPROVED only)
-  if (newStatus === "CANCELLED" && !hasRole(session.user.role, "TENANT_ADMIN")) {
+  if (newStatus === "CANCELLED" && !hasRole(eff.role, "TENANT_ADMIN")) {
     if (booking.userId !== session.user.id) {
       return jsonError("Forbidden", 403);
     }

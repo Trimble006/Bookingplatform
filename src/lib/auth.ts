@@ -46,10 +46,23 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as any).role;
         token.tenantId = (user as any).tenantId;
+        token.actingAs = null;
+      }
+      // Allow client/server to update the actingAs claim via session.update().
+      // Only PLATFORM_ADMINs may carry an actingAs claim — defensively strip
+      // it for any other role (cannot be used as a privilege escalation vector
+      // because hasRole/getEffectiveRole only honour it when realRole is
+      // PLATFORM_ADMIN, but we belt-and-brace here too).
+      if (trigger === "update" && session && typeof session === "object" && "actingAs" in session) {
+        if (token.role === "PLATFORM_ADMIN") {
+          token.actingAs = (session as any).actingAs ?? null;
+        } else {
+          token.actingAs = null;
+        }
       }
       return token;
     },
@@ -58,6 +71,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.sub;
         (session.user as any).role = token.role;
         (session.user as any).tenantId = token.tenantId;
+        (session.user as any).actingAs = token.role === "PLATFORM_ADMIN" ? (token.actingAs ?? null) : null;
       }
       return session;
     },

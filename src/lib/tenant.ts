@@ -1,32 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasRole } from "@/lib/roles";
 import { jsonError } from "@/lib/api-utils";
+import { getEffectiveRole, type ActingAsClaim } from "@/lib/roles";
 import type { Role } from "@prisma/client";
 
 /**
- * Resolve tenantId from session + optional ?tenantId= query param.
- * Platform admins can target any tenant via the param.
- * Returns { tenantId, error } — if error is set, return it from the handler.
- * When a platform admin has no tenant selected, returns an empty JSON array response.
+ * Resolve the tenantId the caller is acting on.
+ *
+ * - Tenant users: their own `tenantId`.
+ * - PLATFORM_ADMIN currently impersonating: the impersonated tenantId
+ *   (from `actingAs.tenantId`). Carried through transparently.
+ * - PLATFORM_ADMIN NOT impersonating: returns a 403
+ *   `PLATFORM_ADMIN_NO_CONTEXT` so the client can redirect to the
+ *   tenant picker. The previous `?tenantId=` cross-tenant override
+ *   has been removed — platform admins must explicitly start an
+ *   impersonation to act on a tenant.
+ *
+ * `req` is accepted for backwards compatibility but is no longer used
+ * to derive the tenant.
  */
 export function resolveTenantId(
-  session: { user: { tenantId?: string | null; role: Role } },
-  req: NextRequest,
+  session: {
+    user: {
+      id: string;
+      tenantId?: string | null;
+      role: Role;
+      actingAs?: ActingAsClaim | null;
+    };
+  },
+  _req?: NextRequest,
 ): { tenantId: string; error: null } | { tenantId: null; error: NextResponse } {
-  let tenantId = session.user.tenantId ?? null;
+  const eff = getEffectiveRole(session.user);
 
-  if (hasRole(session.user.role, "PLATFORM_ADMIN")) {
-    const param = req.nextUrl.searchParams.get("tenantId");
-    if (param) {
-      tenantId = param;
-    } else if (!tenantId) {
-      return { tenantId: null, error: NextResponse.json([]) };
-    }
+  if (eff.tenantId) {
+    return { tenantId: eff.tenantId, error: null };
   }
 
-  if (!tenantId) {
-    return { tenantId: null, error: jsonError("No tenant context", 400) };
+  if (session.user.role === "PLATFORM_ADMIN" && !eff.isImpersonating) {
+    return {
+      tenantId: null,
+      error: NextResponse.json(
+        {
+          error: "PLATFORM_ADMIN_NO_CONTEXT",
+          message: "Platform admin must start an impersonation to act on a tenant.",
+        },
+        { status: 403 },
+      ),
+    };
   }
 
-  return { tenantId, error: null };
+  return { tenantId: null, error: jsonError("No tenant context", 400) };
 }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { getSessionOrFail, getEffective, assertEffectiveRoleOrFail, jsonError } from "@/lib/api-utils";
 import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import { TaskStatus } from "@prisma/client";
@@ -25,9 +24,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const task = await prisma.maintenanceTask.findUnique({ where: { id } });
   if (!task) return jsonError("Not found", 404);
 
-  // Platform admins can operate on any tenant's tasks; others must match tenant
-  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
-  if (!isPlatformAdmin && task.tenantId !== session.user.tenantId) return jsonError("Forbidden", 403);
+  // Tenant isolation via effective tenant context (impersonation-aware).
+  const eff = getEffective(session);
+  if (task.tenantId !== eff.tenantId) {
+    if (session.user.role === "PLATFORM_ADMIN" && !eff.isImpersonating) {
+      return jsonError("PLATFORM_ADMIN_NO_CONTEXT", 403);
+    }
+    return jsonError("Forbidden", 403);
+  }
 
   const data: Record<string, unknown> = {};
 
@@ -42,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Assignment (admin only)
   if (body.assignedToId !== undefined) {
-    const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+    const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
     if (roleErr) return roleErr;
     data.assignedToId = body.assignedToId;
     data.status = "ASSIGNED";
@@ -61,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Priority change (admin only)
   if (body.priority && body.priority !== task.priority) {
-    const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+    const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
     if (roleErr) return roleErr;
     data.priority = body.priority;
 

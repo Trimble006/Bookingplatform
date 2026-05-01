@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
 
-  if (!hasRole(session.user.role, "TENANT_ADMIN")) {
+  if (!hasRole(getEffective(session).role, "TENANT_ADMIN")) {
     return jsonError("Forbidden", 403);
   }
 
@@ -150,7 +150,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
 
-  if (!hasRole(session.user.role, "TENANT_ADMIN")) {
+  if (!hasRole(getEffective(session).role, "TENANT_ADMIN")) {
     return jsonError("Forbidden", 403);
   }
 

@@ -20,6 +20,8 @@ model Tenant {
   seasonEnd   String?
   openingTime String   @default("08:00")
   closingTime String   @default("20:00")
+  latitude    Float?
+  longitude   Float?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -36,6 +38,10 @@ model Tenant {
   channels        Channel[]
   messages        Message[]
   trackingEvents  TrackingEvent[]
+  impersonations  Impersonation[]
+  subscription    TenantSubscription?
+  streamSessions  StreamSession[]
+  streamTokens    StreamToken[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -76,6 +82,10 @@ model User {
   messages            Message[]
   createdChannels     Channel[]            @relation("ChannelCreatedBy")
   trackingEvents      TrackingEvent[]
+  impersonations      Impersonation[]
+  createdStreams      StreamSession[]      @relation("StreamCreatedBy")
+  streamViewers       StreamViewer[]       @relation("StreamViewers")
+  createdTokens       StreamToken[]        @relation("TokenCreatedBy")
 }
 
 model PasswordResetToken {
@@ -115,7 +125,117 @@ model Rink {
   greenId String
   green   Green  @relation(fields: [greenId], references: [id])
 
-  bookingSlots BookingSlot[]
+  bookingSlots   BookingSlot[]
+  streamSessions StreamSession[]
+}
+
+// ─── Live Streaming ──────────────────────────────────────────
+
+enum StreamingTier {
+  NONE
+  BRONZE
+  SILVER
+  GOLD
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum StreamStatus {
+  IDLE
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+enum StreamVisibility {
+  MEMBERS_ONLY
+  PUBLIC
+}
+
+enum StreamAccessMethod {
+  AUTHENTICATED
+  TOKEN_LINK
+}
+
+model TenantSubscription {
+  id                   String             @id @default(cuid())
+  tenantId             String             @unique
+  tenant               Tenant             @relation(fields: [tenantId], references: [id])
+  tier                 StreamingTier      @default(NONE)
+  maxConcurrentStreams Int                @default(0)
+  archiveRetentionDays Int                @default(0)
+  priceMonthlyPence    Int                @default(0)
+  status               SubscriptionStatus @default(ACTIVE)
+  activeSince          DateTime           @default(now())
+  expiresAt            DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model StreamSession {
+  id           String           @id @default(cuid())
+  tenantId     String
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  rinkId       String
+  rink         Rink             @relation(fields: [rinkId], references: [id])
+  eventId      String?
+  event        Event?           @relation(fields: [eventId], references: [id])
+  title        String
+  status       StreamStatus     @default(IDLE)
+  visibility   StreamVisibility @default(MEMBERS_ONLY)
+  streamKey    String           @unique @default(cuid())
+  archiveUrl   String?
+  thumbnailUrl String?
+  createdById  String
+  createdBy    User             @relation("StreamCreatedBy", fields: [createdById], references: [id])
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  viewers StreamViewer[]
+  tokens  StreamToken[]
+
+  @@index([tenantId, status])
+  @@index([rinkId, status])
+}
+
+model StreamViewer {
+  id                 String             @id @default(cuid())
+  streamSessionId    String
+  streamSession      StreamSession      @relation(fields: [streamSessionId], references: [id])
+  userId             String?
+  user               User?              @relation("StreamViewers", fields: [userId], references: [id])
+  sessionFingerprint String
+  accessMethod       StreamAccessMethod @default(AUTHENTICATED)
+  tokenId            String?
+  joinedAt           DateTime           @default(now())
+  leftAt             DateTime?
+  durationSeconds    Int?
+
+  @@index([streamSessionId, joinedAt])
+  @@index([userId])
+}
+
+model StreamToken {
+  id              String        @id @default(cuid())
+  streamSessionId String
+  streamSession   StreamSession @relation(fields: [streamSessionId], references: [id])
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  token           String        @unique @default(cuid())
+  expiresAt       DateTime
+  maxUses         Int?
+  useCount        Int           @default(0)
+  createdById     String
+  createdBy       User          @relation("TokenCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@index([token])
 }
 
 // ─── Booking ─────────────────────────────────────────────────
@@ -159,6 +279,7 @@ model BookingSlot {
   rink       Rink    @relation(fields: [rinkId], references: [id])
   timeSlot   String // e.g. "10:00-12:00"
   playerName String?
+  greenName  String? // Cached green name at time of booking
 }
 
 model WaitlistEntry {
@@ -278,22 +399,48 @@ model Notification {
 // ─── Audit Trail ─────────────────────────────────────────────
 
 model AuditEvent {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  actorId   String
-  actor     User     @relation(fields: [actorId], references: [id])
-  actorRole Role
-  action    String // dot-notation e.g. "booking.created"
-  entity    String // model name e.g. "Booking"
-  entityId  String?
-  piiAccess Boolean  @default(false)
-  meta      String? // JSON string for flexible payload
+  id               String   @id @default(cuid())
+  timestamp        DateTime @default(now())
+  tenantId         String?
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id])
+  actorId          String
+  actor            User     @relation(fields: [actorId], references: [id])
+  actorRole        Role
+  // When set, the action was performed by `actor` (a PLATFORM_ADMIN) while
+  // impersonating a tenant context. `actingAsTenantId` is the impersonated tenant
+  // and `actingAsRole` is the role the platform admin assumed (typically TENANT_ADMIN).
+  actingAsTenantId String?
+  actingAsRole     Role?
+  impersonationId  String?
+  action           String // dot-notation e.g. "booking.created"
+  entity           String // model name e.g. "Booking"
+  entityId         String?
+  piiAccess        Boolean  @default(false)
+  meta             String? // JSON string for flexible payload
 
   @@index([tenantId, timestamp])
   @@index([actorId, timestamp])
   @@index([entity, entityId])
+  @@index([impersonationId])
+}
+
+// ─── Platform Admin Impersonation ────────────────────────────
+
+/// Records a platform admin assuming a tenant role to act on behalf of a club.
+/// Created when impersonation starts; `endedAt` set when explicitly exited.
+model Impersonation {
+  id             String    @id @default(cuid())
+  platformUserId String
+  platformUser   User      @relation(fields: [platformUserId], references: [id])
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  assumedRole    Role      @default(TENANT_ADMIN)
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  reason         String?
+
+  @@index([platformUserId, startedAt])
+  @@index([tenantId, startedAt])
 }
 
 // ─── Content Management ──────────────────────────────────────
@@ -392,6 +539,8 @@ model Event {
   updatedBy    User?           @relation("EventUpdatedBy", fields: [updatedById], references: [id])
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  streamSessions StreamSession[]
 
   @@index([tenantId, date])
   @@index([tenantId, status])
