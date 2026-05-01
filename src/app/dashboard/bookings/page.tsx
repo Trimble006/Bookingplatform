@@ -9,12 +9,17 @@ import { getClientEffectiveRole } from "@/lib/effective-role-client";
 
 type Tenant = { id: string; name: string; slug: string };
 
+type Member = { id: string; name: string | null; email: string };
+
 type Booking = {
   id: string;
   date: string;
   status: string;
+  adminOverride?: boolean;
+  overrideReason?: string;
   slots: { rink: { name: string }; timeSlot: string; playerName?: string; greenName?: string }[];
   user?: { id: string; name: string; email: string };
+  bookedByUser?: { id: string; name: string; email: string } | null;
   payment?: { id: string; status: string; amount: number; checkoutUrl?: string };
 };
 
@@ -38,6 +43,12 @@ export default function BookingsPage() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Book-on-behalf state (admin only)
+  const [members, setMembers] = useState<Member[]>([]);
+  const [bookForUserId, setBookForUserId] = useState("");
+  const [showOverride, setShowOverride] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
+
   const eff = getClientEffectiveRole(session);
   // Non-impersonating platform admins are redirected away from this page by
   // the dashboard layout, so the legacy tenant-picker UI is now dead. We keep
@@ -47,6 +58,16 @@ export default function BookingsPage() {
   const { trackFeature, trackAction } = useTrack();
 
   useEffect(() => { trackFeature("booking.grid_opened", "Booking"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch member list for admin's "Book for..." picker
+  useEffect(() => {
+    if (!isAdmin) return;
+    const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
+    fetch(`/api/admin/users${qs}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setMembers(Array.isArray(data) ? data : []))
+      .catch(() => setMembers([]));
+  }, [isAdmin, selectedTenant]);
 
   // Fetch tenant list only for platform admins
   useEffect(() => {
@@ -130,6 +151,9 @@ export default function BookingsPage() {
     setBookingTimeSlot(preselectedSlot && !bookedSlots.includes(preselectedSlot) ? preselectedSlot : "");
     setBookingPlayerName("");
     setBookingError("");
+    setBookForUserId("");
+    setShowOverride(false);
+    setOverrideReason("");
   }
 
   async function handleBook() {
@@ -142,6 +166,11 @@ export default function BookingsPage() {
         slots: [{ rinkId: bookingRink.id, timeSlot: bookingTimeSlot, playerName: bookingPlayerName || undefined }],
       };
       if (selectedTenant) body.tenantId = selectedTenant;
+      if (bookForUserId) body.bookForUserId = bookForUserId;
+      if (showOverride) {
+        body.adminOverride = true;
+        body.overrideReason = overrideReason;
+      }
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -152,7 +181,10 @@ export default function BookingsPage() {
         setBookingError(err.error ?? "Booking failed");
       } else {
         setBookingRink(null);
-        setSuccessMsg("Booking requested successfully!");
+        const target = bookForUserId
+          ? members.find((m) => m.id === bookForUserId)?.name ?? "member"
+          : "you";
+        setSuccessMsg(`Booking requested for ${target} successfully!`);
         trackAction("booking.created", "Booking");
         loadData(selectedTenant || undefined);
       }
@@ -226,6 +258,16 @@ export default function BookingsPage() {
                 <p className="font-medium">{b.date}</p>
                 {isAdmin && b.user && (
                   <p className="text-xs text-gray-400">{b.user.name ?? b.user.email}</p>
+                )}
+                {b.bookedByUser && b.bookedByUser.id !== b.user?.id && (
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                    Booked by {b.bookedByUser.name ?? b.bookedByUser.email}
+                  </span>
+                )}
+                {b.adminOverride && (
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded" title={b.overrideReason ?? ""}>
+                    Override
+                  </span>
                 )}
                 <p className="text-sm text-gray-500">
                   {b.slots.map((s) => `${s.greenName ? s.greenName + " — " : ""}${s.rink.name} ${s.timeSlot}`).join(", ")}
@@ -325,6 +367,43 @@ export default function BookingsPage() {
                 placeholder="Your name"
               />
             </div>
+            {isAdmin && members.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Book for</label>
+                <select
+                  value={bookForUserId}
+                  onChange={(e) => setBookForUserId(e.target.value)}
+                  className="w-full rounded border p-2 text-sm"
+                >
+                  <option value="">Myself</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name ?? m.email}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {isAdmin && (
+              <div className="border-t pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowOverride(!showOverride)}
+                  className="text-sm text-amber-700 hover:underline"
+                >
+                  {showOverride ? "▾ Admin Override" : "▸ Admin Override"}
+                </button>
+                {showOverride && (
+                  <div className="mt-2">
+                    <textarea
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      className="w-full rounded border p-2 text-sm"
+                      placeholder="Reason for override (required)"
+                      rows={2}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             {bookingError && <p className="text-sm text-red-600">{bookingError}</p>}
             <div className="flex gap-2 justify-end">
               <button
