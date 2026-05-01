@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, assertRoleOrFail, rejectIfImpersonating, jsonError } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
 
 /** List all tenants (platform admin). */
@@ -10,6 +10,8 @@ export async function GET() {
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
   if (roleErr) return roleErr;
+  const impErr = rejectIfImpersonating(session);
+  if (impErr) return impErr;
 
   try {
     const tenants = await prisma.tenant.findMany({
@@ -28,6 +30,8 @@ export async function POST(req: NextRequest) {
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
   if (roleErr) return roleErr;
+  const impErr = rejectIfImpersonating(session);
+  if (impErr) return impErr;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: any;

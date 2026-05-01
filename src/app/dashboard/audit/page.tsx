@@ -14,6 +14,10 @@ interface AuditEvent {
   meta?: string;
   actor: { id: string; name?: string; email: string; role: string };
   tenant?: { id: string; name: string } | null;
+  actingAsRole?: string | null;
+  actingAsTenantId?: string | null;
+  actingAsTenant?: { id: string; name: string; slug: string } | null;
+  impersonationId?: string | null;
 }
 
 const ACTION_DOMAINS = ["all", "auth", "booking", "waitlist", "task", "payment", "admin", "pii"];
@@ -29,8 +33,12 @@ function formatTimestamp(ts: string): string {
 export default function AuditPage() {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role;
-  const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";
-  const isPlatformAdmin = role === "PLATFORM_ADMIN";
+  const acting = (session?.user as any)?.actingAs ?? null;
+  const effectiveRole = acting ? acting.role : role;
+  const isAdmin = effectiveRole === "TENANT_ADMIN";
+  // Layout redirects non-impersonating platform admins away, so this page
+  // never sees the cross-tenant platform-admin variant — collapse the picker.
+  const isPlatformAdmin = false;
 
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [total, setTotal] = useState(0);
@@ -157,6 +165,11 @@ export default function AuditPage() {
                       <td className="p-2">
                         <span>{ev.actor.name ?? ev.actor.email}</span>
                         <span className="ml-1 text-xs text-gray-400">({ev.actorRole})</span>
+                        {ev.actingAsRole && ev.actingAsTenant && (
+                          <span className="ml-1 text-xs text-amber-700">
+                            acting as {ev.actingAsRole} of {ev.actingAsTenant.name}
+                          </span>
+                        )}
                       </td>
                     )}
                     {isPlatformAdmin && <td className="p-2">{ev.tenant?.name ?? "—"}</td>}

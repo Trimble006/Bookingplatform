@@ -25,7 +25,9 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
 
   const role = (session?.user as any)?.role;
-  const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";
+  const acting = (session?.user as any)?.actingAs ?? null;
+  const effectiveRole = acting ? acting.role : role;
+  const isAdmin = effectiveRole === "TENANT_ADMIN";
 
   useEffect(() => {
     if (!isAdmin) return;

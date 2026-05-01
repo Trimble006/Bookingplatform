@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, assertEffectiveRoleOrFail, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
   if (tErr) return tErr;
 
   try {
-    const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
-    const isMaintenance = session.user.role === "MAINTENANCE";
+    const eff = getEffective(session);
+    const isAdmin = hasRole(eff.role, "TENANT_ADMIN");
+    const isMaintenance = eff.role === "MAINTENANCE";
 
     const tasks = await prisma.maintenanceTask.findMany({
       where: {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  const roleErr = assertRoleOrFail(session, "MAINTENANCE");
+  const roleErr = assertEffectiveRoleOrFail(session, "MAINTENANCE");
   if (roleErr) return roleErr;
 
   const { tenantId, error: tErr } = resolveTenantId(session, req);

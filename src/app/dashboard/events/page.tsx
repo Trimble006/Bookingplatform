@@ -104,18 +104,17 @@ export default function EventsPage() {
   const [formError, setFormError] = useState("");
   const { data: session } = useSession();
   const role = (session?.user as any)?.role;
-  const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";
+  const acting = (session?.user as any)?.actingAs ?? null;
+  const effectiveRole = acting ? acting.role : role;
+  const isAdmin = effectiveRole === "TENANT_ADMIN";
   const { trackFeature } = useTrack();
 
   useEffect(() => { trackFeature("events.dashboard_opened", "Event"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (role !== "PLATFORM_ADMIN") return;
-    setIsPlatformAdmin(true);
-    fetch("/api/admin/tenants")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (Array.isArray(data)) setTenants(data); })
-      .catch(() => {});
+    // Platform admins reach this page only while impersonating; layout enforces it.
+    void role;
+    setIsPlatformAdmin(false);
   }, [role]);
 
   function loadEvents(tenantId?: string) {

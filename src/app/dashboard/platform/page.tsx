@@ -1,113 +1,82 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-type Tenant = {
-  id: string;
-  name: string;
-  slug: string;
-  active: boolean;
-  brandColor: string;
-  locale: string;
-  _count: { users: number; greens: number };
-};
+export default async function PlatformOverviewPage() {
+  const session = (await getServerSession(authOptions)) as
+    | { user: { id: string; role: string } }
+    | null;
 
-export default function PlatformAdminPage() {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [form, setForm] = useState({
-    name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en",
-    latitude: "", longitude: "",
-  });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  if (!session?.user) redirect("/auth/login");
+  if (session.user.role !== "PLATFORM_ADMIN") redirect("/dashboard");
 
-  function load() {
-    fetch("/api/admin/tenants").then((r) => r.json()).then((d) => setTenants(Array.isArray(d) ? d : [])).catch(() => {});
-  }
-
-  useEffect(() => { load(); }, []);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    const res = await fetch("/api/admin/tenants", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        latitude: form.latitude ? parseFloat(form.latitude) : undefined,
-        longitude: form.longitude ? parseFloat(form.longitude) : undefined,
-      }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error);
-    } else {
-      setForm({ name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en", latitude: "", longitude: "" });
-      setSuccess("Club created successfully!");
-      load();
-    }
-  }
-
-  async function toggleActive(id: string, active: boolean) {
-    const res = await fetch(`/api/admin/tenants/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !active }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Failed to update tenant status");
-      return;
-    }
-    setSuccess(`Tenant ${!active ? "activated" : "deactivated"} successfully.`);
-    load();
-  }
+  const [tenantCount, activeTenants, openImpersonations, recentImpersonations] = await Promise.all([
+    prisma.tenant.count(),
+    prisma.tenant.count({ where: { active: true } }),
+    prisma.impersonation.count({ where: { endedAt: null } }),
+    prisma.impersonation.findMany({
+      orderBy: { startedAt: "desc" },
+      take: 5,
+      include: {
+        platformUser: { select: { name: true, email: true } },
+        tenant: { select: { name: true, slug: true } },
+      },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Platform Admin — Tenants</h1>
-
-      <form onSubmit={handleCreate} className="rounded-xl bg-white p-6 shadow space-y-3">
-        <h2 className="font-semibold">Create Club</h2>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        {success && <p className="text-green-600 text-sm">{success}</p>}
-        <div className="grid grid-cols-2 gap-3">
-          <input placeholder="Club name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded border p-2" required />
-          <input placeholder="Slug" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded border p-2" required />
-          <input type="email" placeholder="Admin email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} className="rounded border p-2" required />
-          <input type="password" placeholder="Admin password" value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} className="rounded border p-2" required />
-          <input type="color" value={form.brandColor} onChange={(e) => setForm({ ...form, brandColor: e.target.value })} className="rounded border p-1 h-10" />
-          <select value={form.locale} onChange={(e) => setForm({ ...form, locale: e.target.value })} className="rounded border p-2">
-            <option value="en">English</option>
-            <option value="cy">Cymraeg</option>
-            <option value="fr">Français</option>
-            <option value="gd">Gàidhlig</option>
-          </select>
-          <input type="text" placeholder="Latitude" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} className="rounded border p-2" />
-          <input type="text" placeholder="Longitude" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} className="rounded border p-2" />
-        </div>
-        <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Create</button>
-      </form>
-
-      <div className="space-y-2">
-        {tenants.map((t) => (
-          <div key={t.id} className="rounded-xl border bg-white p-4 flex justify-between items-center">
-            <div>
-              <h3 className="font-semibold"><Link href={`/dashboard/platform/tenants/${t.id}`} className="hover:underline">{t.name}</Link> <span className="text-xs text-gray-400">/{t.slug}</span></h3>
-              <p className="text-xs text-gray-500">{t._count?.users ?? 0} users · {t._count?.greens ?? 0} greens · {t.locale}</p>
-            </div>
-            <button
-              onClick={() => toggleActive(t.id, t.active)}
-              className={`text-xs px-3 py-1 rounded ${t.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-            >
-              {t.active ? "Active" : "Inactive"}
-            </button>
-          </div>
-        ))}
+      <div>
+        <h1 className="text-2xl font-bold">Platform Overview</h1>
+        <p className="text-sm text-gray-600">
+          Manage tenants, payments and platform-wide concerns. To act on behalf of a club, start
+          an impersonation from the <Link href="/dashboard" className="underline">main dashboard</Link>.
+        </p>
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card label="Tenants" value={tenantCount} href="/dashboard/platform/tenants" />
+        <Card label="Active tenants" value={activeTenants} />
+        <Card label="Open impersonations" value={openImpersonations} href="/dashboard/platform/impersonations" />
+      </div>
+
+      <section className="rounded-xl bg-white p-6 shadow">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold">Recent impersonations</h2>
+          <Link href="/dashboard/platform/impersonations" className="text-sm text-blue-600 hover:underline">
+            View all
+          </Link>
+        </div>
+        {recentImpersonations.length === 0 ? (
+          <p className="text-sm text-gray-500">No impersonations recorded yet.</p>
+        ) : (
+          <ul className="divide-y">
+            {recentImpersonations.map((imp) => (
+              <li key={imp.id} className="py-2 text-sm flex items-center justify-between">
+                <span>
+                  <strong>{imp.platformUser.name ?? imp.platformUser.email}</strong> →{" "}
+                  {imp.tenant.name}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {imp.endedAt ? "ended" : "active"} · {new Date(imp.startedAt).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
+}
+
+function Card({ label, value, href }: { label: string; value: number; href?: string }) {
+  const inner = (
+    <div className="rounded-xl bg-white p-6 shadow hover:shadow-md transition">
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
+    </div>
+  );
+  return href ? <Link href={href}>{inner}</Link> : inner;
 }

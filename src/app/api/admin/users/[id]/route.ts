@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, assertEffectiveRoleOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 
@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit";
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
-  const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
   if (roleErr) return roleErr;
 
   const { id } = await params;
@@ -33,9 +33,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!user) return jsonError("User not found", 404);
 
-  // Tenant admins can only see users in their own tenant
-  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
-  if (!isPlatformAdmin && user.tenantId !== session.user.tenantId) {
+  // Tenant admins can only see users in their effective tenant.
+  const eff = getEffective(session);
+  if (user.tenantId !== eff.tenantId) {
     return jsonError("Forbidden", 403);
   }
 
@@ -48,7 +48,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
-  const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
+  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
   if (roleErr) return roleErr;
 
   const { id } = await params;
@@ -61,14 +61,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const target = await prisma.user.findUnique({ where: { id }, select: { tenantId: true, role: true } });
   if (!target) return jsonError("User not found", 404);
 
-  const isPlatformAdmin = hasRole(session.user.role, "PLATFORM_ADMIN");
-  if (!isPlatformAdmin && target.tenantId !== session.user.tenantId) {
+  const eff = getEffective(session);
+  if (target.tenantId !== eff.tenantId) {
     return jsonError("Forbidden", 403);
   }
 
-  // Tenant admins cannot modify other admins or platform admins
-  if (!isPlatformAdmin && hasRole(target.role, "TENANT_ADMIN")) {
+  // Real platform admins (including while impersonating) may modify any
+  // tenant-plane user including other tenant admins. Real tenant admins may
+  // not modify other admins or platform admins.
+  const isRealPlatformAdmin = session.user.role === "PLATFORM_ADMIN";
+  if (!isRealPlatformAdmin && hasRole(target.role, "TENANT_ADMIN")) {
     return jsonError("Cannot modify admin users", 403);
+  }
+  if (!isRealPlatformAdmin && target.role === "PLATFORM_ADMIN") {
+    return jsonError("Cannot modify platform admin users", 403);
   }
 
   let data: Record<string, unknown>;
@@ -80,8 +86,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const allowed: Record<string, unknown> = {};
   if (typeof data.suspended === "boolean") allowed.suspended = data.suspended;
-  // Only platform admins can change roles
-  if (isPlatformAdmin && data.role) allowed.role = data.role;
+  // Only real platform admins can change roles (even while impersonating).
+  if (isRealPlatformAdmin && data.role) allowed.role = data.role;
 
   if (Object.keys(allowed).length === 0) {
     return jsonError("No valid fields to update");

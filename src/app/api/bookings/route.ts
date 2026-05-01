@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, assertRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
-/** List bookings. Platform admins pass ?tenantId= to pick a tenant. */
+/** List bookings for the caller's tenant context (impersonation-aware). */
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   const bookings = await prisma.booking.findMany({
     where: { tenantId, ...(!isAdmin ? { userId: session.user.id } : {}) },
     include: { slots: { include: { rink: true } }, user: { select: { id: true, name: true, email: true } }, payment: true },

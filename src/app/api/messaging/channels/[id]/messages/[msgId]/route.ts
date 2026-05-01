@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
 import { hasRole } from "@/lib/roles";
@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return jsonError("Channel not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   const membership = await isMember(id, session.user.id);
   if (!isAdmin && (!membership || membership.role === "MEMBER")) {
     return jsonError("Only channel admins/owners or tenant admins can pin messages", 403);
@@ -71,7 +71,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     return jsonError("Message not found", 404);
   }
 
-  const isAdmin = hasRole(session.user.role, "TENANT_ADMIN");
+  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
   if (!isAdmin && message.userId !== session.user.id) {
     return jsonError("You can only delete your own messages", 403);
   }

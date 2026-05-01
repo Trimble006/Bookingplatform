@@ -25,22 +25,23 @@ model Tenant {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users              User[]
-  greens             Green[]
-  bookings           Booking[]
-  featureFlags       FeatureFlag[]
-  tenantPayments     TenantPayment[]
-  tasks              MaintenanceTask[]
-  notifications      Notification[]
-  auditEvents        AuditEvent[]
-  contentSections    ContentSection[]
-  events             Event[]
-  channels           Channel[]
-  messages           Message[]
-  trackingEvents     TrackingEvent[]
-  subscription       TenantSubscription?
-  streamSessions     StreamSession[]
-  streamTokens       StreamToken[]
+  users           User[]
+  greens          Green[]
+  bookings        Booking[]
+  featureFlags    FeatureFlag[]
+  tenantPayments  TenantPayment[]
+  tasks           MaintenanceTask[]
+  notifications   Notification[]
+  auditEvents     AuditEvent[]
+  contentSections ContentSection[]
+  events          Event[]
+  channels        Channel[]
+  messages        Message[]
+  trackingEvents  TrackingEvent[]
+  impersonations  Impersonation[]
+  subscription    TenantSubscription?
+  streamSessions  StreamSession[]
+  streamTokens    StreamToken[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -80,6 +81,7 @@ model User {
   messages            Message[]
   createdChannels     Channel[]            @relation("ChannelCreatedBy")
   trackingEvents      TrackingEvent[]
+  impersonations      Impersonation[]
   createdStreams      StreamSession[]      @relation("StreamCreatedBy")
   streamViewers       StreamViewer[]       @relation("StreamViewers")
   createdTokens       StreamToken[]        @relation("TokenCreatedBy")
@@ -390,22 +392,48 @@ model Notification {
 // ─── Audit Trail ─────────────────────────────────────────────
 
 model AuditEvent {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  actorId   String
-  actor     User     @relation(fields: [actorId], references: [id])
-  actorRole Role
-  action    String // dot-notation e.g. "booking.created"
-  entity    String // model name e.g. "Booking"
-  entityId  String?
-  piiAccess Boolean  @default(false)
-  meta      String? // JSON string for flexible payload
+  id               String   @id @default(cuid())
+  timestamp        DateTime @default(now())
+  tenantId         String?
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id])
+  actorId          String
+  actor            User     @relation(fields: [actorId], references: [id])
+  actorRole        Role
+  // When set, the action was performed by `actor` (a PLATFORM_ADMIN) while
+  // impersonating a tenant context. `actingAsTenantId` is the impersonated tenant
+  // and `actingAsRole` is the role the platform admin assumed (typically TENANT_ADMIN).
+  actingAsTenantId String?
+  actingAsRole     Role?
+  impersonationId  String?
+  action           String // dot-notation e.g. "booking.created"
+  entity           String // model name e.g. "Booking"
+  entityId         String?
+  piiAccess        Boolean  @default(false)
+  meta             String? // JSON string for flexible payload
 
   @@index([tenantId, timestamp])
   @@index([actorId, timestamp])
   @@index([entity, entityId])
+  @@index([impersonationId])
+}
+
+// ─── Platform Admin Impersonation ────────────────────────────
+
+/// Records a platform admin assuming a tenant role to act on behalf of a club.
+/// Created when impersonation starts; `endedAt` set when explicitly exited.
+model Impersonation {
+  id             String    @id @default(cuid())
+  platformUserId String
+  platformUser   User      @relation(fields: [platformUserId], references: [id])
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  assumedRole    Role      @default(TENANT_ADMIN)
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  reason         String?
+
+  @@index([platformUserId, startedAt])
+  @@index([tenantId, startedAt])
 }
 
 // ─── Content Management ──────────────────────────────────────

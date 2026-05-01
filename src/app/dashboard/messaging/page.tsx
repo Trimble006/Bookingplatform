@@ -46,7 +46,9 @@ export default function MessagingPage() {
   useEffect(() => { trackFeature("messaging.opened", "Channel"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const role = (session?.user as any)?.role;
-  const isAdmin = role === "TENANT_ADMIN" || role === "PLATFORM_ADMIN";
+  const acting = (session?.user as any)?.actingAs ?? null;
+  const effectiveRole = acting ? acting.role : role;
+  const isAdmin = effectiveRole === "TENANT_ADMIN";
   const userId = (session?.user as any)?.id as string | undefined;
 
   // Load channels
