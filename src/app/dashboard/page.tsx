@@ -6,7 +6,16 @@ import TenantPicker from "@/components/platform/TenantPicker";
 
 export default async function DashboardPage() {
   const session = (await getServerSession(authOptions)) as
-    | { user: { id: string; name?: string | null; email: string; role: string; tenantId?: string | null; actingAs?: { tenantId: string; tenantSlug: string } | null } }
+    | {
+        user: {
+          id: string;
+          name?: string | null;
+          email: string;
+          role: string;
+          tenantId?: string | null;
+          actingAs?: { tenantId: string; tenantSlug: string; impersonationId: string } | null;
+        };
+      }
     | null;
 
   if (!session?.user) redirect("/auth/login");
@@ -20,9 +29,21 @@ export default async function DashboardPage() {
     if (tenant) redirect("/" + tenant.slug);
   }
 
-  // Platform admin already impersonating — drop them at the club homepage.
+  // Platform admin: only auto-redirect to the club homepage if the session's
+  // impersonation claim is still backed by an OPEN row in the DB. A stale JWT
+  // (e.g. user closed the tab without clicking "Exit") would otherwise yank
+  // them into a tenant they didn't just pick — show the picker instead.
+  let staleImpersonation = false;
   if (session.user.role === "PLATFORM_ADMIN" && session.user.actingAs) {
-    redirect("/" + session.user.actingAs.tenantSlug);
+    const row = await prisma.impersonation.findUnique({
+      where: { id: session.user.actingAs.impersonationId },
+      select: { endedAt: true, platformUserId: true },
+    });
+    const isOpen = !!row && row.endedAt === null && row.platformUserId === session.user.id;
+    if (isOpen) {
+      redirect("/" + session.user.actingAs.tenantSlug);
+    }
+    staleImpersonation = true;
   }
 
   // Platform admin (no tenant, not impersonating) — show the impersonation picker.
@@ -40,8 +61,13 @@ export default async function DashboardPage() {
           Welcome, {session.user.name ?? session.user.email}. Pick a club to act on its behalf.
           Your real identity is preserved in every audit log entry.
         </p>
+        {staleImpersonation && (
+          <p className="mt-2 rounded bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+            A previous impersonation session has ended. Pick a club to start a new one.
+          </p>
+        )}
       </div>
-      <TenantPicker tenants={tenants} />
+      <TenantPicker tenants={tenants} clearStaleClaim={staleImpersonation} />
     </div>
   );
 }

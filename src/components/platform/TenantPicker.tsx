@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -15,13 +15,35 @@ type Tenant = {
  * Tenant picker for platform admins. Selecting a tenant POSTs to
  * /api/platform/impersonation, updates the NextAuth session with the new
  * `actingAs` claim, then routes to the club homepage.
+ *
+ * `clearStaleClaim` — set when the server detected a stale `actingAs` claim
+ * on the JWT (the impersonation row in the DB has already ended). The picker
+ * clears the JWT claim on mount so the orange banner and middleware checks
+ * stop honouring it.
  */
-export default function TenantPicker({ tenants }: { tenants: Tenant[] }) {
-  const { update } = useSession();
+export default function TenantPicker({
+  tenants,
+  clearStaleClaim = false,
+}: {
+  tenants: Tenant[];
+  clearStaleClaim?: boolean;
+}) {
+  const { data: session, update } = useSession();
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Reconcile a stale `actingAs` JWT claim once on mount.
+  useEffect(() => {
+    if (!clearStaleClaim) return;
+    const acting = (session?.user as any)?.actingAs;
+    if (!acting) return;
+    update({ actingAs: null }).then(() => router.refresh());
+    // We intentionally only run when clearStaleClaim is true; session is read
+    // once. Re-running on session changes would loop after we clear the claim.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearStaleClaim]);
 
   async function pick(tenant: Tenant) {
     setError(null);
