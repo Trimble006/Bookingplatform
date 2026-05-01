@@ -17,13 +17,17 @@
 - **Multi-green support** — each tenant configures N greens with M rinks each
 - **Booking workflow** — `requested → approved → reserved → confirmed → cancelled/refunded`
 - **Player fields** — per-rink player name capture
-- **Waiting list** — users join waitlist for fully-booked slots, notified on cancellation
-- **Season enforcement** — configurable season start/end dates, opening hours
+- **Waiting list** — users join waitlist for fully-booked slots; on cancellation the **first waiter** is auto-assigned the slot and notified; remaining waiters are unaffected
+- **Season enforcement** — configurable season start/end dates (inclusive on both boundaries); bookings on the first and last day of season are accepted; opening hours apply within-season only
+- **Cancellation policy** — users may cancel their own bookings up to **48 hours** before the booking date; within the window only admins can cancel
+- **Admin override** — tenant admins can force-book conflicting slots with a mandatory reason (max 500 chars); override reason is displayed to conflicted parties via notification
 
 ## Payments
 - **Pluggable payment engine** (`lib/payment.ts`) — `PaymentEngine` interface with `createCheckout()` and `refund()`
 - **Configurable stub** — `setNextCheckoutOutcome()` / `setNextRefundOutcome()` for testing decline, insufficient funds, expired card, network errors
 - **Booking payment flow** — admin confirms → checkout created → redirect to success → refund on cancel
+- **Webhook receiver** — `/api/bookings/webhook` accepts payment provider callbacks with ECDSA P-256 signature verification, 5-minute replay window, and full idempotency (duplicate events are safely ignored)
+- **Tenant-configurable pricing** — each tenant sets their own per-slot booking fee in their settings; default is £10 per rink slot
 - **Platform billing** — `TenantPayment` model for tenant invoicing (pending/paid/failed/refunded)
 
 ## Feature Flags
@@ -54,9 +58,11 @@
 - **Role-scoped views** — maintenance sees own tasks, admin sees all
 
 ## Messaging
-- **Channels** — public, private, and group channels per tenant
-- **Real-time messages** — user-to-user and group messaging
-- **Admin channel management** 
+- **Channels** — public, private, group, and direct message channels per tenant
+- **Real-time messages** — user-to-user and group messaging with SSE push to connected clients
+- **Strict tenant isolation** — all message operations (read and write) enforce tenant boundary checks; knowing a channel ID from another tenant yields 404
+- **Admin channel management** — tenant admins can create, rename, and delete channels
+- **Rate limiting** — message sending is rate-limited to 5 messages per 10 seconds per user to prevent spam
 
 ## Content Management
 - **Headless CMS** — landing page sections with draft → review → published → archived workflow
@@ -122,5 +128,7 @@
 ## Testing
 - **24 chat agent unit tests** — all keyword categories, priority ordering, edge cases
 - **14 payment stub tests** — success, decline, insufficient funds, expired, network error, auto-reset
+- **Webhook integration tests** — signature verification, replay rejection, idempotency, all event types
+- **Cross-tenant isolation suite** — dedicated tests verifying every API endpoint respects tenant boundaries
 - **Concurrent e2e agents** — 4 Playwright agents (user, admin, maintenance, platform) running in parallel, reacting to each other through the app's UI
 - **Exploratory bot** — 6 personas (Doris, Kevin, Mallory, Sandra, Craig, Ghost) with prioritised defect report output

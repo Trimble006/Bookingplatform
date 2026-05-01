@@ -172,3 +172,58 @@ describe("sendToUsers", () => {
     removeConnection(uid2, w2);
   });
 });
+
+// ── Connection lifecycle under load ───────────────────────
+
+describe("connection lifecycle under concurrent load", () => {
+  test("rapid connect/disconnect cycles do not leave stale connections", async () => {
+    const uid = "rapid-" + Date.now();
+    const writers: ReturnType<typeof mockWriter>[] = [];
+
+    // Simulate rapid reconnections (e.g. mobile network flapping)
+    for (let i = 0; i < 50; i++) {
+      const w = mockWriter();
+      writers.push(w);
+      addConnection(uid, w);
+      // Simulate immediate disconnect on some
+      if (i % 3 === 0) {
+        removeConnection(uid, w);
+      }
+    }
+
+    // Now remove all remaining
+    for (const w of writers) {
+      removeConnection(uid, w);
+    }
+
+    // After removing all, user should be disconnected
+    expect(isConnected(uid)).toBe(false);
+  });
+
+  test("failed writes during burst are cleaned up within timeout", async () => {
+    const uid = "burst-fail-" + Date.now();
+    const failingWriters = Array.from({ length: 5 }, () => mockWriter({ failWrite: true }));
+    const goodWriter = mockWriter();
+
+    for (const w of failingWriters) addConnection(uid, w);
+    addConnection(uid, goodWriter);
+
+    // Send burst of messages
+    for (let i = 0; i < 10; i++) {
+      sendToUser(uid, "burst", { seq: i });
+    }
+
+    // Wait for async cleanup — this is timing-sensitive
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Good writer should have received all messages
+    expect(goodWriter.write).toHaveBeenCalledTimes(10);
+
+    // User should still be connected via the good writer
+    expect(isConnected(uid)).toBe(true);
+
+    // cleanup
+    removeConnection(uid, goodWriter);
+    for (const w of failingWriters) removeConnection(uid, w);
+  });
+});

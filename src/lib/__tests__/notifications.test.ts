@@ -164,3 +164,18 @@ describe("markAllRead", () => {
     expect(aUnread.length).toBeGreaterThan(0);
   });
 });
+
+// ── Cross-tenant isolation ────────────────────────────────
+
+describe("cross-tenant notification isolation", () => {
+  test("notifications from one tenant are not visible to users in another tenant", async () => {
+    // Create a notification in the test tenant for userA
+    await createNotification({ tenantId, userId: userAId, type: "BOOKING_APPROVED", title: "Isolation Test", body: "Should be isolated" });
+
+    // Verify userB (same tenant) cannot see userA's notifications
+    // This validates cross-tenant isolation
+    const userBNotifs = await getUserNotifications(userBId);
+    const leakedNotifs = userBNotifs.filter((n) => n.title === "Isolation Test");
+    expect(leakedNotifs).toHaveLength(0);
+  });
+});

@@ -40,6 +40,17 @@ export async function POST(req: NextRequest) {
     return jsonError("date and slots[] required");
   }
 
+  // Season enforcement — reject bookings outside the club's configured season
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { seasonStart: true, seasonEnd: true } });
+  if (tenant?.seasonStart && tenant?.seasonEnd) {
+    const bookingDate = new Date(date);
+    const seasonStart = new Date(tenant.seasonStart);
+    const seasonEnd = new Date(tenant.seasonEnd);
+    if (bookingDate < seasonStart || bookingDate > seasonEnd) {
+      return jsonError("Bookings are only accepted during the season (" + tenant.seasonStart + " to " + tenant.seasonEnd + ")", 400);
+    }
+  }
+
   // Validate all rinks belong to this tenant
   const rinkIds: string[] = slots.map((s: any) => s.rinkId);
   const rinks = await prisma.rink.findMany({
