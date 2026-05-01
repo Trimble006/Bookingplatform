@@ -1,5 +1,5 @@
 
-# WL Booking — Feature Summary
+# Club Management Platform — Feature Summary
 
 ## Platform overview
  - Platform to provide websites for bowling clubs across the globe.  Platform will obtain fees from clubs for the hosting and offer a wide range of features.  Clubs will have their own admins and ability to opt in/out of some features. At some future point, we will support the idea of 'federations', where members of a club can behave a thou hthey are members of a second club. Clubs will be able to configure their site to their own design via content management service within the platform and tailor fees/events/openng times. Clubs will be bale to advertise events on the website, and optionally make these visible to the public.  Similarly, clubs can opt in/out of disaplying events from other clubs on their website.
@@ -32,9 +32,19 @@
 
 
 ## Live Streaming
-- **WebRTC broadcasting** admin/maintenance capture camera per rink
-- **Viewer page**  peer-to-peer video via signaling API
+- **WebRTC broadcasting** admin/maintenance capture camera per rink (browser getUserMedia + RTMP ingest support)
+- **Viewer page** peer-to-peer video via signaling API (poll-based ICE/SDP exchange)
 - **Feature-gated** — entire streaming stack gated behind `liveStreaming` flag (server + client + nav)
+- **Tiered subscriptions** — BRONZE (1 stream, £20/mo), SILVER (3 streams + 7-day archive, £50/mo), GOLD (unlimited + 30-day archive, £100/mo)
+- **Stream visibility** — MEMBERS_ONLY or PUBLIC per stream; members-only enforces tenant membership or shareable token links
+- **Token-based sharing** — admins generate time-limited, use-limited tokens for private stream access
+- **Viewer metrics** — per-stream viewer join/leave tracking, watch duration, unique viewers, device breakdown via TrackingEvent
+- **Aggregate metrics** — total streams, live count, total watch-hours, current/peak concurrent viewers
+- **Notifications** — STREAM_LIVE notification to all club members on go-live + SSE real-time push
+- **Stream lifecycle** — IDLE → LIVE → ENDED → ARCHIVED with concurrent limit enforcement per tier
+- **Public discovery** — `/[slug]/streams` lists live PUBLIC streams; `/[slug]/watch/[id]` viewer page
+- **Admin dashboard** — `/dashboard/streaming` with create, go-live, stop, metrics, token management
+- **Audit trail** — streaming.created, streaming.started, streaming.stopped, streaming.deleted, streaming.token_created, streaming.token_revoked, streaming.tier_changed
 
 ## Chat Agent
 - **ChatMessage model** stores messages with evaluation metadata

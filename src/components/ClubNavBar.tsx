@@ -19,6 +19,7 @@ export default function ClubNavBar({ clubName, slug, brandColor, isAdmin }: Club
         <Link href="/dashboard/notifications" className="hover:underline">Notifications</Link>
         <Link href="/dashboard/maintenance" className="hover:underline">Maintenance</Link>
         {isAdmin && <Link href="/dashboard/content" className="hover:underline">Content</Link>}
+        {isAdmin && <Link href="/dashboard/streaming" className="hover:underline">Streaming</Link>}
         {isAdmin && <Link href="/dashboard/admin" className="hover:underline">Admin</Link>}
         <button onClick={() => signOut({ callbackUrl: "/" })} className="hover:underline">
           Sign Out

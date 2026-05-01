@@ -34,6 +34,8 @@ async function main() {
       seasonEnd: "2026-09-30",
       openingTime: "09:00",
       closingTime: "18:00",
+      latitude: 54.9783,
+      longitude: -1.6178,
     },
   });
 
@@ -102,7 +104,7 @@ async function main() {
   });
 
   // Feature flags
-  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability"];
+  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather"];
   const disabledFlags = ["liveStreaming"];
   for (const key of enabledFlags) {
     await prisma.featureFlag.upsert({
@@ -172,6 +174,21 @@ async function main() {
       });
     }
   }
+
+  // Streaming subscription (SILVER tier for demo)
+  await prisma.tenantSubscription.upsert({
+    where: { tenantId: tenant.id },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      tier: "SILVER",
+      maxConcurrentStreams: 3,
+      archiveRetentionDays: 7,
+      priceMonthlyPence: 5000,
+      status: "ACTIVE",
+    },
+  });
+  console.log("Streaming subscription seeded (SILVER tier).");
 
   console.log("Seed complete.");
 }
