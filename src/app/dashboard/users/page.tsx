@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import HelpHint from "@/components/help/HelpHint";
 
 type User = {
   id: string;
@@ -75,7 +76,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">User Management</h1>
+      <h1 className="text-2xl font-bold flex items-center gap-2">User Management <HelpHint slug="invite-members" /></h1>
 
       {successMsg && (
         <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>

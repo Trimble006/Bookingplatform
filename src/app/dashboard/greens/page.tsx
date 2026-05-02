@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import HelpHint from "@/components/help/HelpHint";
 
 type Tenant = { id: string; name: string; slug: string };
 type Rink = { id: string; name: string; greenId: string };
@@ -160,7 +161,7 @@ export default function GreensPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Greens &amp; Rinks</h1>
+      <h1 className="text-2xl font-bold flex items-center gap-2">Greens &amp; Rinks <HelpHint slug="configure-greens" /></h1>
 
       {errorMsg && <p className="text-red-600 text-sm rounded bg-red-50 border border-red-200 px-4 py-2">{errorMsg}</p>}
       {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
