@@ -48,5 +48,6 @@ export const config = {
     "/api/audit/:path*",
     "/api/messaging/:path*",
     "/api/platform/:path*",
+    "/api/help/:path*",
   ],
 };

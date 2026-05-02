@@ -42,6 +42,7 @@ model Tenant {
   subscription    TenantSubscription?
   streamSessions  StreamSession[]
   streamTokens    StreamToken[]
+  helpOverrides   HelpArticleOverride[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -66,26 +67,28 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  bookings            Booking[]
-  bookingsCreated     Booking[]            @relation("BookingsCreatedBy")
-  assignedTasks       MaintenanceTask[]    @relation("AssignedTo")
-  submittedTasks      MaintenanceTask[]    @relation("SubmittedBy")
-  taskNotes           TaskNote[]
-  notifications       Notification[]
-  passwordResetTokens PasswordResetToken[]
-  auditEvents         AuditEvent[]
-  createdSections     ContentSection[]     @relation("CreatedBy")
-  updatedSections     ContentSection[]     @relation("UpdatedBy")
-  createdEvents       Event[]              @relation("EventCreatedBy")
-  updatedEvents       Event[]              @relation("EventUpdatedBy")
-  channelMemberships  ChannelMember[]
-  messages            Message[]
-  createdChannels     Channel[]            @relation("ChannelCreatedBy")
-  trackingEvents      TrackingEvent[]
-  impersonations      Impersonation[]
-  createdStreams      StreamSession[]      @relation("StreamCreatedBy")
-  streamViewers       StreamViewer[]       @relation("StreamViewers")
-  createdTokens       StreamToken[]        @relation("TokenCreatedBy")
+  bookings             Booking[]
+  bookingsCreated      Booking[]             @relation("BookingsCreatedBy")
+  assignedTasks        MaintenanceTask[]     @relation("AssignedTo")
+  submittedTasks       MaintenanceTask[]     @relation("SubmittedBy")
+  taskNotes            TaskNote[]
+  notifications        Notification[]
+  passwordResetTokens  PasswordResetToken[]
+  auditEvents          AuditEvent[]
+  createdSections      ContentSection[]      @relation("CreatedBy")
+  updatedSections      ContentSection[]      @relation("UpdatedBy")
+  createdEvents        Event[]               @relation("EventCreatedBy")
+  updatedEvents        Event[]               @relation("EventUpdatedBy")
+  createdHelpOverrides HelpArticleOverride[] @relation("HelpOverrideCreatedBy")
+  updatedHelpOverrides HelpArticleOverride[] @relation("HelpOverrideUpdatedBy")
+  channelMemberships   ChannelMember[]
+  messages             Message[]
+  createdChannels      Channel[]             @relation("ChannelCreatedBy")
+  trackingEvents       TrackingEvent[]
+  impersonations       Impersonation[]
+  createdStreams       StreamSession[]       @relation("StreamCreatedBy")
+  streamViewers        StreamViewer[]        @relation("StreamViewers")
+  createdTokens        StreamToken[]         @relation("TokenCreatedBy")
 }
 
 model PasswordResetToken {
@@ -668,4 +671,31 @@ model TrackingEvent {
   @@index([eventType, timestamp])
   @@index([path, timestamp])
   @@index([sessionFingerprint])
+}
+
+// ─── Help Centre ─────────────────────────────────────────────
+
+/// Optional per-tenant override for a shipped help article.
+/// Composite uniqueness on (tenantId, slug, locale): each tenant may override
+/// each article in each locale at most once. Setting `enabled=false` hides the
+/// shipped article for that tenant + locale; otherwise the override's `title`
+/// and `body` replace the shipped values.
+model HelpArticleOverride {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  slug        String
+  locale      String
+  enabled     Boolean  @default(true)
+  title       String?
+  body        String? // markdown
+  createdById String
+  createdBy   User     @relation("HelpOverrideCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?    @relation("HelpOverrideUpdatedBy", fields: [updatedById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, slug, locale])
+  @@index([tenantId, slug])
 }
