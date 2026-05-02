@@ -134,3 +134,14 @@
 - **14 payment stub tests** — success, decline, insufficient funds, expired, network error, auto-reset
 - **Concurrent e2e agents** — 4 Playwright agents (user, admin, maintenance, platform) running in parallel, reacting to each other through the app's UI
 - **Exploratory bot** — 6 personas (Doris, Kevin, Mallory, Sandra, Craig, Ghost) with prioritised defect report output
+
+## Help Centre
+- **In-dashboard help** — `/dashboard/help` browse-by-category index, full-text client-side search, article view with breadcrumb
+- **Audience-aware** — articles declare `audience: tenant_admin | platform_admin | both`; tenant admins never see platform-only articles
+- **Role-gated callouts** — markdown supports `:::platform-admin … :::` and `:::tenant-admin … :::` container directives, rendered as styled callouts only to the matching real role
+- **Hybrid content** — shipped markdown defaults under `content/help/{locale}/{category}/{slug}.md` plus optional per-tenant `HelpArticleOverride` rows that replace title/body or hide the article entirely
+- **Locale fallback** — requested locale → `en`; UI flags articles served via fallback with a "translation pending" badge
+- **Contextual `HelpHint`** — small inline `?` icon component that deep-links to a help article from any dashboard heading; placed on bookings, greens, users, content and notifications pages
+- **Override editor** — `/dashboard/help/manage` lets tenant admins customise or hide individual articles, gated behind the `helpOverrides` feature flag
+- **Audit + tracking** — override mutations log `help.override.upserted` / `help.override.deleted`; article views fire `FEATURE_USE help.article.view`, hint clicks fire `INTERACTION help.hint.click`, search fires `INTERACTION help.search`
+- **API surface** — `GET /api/help`, `GET /api/help/[slug]`, `GET /api/help/shipped`, `GET|POST|DELETE /api/help/overrides`; all gated to TENANT_ADMIN effective role or PLATFORM_ADMIN
