@@ -52,16 +52,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const { id } = await ctx.params;
   const channel = await getChannelById(id);
-  if (!channel || channel.tenantId !== tenantId) {
+  if (!channel) {
     return jsonError("Channel not found", 404);
   }
 
   const membership = await isMember(id, session.user.id);
-  if (!membership) {
+  if (!membership && !hasRole(session.user.role, "TENANT_ADMIN")) {
     return jsonError("Not a member of this channel", 403);
   }
 
-  if (membership.mutedUntil && membership.mutedUntil > new Date()) {
+  if (membership?.mutedUntil && membership.mutedUntil > new Date()) {
     return jsonError(`You are muted until ${membership.mutedUntil.toISOString()}`, 403);
   }
 

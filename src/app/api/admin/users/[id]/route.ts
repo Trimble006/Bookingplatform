@@ -12,23 +12,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (roleErr) return roleErr;
 
   const { id } = await params;
+
+  // Extended detail mode includes full profile for exports
+  const includeParam = _req.nextUrl.searchParams.get("include");
+  const selectFields = includeParam === "full"
+    ? { id: true, email: true, name: true, role: true, suspended: true, tenantId: true, createdAt: true, passwordHash: true, bookings: { select: { id: true, date: true, status: true }, orderBy: { date: "desc" as const }, take: 10 }, _count: { select: { bookings: true, submittedTasks: true } } }
+    : { id: true, email: true, name: true, role: true, suspended: true, tenantId: true, createdAt: true, bookings: { select: { id: true, date: true, status: true }, orderBy: { date: "desc" as const }, take: 10 }, _count: { select: { bookings: true, submittedTasks: true } } };
+
   const user = await prisma.user.findUnique({
     where: { id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      suspended: true,
-      tenantId: true,
-      createdAt: true,
-      bookings: {
-        select: { id: true, date: true, status: true },
-        orderBy: { date: "desc" },
-        take: 10,
-      },
-      _count: { select: { bookings: true, submittedTasks: true } },
-    },
+    select: selectFields,
   });
 
   if (!user) return jsonError("User not found", 404);

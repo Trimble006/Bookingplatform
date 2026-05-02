@@ -53,6 +53,17 @@ export async function POST(req: NextRequest) {
     return jsonError("date and slots[] required");
   }
 
+  // Season enforcement — reject bookings outside the club's configured season
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { seasonStart: true, seasonEnd: true } });
+  if (tenant?.seasonStart && tenant?.seasonEnd) {
+    const bookingDate = new Date(date);
+    const seasonStart = new Date(tenant.seasonStart);
+    const seasonEnd = new Date(tenant.seasonEnd);
+    if (bookingDate < seasonStart || bookingDate > seasonEnd) {
+      return jsonError("Bookings are only accepted during the season (" + tenant.seasonStart + " to " + tenant.seasonEnd + ")", 400);
+    }
+  }
+
   // ── Book-on-behalf logic ────────────────────────────────────
   let bookeeUserId = session.user.id;
   let bookedByUserId = session.user.id;

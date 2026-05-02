@@ -49,6 +49,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!["REQUESTED", "APPROVED"].includes(booking.status)) {
       return jsonError("You can only cancel bookings that are requested or approved", 400);
     }
+    // Prevent cancellation within 24 hours of the booking date
+    const bookingDate = new Date(booking.date);
+    const now = new Date();
+    const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (hoursUntilBooking < 24) {
+      return jsonError("Cannot cancel bookings within 24 hours of the scheduled date. Contact an admin for assistance.", 400);
+    }
   }
 
   const allowed = VALID_TRANSITIONS[booking.status];
