@@ -103,6 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {eventsEnabled && <Link href="/dashboard/events" className="hover:bg-green-700 rounded px-3 py-2">Events</Link>}
               <Link href="/dashboard/maintenance" className="hover:bg-green-700 rounded px-3 py-2">Maintenance</Link>
               {isMaintenanceEffective && <Link href="/dashboard/agents" className="hover:bg-green-700 rounded px-3 py-2">🤖 Agents</Link>}
+              {isMaintenanceEffective && <Link href="/dashboard/agents/inbox" className="hover:bg-green-700 rounded px-3 py-2">📥 Agent Inbox</Link>}
               <Link href="/dashboard/messaging" className="hover:bg-green-700 rounded px-3 py-2">Messaging</Link>
               <Link href="/dashboard/notifications" className="hover:bg-green-700 rounded px-3 py-2 flex justify-between">
                 Notifications
