@@ -13,7 +13,7 @@ export async function getMembershipsForUser(userId: string): Promise<MembershipW
   return prisma.membership.findMany({
     where: { userId },
     include: {
-      tenant: { select: { id: true, name: true, slug: true, brandColor: true, status: true, active: true } },
+      tenant: { select: { id: true, name: true, slug: true, brandColor: true, status: true, active: true, locality: true } },
     },
     orderBy: { createdAt: "asc" },
   });

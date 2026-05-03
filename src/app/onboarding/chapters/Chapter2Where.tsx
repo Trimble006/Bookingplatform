@@ -7,6 +7,7 @@ import type { ChapterProps } from "./shared";
 export default function Chapter2Where({ tenantId, onAdvance }: ChapterProps) {
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
+  const [locality, setLocality] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -18,6 +19,7 @@ export default function Chapter2Where({ tenantId, onAdvance }: ChapterProps) {
       .then((t) => {
         setLatitude(t.latitude != null ? String(t.latitude) : "");
         setLongitude(t.longitude != null ? String(t.longitude) : "");
+        if (t.locality) setLocality(t.locality);
         setLoaded(true);
       });
   }, [tenantId]);
@@ -46,7 +48,7 @@ export default function Chapter2Where({ tenantId, onAdvance }: ChapterProps) {
     await fetch(`/api/admin/tenants/${tenantId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ latitude: lat, longitude: lng }),
+      body: JSON.stringify({ latitude: lat, longitude: lng, locality: locality.trim() || null }),
     });
     setBusy(false);
     await onAdvance();
@@ -63,6 +65,17 @@ export default function Chapter2Where({ tenantId, onAdvance }: ChapterProps) {
       canSkip
       onSkip={onAdvance}
     >
+      <Field label="Town / city" hint="Shown alongside your club name so members can tell clubs apart.">
+        <input
+          className={inputClass}
+          value={locality}
+          onChange={(e) => setLocality(e.target.value)}
+          placeholder="e.g. Edinburgh"
+          maxLength={60}
+          required
+        />
+      </Field>
+
       <button
         type="button"
         onClick={useMyLocation}

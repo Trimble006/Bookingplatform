@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const invite = await prisma.userInvitation.findUnique({
     where: { token },
     include: {
-      tenant: { select: { id: true, name: true, slug: true } },
+      tenant: { select: { id: true, name: true, slug: true, locality: true } },
       invitedBy: { select: { name: true, email: true } },
     },
   });
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const invite = await prisma.userInvitation.findUnique({
     where: { token },
-    include: { tenant: { select: { id: true, name: true, slug: true } } },
+    include: { tenant: { select: { id: true, name: true, slug: true, locality: true } } },
   });
   if (!invite) return jsonError("Invitation not found", 404);
   if (invite.status === "QUEUED") {

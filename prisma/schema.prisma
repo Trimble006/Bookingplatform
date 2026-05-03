@@ -19,47 +19,84 @@ enum TenantStatus {
   CHURNED // permanently inactive; soft-deleted
 }
 
-model Tenant {
-  id          String       @id @default(cuid())
-  name        String
-  slug        String       @unique
-  status      TenantStatus @default(ACTIVE)
-  active      Boolean      @default(true) // DEPRECATED: mirror of (status == ACTIVE); kept for back-compat
-  brandColor  String       @default("#16a34a")
-  logoUrl     String?
-  locale      String       @default("en")
-  seasonStart String? // DEPRECATED: migrated to Green.seasonStartMMDD. Remove after one release.
-  seasonEnd   String? // DEPRECATED: migrated to Green.seasonEndMMDD. Remove after one release.
-  openingTime String       @default("08:00")
-  closingTime String       @default("20:00")
-  latitude    Float?
-  longitude   Float?
-  goLiveAt    DateTime?    // set when the admin presses 'Go live' at the end of the onboarding wizard. NULL while ONBOARDING.
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+// Tenant country / jurisdiction. PLATFORM_ADMIN-only to set; tenants cannot
+// self-elect into a regulatory regime. Drives gating for jurisdiction-coupled
+// features (charity accounts, future Gift Aid, VAT/MTD, etc.). Add new
+// values only as features that need them land — never speculatively.
+// See decisions log 2026-05-03 (Tenant.country jurisdiction hook).
+enum Country {
+  GB // Great Britain (England, Scotland, Wales)
+  NI // Northern Ireland
+  OTHER // anywhere else (default for existing rows; jurisdiction-coupled features unavailable)
+}
 
-  users           User[]
-  memberships     Membership[]
-  invitations     UserInvitation[]
-  application     TenantApplication?
-  greens          Green[]
-  bookings        Booking[]
-  featureFlags    FeatureFlag[]
-  tenantPayments  TenantPayment[]
-  tasks           MaintenanceTask[]
-  notifications   Notification[]
-  auditEvents     AuditEvent[]
-  contentSections ContentSection[]
-  events          Event[]
-  channels        Channel[]
-  messages        Message[]
-  trackingEvents  TrackingEvent[]
-  impersonations  Impersonation[]
-  subscription    TenantSubscription?
-  streamSessions  StreamSession[]
-  streamTokens    StreamToken[]
-  helpOverrides   HelpArticleOverride[]
-  outboundMessages OutboundMessage[]
+// Organisation type captured during onboarding (KYC). Used for advice in
+// the wizard, gating of charity-style features (in conjunction with country),
+// and future per-form analytics. UK-focused taxonomy in v1; extend with
+// region-specific values as we open up other markets. See decisions log
+// 2026-05-04 (org type taxonomy choice).
+enum OrganisationType {
+  REGISTERED_CHARITY // CC E&W or CCNI registered charity
+  CIO // Charitable Incorporated Organisation (England & Wales)
+  SCIO // Scottish Charitable Incorporated Organisation
+  CASC // Community Amateur Sports Club
+  COMMUNITY_INTEREST_COMPANY // CIC
+  LIMITED_COMPANY // Companies House registered, non-charitable
+  UNINCORPORATED_ASSOCIATION // most common starting form; trustees personally liable
+  PRIVATE_MEMBERS_CLUB // non-charitable members' club
+  OTHER
+  NOT_CONSTITUTED // hasn't formed any legal entity yet
+}
+
+model Tenant {
+  id                    String            @id @default(cuid())
+  name                  String
+  slug                  String            @unique
+  status                TenantStatus      @default(ACTIVE)
+  active                Boolean           @default(true) // DEPRECATED: mirror of (status == ACTIVE); kept for back-compat
+  country               Country           @default(OTHER) // jurisdiction; settable in onboarding (self-declared) or by PLATFORM_ADMIN. Gates charity & future jurisdiction-coupled features. See decisions log 2026-05-04 (country self-election reversal).
+  organisationType      OrganisationType? // KYC: set in onboarding chapter 2. NULL for tenants onboarded before this field existed.
+  // Default financial year end (month/day). Used as default for CharitySettings
+  // year-end and reusable for any future reporting period (membership year,
+  // billing alignment, analytics). NULL until set in onboarding.
+  financialYearEndMonth Int? // 1..12
+  financialYearEndDay   Int? // 1..31
+  brandColor            String            @default("#16a34a")
+  logoUrl               String?
+  locale                String            @default("en")
+  seasonStart           String? // DEPRECATED: migrated to Green.seasonStartMMDD. Remove after one release.
+  seasonEnd             String? // DEPRECATED: migrated to Green.seasonEndMMDD. Remove after one release.
+  openingTime           String            @default("08:00")
+  closingTime           String            @default("20:00")
+  latitude              Float?
+  longitude             Float?
+  locality              String? // Human-readable town/city. Disambiguates clubs sharing a display name. Set in onboarding (Chapter 2b) or settings.
+  goLiveAt              DateTime? // set when the admin presses 'Go live' at the end of the onboarding wizard. NULL while ONBOARDING.
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  users              User[]
+  memberships        Membership[]
+  invitations        UserInvitation[]
+  application        TenantApplication?
+  greens             Green[]
+  bookings           Booking[]
+  featureFlags       FeatureFlag[]
+  tenantPayments     TenantPayment[]
+  tasks              MaintenanceTask[]
+  notifications      Notification[]
+  auditEvents        AuditEvent[]
+  contentSections    ContentSection[]
+  events             Event[]
+  channels           Channel[]
+  messages           Message[]
+  trackingEvents     TrackingEvent[]
+  impersonations     Impersonation[]
+  subscription       TenantSubscription?
+  streamSessions     StreamSession[]
+  streamTokens       StreamToken[]
+  helpOverrides      HelpArticleOverride[]
+  outboundMessages   OutboundMessage[]
   onboardingProgress OnboardingProgress?
 
   // Agent system
@@ -73,6 +110,14 @@ model Tenant {
   agentBudget        TenantAgentBudget?
   maintenanceHistory MaintenanceHistory[]
   sentimentSnapshots SentimentSnapshot[]
+
+  // Charity Accounts (UK/NI; gated by country + `charity` feature flag)
+  charitySettings         CharitySettings?
+  charityFinancialYears   CharityFinancialYear[]
+  charityCategories       CharityCategory[]
+  charityFunds            CharityFund[]
+  charityTransactions     CharityTransaction[]
+  charityAssetLiabilities CharityAssetLiability[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -94,20 +139,20 @@ model User {
   id              String   @id @default(cuid())
   email           String   @unique
   name            String?
-  passwordHash    String   // nullable-in-spirit: invited users get a placeholder hash that cannot match any password
+  passwordHash    String // nullable-in-spirit: invited users get a placeholder hash that cannot match any password
   isPlatformAdmin Boolean  @default(false)
   role            Role     @default(USER) // DEPRECATED: mirror of primary membership role; kept for back-compat
   suspended       Boolean  @default(false)
-  profession      String?  // travels with the person, not the club (e.g. "Professional Greenkeeper")
-  qualifications  String?  // free-text or JSON; expanded later
-  specialisms     String?  // free-text; feeds future PROFESSIONAL agent-knowledge scope
-  tenantId        String?  // DEPRECATED: mirror of primary membership tenantId
+  profession      String? // travels with the person, not the club (e.g. "Professional Greenkeeper")
+  qualifications  String? // free-text or JSON; expanded later
+  specialisms     String? // free-text; feeds future PROFESSIONAL agent-knowledge scope
+  tenantId        String? // DEPRECATED: mirror of primary membership tenantId
   tenant          Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  memberships          Membership[]
-  sentInvitations      UserInvitation[] @relation("InvitationsSent")
+  memberships     Membership[]
+  sentInvitations UserInvitation[] @relation("InvitationsSent")
 
   bookings             Booking[]
   bookingsCreated      Booking[]             @relation("BookingsCreatedBy")
@@ -133,9 +178,9 @@ model User {
   createdTokens        StreamToken[]         @relation("TokenCreatedBy")
 
   // Agent system
-  agentDefinition      AgentDefinition?
-  agentFeedback        AgentFeedback[]
-  agentKnowledgeAuthor AgentKnowledge[]      @relation("KnowledgeCreatedBy")
+  agentDefinition           AgentDefinition?
+  agentFeedback             AgentFeedback[]
+  agentKnowledgeAuthor      AgentKnowledge[]     @relation("KnowledgeCreatedBy")
   maintenanceHistoryEntries MaintenanceHistory[] @relation("HistoryPerformedBy")
 }
 
@@ -163,24 +208,24 @@ model FeatureFlag {
 // ─── Greens & Rinks ─────────────────────────────────────────
 
 model Green {
-  id              String  @id @default(cuid())
-  name            String
-  tenantId        String
-  allWeather      Boolean @default(false)
-  seasonStartMMDD String? // recurring month-day e.g. "04-01"
-  seasonEndMMDD   String? // recurring month-day e.g. "09-30"
+  id                 String               @id @default(cuid())
+  name               String
+  tenantId           String
+  allWeather         Boolean              @default(false)
+  seasonStartMMDD    String? // recurring month-day e.g. "04-01"
+  seasonEndMMDD      String? // recurring month-day e.g. "09-30"
   maintenanceHistory MaintenanceHistory[] @relation("GreenHistory")
-  tenant          Tenant  @relation(fields: [tenantId], references: [id])
-  rinks           Rink[]
-  seasons         GreenSeason[]
+  tenant             Tenant               @relation(fields: [tenantId], references: [id])
+  rinks              Rink[]
+  seasons            GreenSeason[]
 }
 
 model GreenSeason {
   id        String   @id @default(cuid())
   greenId   String
   year      Int
-  startDate String   // full ISO date e.g. "2027-03-01"
-  endDate   String   // full ISO date e.g. "2027-09-30"
+  startDate String // full ISO date e.g. "2027-03-01"
+  endDate   String // full ISO date e.g. "2027-09-30"
   note      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -431,8 +476,8 @@ enum TaskStatus {
 // See decisions log 2026-05-03 (member-message-derived tasks).
 enum TaskVisibility {
   MAINTENANCE_ONLY // default for agent-derived; visible to MAINTENANCE+ only
-  MEMBERS          // visible to all club members (existing default behaviour)
-  PUBLIC           // visible on the public site (rare; e.g. "course closed")
+  MEMBERS // visible to all club members (existing default behaviour)
+  PUBLIC // visible on the public site (rare; e.g. "course closed")
 }
 
 model MaintenanceTask {
@@ -809,18 +854,18 @@ enum MaintenanceActivityType {
 }
 
 model MaintenanceHistory {
-  id              String                  @id @default(cuid())
-  tenantId        String
-  tenant          Tenant                  @relation(fields: [tenantId], references: [id])
-  greenId         String?
-  green           Green?                  @relation("GreenHistory", fields: [greenId], references: [id])
-  activityType    MaintenanceActivityType
-  description     String?
-  performedAt     DateTime
-  performedById   String?
-  performedBy     User?                   @relation("HistoryPerformedBy", fields: [performedById], references: [id])
-  notes           String?
-  createdAt       DateTime                @default(now())
+  id            String                  @id @default(cuid())
+  tenantId      String
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id])
+  greenId       String?
+  green         Green?                  @relation("GreenHistory", fields: [greenId], references: [id])
+  activityType  MaintenanceActivityType
+  description   String?
+  performedAt   DateTime
+  performedById String?
+  performedBy   User?                   @relation("HistoryPerformedBy", fields: [performedById], references: [id])
+  notes         String?
+  createdAt     DateTime                @default(now())
 
   @@index([tenantId, performedAt])
   @@index([greenId, performedAt])
@@ -858,18 +903,18 @@ enum AgentAction {
 // strategy plan. Determines the entry point (runForTenant / runForPlatform /
 // runForUser / runForFederation) and the audience of emitted proposals.
 enum AgentScope {
-  TENANT     // per-tenant; reads + writes one tenant
-  PLATFORM   // cross-tenant; platform-admin reviews
-  USER       // cross-tenant per a single user (e.g. greenkeeper for many clubs)
+  TENANT // per-tenant; reads + writes one tenant
+  PLATFORM // cross-tenant; platform-admin reviews
+  USER // cross-tenant per a single user (e.g. greenkeeper for many clubs)
   FEDERATION // reserved for Phase 10; no FK until federation models exist
 }
 
 // Whether the agent's logic depends on a generative LLM call.
 // Used by cost dashboards to highlight cosmetic LLM spend.
 enum AgentLlmUsage {
-  ALWAYS       // generative model is core to the agent (drafting, vision, open-class)
+  ALWAYS // generative model is core to the agent (drafting, vision, open-class)
   SUMMARY_ONLY // deterministic logic with optional LLM prose summary
-  NEVER        // pure rules / arithmetic; no model calls
+  NEVER // pure rules / arithmetic; no model calls
 }
 
 // Audience that reviews a proposal. Different from the agent's scope:
@@ -941,62 +986,62 @@ enum SentimentTrend {
 }
 
 model AgentDefinition {
-  id            String   @id @default(cuid())
-  slug          String   @unique
-  name          String
-  description   String?
-  systemUserId  String   @unique
-  systemUser    User     @relation(fields: [systemUserId], references: [id])
-  enabled       Boolean  @default(true)
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  name           String
+  description    String?
+  systemUserId   String        @unique
+  systemUser     User          @relation(fields: [systemUserId], references: [id])
+  enabled        Boolean       @default(true)
   // Strategic fields — see agent strategy plan §B/§H/§L.
   // Defaulted to TENANT/ALWAYS for back-compat with existing detector/triager;
   // new agents must set these explicitly.
-  scope         AgentScope    @default(TENANT)
-  usesLLM       AgentLlmUsage @default(ALWAYS)
+  scope          AgentScope    @default(TENANT)
+  usesLLM        AgentLlmUsage @default(ALWAYS)
   // Optional per-agent model preference (overrides env tier mapping).
   // Null = use the env-configured model for the requested tier.
   preferredModel String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  runs       AgentRun[]
-  decisions  AgentDecision[]
-  memories   AgentMemory[]
-  configs    AgentConfig[]
-  knowledge  AgentKnowledge[]
-  metrics    AgentConfidenceMetrics[]
-  proposals  AgentProposal[]
+  runs      AgentRun[]
+  decisions AgentDecision[]
+  memories  AgentMemory[]
+  configs   AgentConfig[]
+  knowledge AgentKnowledge[]
+  metrics   AgentConfidenceMetrics[]
+  proposals AgentProposal[]
 }
 
 model AgentRun {
-  id          String         @id @default(cuid())
-  agentId     String
-  agent       AgentDefinition @relation(fields: [agentId], references: [id])
+  id           String          @id @default(cuid())
+  agentId      String
+  agent        AgentDefinition @relation(fields: [agentId], references: [id])
   // Nullable from v2: PLATFORM/USER-scope runs may have no single tenant.
-  tenantId    String?
-  tenant      Tenant?        @relation(fields: [tenantId], references: [id])
+  tenantId     String?
+  tenant       Tenant?         @relation(fields: [tenantId], references: [id])
   // Run-time copy of the agent's scope; lets us reason about runs without joining.
-  scope       AgentScope     @default(TENANT)
+  scope        AgentScope      @default(TENANT)
   // For USER-scope runs.
-  userId      String?
+  userId       String?
   // For FEDERATION-scope runs (no FK until federation table exists).
   federationId String?
   // How this run was triggered.
-  mode        AgentRunMode   @default(SCHEDULED)
-  status      AgentRunStatus @default(RUNNING)
-  startedAt   DateTime       @default(now())
-  completedAt DateTime?
-  summary     String? // JSON blob: { messagesProcessed, tasksCreated, ... }
-  error       String?
+  mode         AgentRunMode    @default(SCHEDULED)
+  status       AgentRunStatus  @default(RUNNING)
+  startedAt    DateTime        @default(now())
+  completedAt  DateTime?
+  summary      String? // JSON blob: { messagesProcessed, tasksCreated, ... }
+  error        String?
 
   // Cost + provider observability (populated by provider wrapper).
   // costsCents is platform-attributable spend in pennies; 0 for local providers.
-  costsCents  Int            @default(0)
-  tokensIn    Int            @default(0)
-  tokensOut  Int             @default(0)
-  provider    String? // e.g. "ollama", "gemini", "anthropic", "stub"
-  model       String? // e.g. "qwen2.5:3b", "gemini-flash-1.5", "stub"
-  traceJson   String? // optional structured trace (model calls, latencies, cache hits)
+  costsCents Int     @default(0)
+  tokensIn   Int     @default(0)
+  tokensOut  Int     @default(0)
+  provider   String? // e.g. "ollama", "gemini", "anthropic", "stub"
+  model      String? // e.g. "qwen2.5:3b", "gemini-flash-1.5", "stub"
+  traceJson  String? // optional structured trace (model calls, latencies, cache hits)
 
   decisions AgentDecision[]
   proposals AgentProposal[]
@@ -1007,23 +1052,23 @@ model AgentRun {
 }
 
 model AgentDecision {
-  id               String       @id @default(cuid())
-  agentId          String
-  agent            AgentDefinition @relation(fields: [agentId], references: [id])
-  runId            String
-  run              AgentRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  id         String          @id @default(cuid())
+  agentId    String
+  agent      AgentDefinition @relation(fields: [agentId], references: [id])
+  runId      String
+  run        AgentRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
   // Nullable from v2 to match AgentRun.tenantId becoming nullable.
-  tenantId         String?
-  tenant           Tenant?      @relation(fields: [tenantId], references: [id])
+  tenantId   String?
+  tenant     Tenant?         @relation(fields: [tenantId], references: [id])
   // DEPRECATED in v2 — kept populated for back-compat by detector/triager;
   // new agents leave this NO_ACTION and reference the proposal instead.
-  action           AgentAction
-  confidence       Float
-  reasoning        String
+  action     AgentAction
+  confidence Float
+  reasoning  String
 
   // v2: link to the proposal this decision produced (if any).
-  proposalId       String?
-  proposal         AgentProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  proposalId String?
+  proposal   AgentProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
 
   // DEPRECATED structured fields — payload moves into AgentProposal.payload.
   // Kept for back-compat; drop one release after detector/triager migration.
@@ -1088,7 +1133,7 @@ model AgentConfig {
 }
 
 model AgentKnowledge {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   agentId     String?
   agent       AgentDefinition? @relation(fields: [agentId], references: [id])
   scope       KnowledgeScope
@@ -1137,20 +1182,20 @@ model TaskAgentInteraction {
 // USER-scope greenkeeper proposal reviewed by the user but acting on a
 // specific club's data.
 model AgentProposal {
-  id          String                @id @default(cuid())
-  agentId     String
-  agent       AgentDefinition       @relation(fields: [agentId], references: [id])
-  runId       String
-  run         AgentRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+  id      String          @id @default(cuid())
+  agentId String
+  agent   AgentDefinition @relation(fields: [agentId], references: [id])
+  runId   String
+  run     AgentRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   // Free-text discriminator. Convention: <DOMAIN>_<NOUN>_<VERB>.
   // Examples: MAINTENANCE_TASK_CREATE, MAINTENANCE_TASK_PRIORITY,
   // CONTENT_DRAFT, AD_CREATIVE_DRAFT, CANCELLATION_RISK_REPORT,
   // GREENKEEPER_DAILY_PLAN, INVOICE_LINE_DRAFT.
-  kind        String
-  payload     String // JSON blob — domain payload the committer applies
-  confidence  Float
-  reasoning   String
+  kind       String
+  payload    String // JSON blob — domain payload the committer applies
+  confidence Float
+  reasoning  String
 
   // Audience — exactly one of (tenantId, userId, federationId) must be set
   // matching audienceScope. Enforced in code, not schema.
@@ -1165,8 +1210,8 @@ model AgentProposal {
   // Null for proposals that don't mutate tenant data (e.g. info-only reports).
   targetTenantId String?
 
-  status      AgentProposalStatus   @default(PENDING)
-  expiresAt   DateTime?
+  status    AgentProposalStatus @default(PENDING)
+  expiresAt DateTime?
 
   // Commit metadata — populated when status moves PENDING → APPROVED.
   committedAt          DateTime?
@@ -1178,14 +1223,14 @@ model AgentProposal {
   committedPayloadDiff String?
 
   // Reject metadata — populated when status moves PENDING → REJECTED.
-  rejectedAt    DateTime?
-  rejectedById  String?
-  rejectReason  String? // free-text; see strategy plan §L.4
+  rejectedAt   DateTime?
+  rejectedById String?
+  rejectReason String? // free-text; see strategy plan §L.4
 
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  decisions   AgentDecision[]
+  decisions AgentDecision[]
 
   @@index([audienceScope, status, createdAt])
   @@index([tenantId, status, createdAt])
@@ -1201,31 +1246,31 @@ model AgentProposal {
 // monthlyCapCents, agent runs return RATE_LIMITED with reason=BUDGET.
 // Reset by a scheduled job at month start. See strategy plan §E.6.
 model TenantAgentBudget {
-  id                String   @id @default(cuid())
-  tenantId          String   @unique
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
-  monthlyCapCents   Int      @default(0) // 0 = uncapped
-  currentSpendCents Int      @default(0)
+  id                String    @id @default(cuid())
+  tenantId          String    @unique
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  monthlyCapCents   Int       @default(0) // 0 = uncapped
+  currentSpendCents Int       @default(0)
   cappedUntil       DateTime?
-  resetAt           DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  resetAt           DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model AgentConfidenceMetrics {
-  id                   String          @id @default(cuid())
-  agentId              String
-  agent                AgentDefinition @relation(fields: [agentId], references: [id])
-  tenantId             String
-  tenant               Tenant          @relation(fields: [tenantId], references: [id])
-  feedbackRate         Float           @default(0)
-  positiveFeedbackRate Float           @default(0)
-  historyCompleteness  Float           @default(0)
-  taskResolutionRate   Float           @default(0)
+  id                    String          @id @default(cuid())
+  agentId               String
+  agent                 AgentDefinition @relation(fields: [agentId], references: [id])
+  tenantId              String
+  tenant                Tenant          @relation(fields: [tenantId], references: [id])
+  feedbackRate          Float           @default(0)
+  positiveFeedbackRate  Float           @default(0)
+  historyCompleteness   Float           @default(0)
+  taskResolutionRate    Float           @default(0)
   averageResolutionDays Float?
-  dataQualityScore     Float           @default(0)
-  lastCalculatedAt     DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  dataQualityScore      Float           @default(0)
+  lastCalculatedAt      DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 
   @@unique([agentId, tenantId])
 }
@@ -1248,17 +1293,17 @@ model SentimentSnapshot {
 // ─── Membership ──────────────────────────────────────────────
 
 enum MembershipKind {
-  MEMBER     // ordinary club member who plays
-  STAFF      // employed by the club (admin, secretary, salaried staff)
+  MEMBER // ordinary club member who plays
+  STAFF // employed by the club (admin, secretary, salaried staff)
   CONTRACTOR // external; services multiple clubs (e.g. professional greenkeeper)
-  VOLUNTEER  // unpaid helper, restricted permissions
+  VOLUNTEER // unpaid helper, restricted permissions
 }
 
 enum MembershipStatus {
-  PENDING   // invited, not yet accepted
+  PENDING // invited, not yet accepted
   ACTIVE
   SUSPENDED
-  ENDED     // membership has formally ended; row retained for history
+  ENDED // membership has formally ended; row retained for history
 }
 
 model Membership {
@@ -1317,8 +1362,8 @@ model TenantApplication {
 // ─── User Invitation ─────────────────────────────────────────
 
 enum InvitationStatus {
-  QUEUED   // issued during onboarding; not yet released. Outbound stub deferred until tenant goes live.
-  PENDING  // released and awaiting acceptance
+  QUEUED // issued during onboarding; not yet released. Outbound stub deferred until tenant goes live.
+  PENDING // released and awaiting acceptance
   ACCEPTED
   EXPIRED
   REVOKED
@@ -1353,10 +1398,10 @@ enum OutboundChannel {
 }
 
 enum OutboundStatus {
-  STUBBED       // captured locally; not delivered
-  SENT_MANUAL   // platform admin marked as sent out-of-band
-  SENT          // (future) delivered by real provider
-  FAILED        // (future) provider rejected
+  STUBBED // captured locally; not delivered
+  SENT_MANUAL // platform admin marked as sent out-of-band
+  SENT // (future) delivered by real provider
+  FAILED // (future) provider rejected
 }
 
 enum SocialPlatform {
@@ -1366,24 +1411,24 @@ enum SocialPlatform {
 }
 
 model OutboundMessage {
-  id                 String           @id @default(cuid())
-  channel            OutboundChannel
-  status             OutboundStatus   @default(STUBBED)
-  toAddress          String           // email address, phone number, or platform handle
-  subject            String?          // email only
-  bodyText           String
-  bodyHtml           String?          // email only
-  template           String?          // template name used
-  templateData       String?          // JSON of interpolated variables
-  socialPlatform     SocialPlatform?  // SOCIAL_POST only
-  tenantId           String?
-  tenant             Tenant?          @relation(fields: [tenantId], references: [id])
+  id              String          @id @default(cuid())
+  channel         OutboundChannel
+  status          OutboundStatus  @default(STUBBED)
+  toAddress       String // email address, phone number, or platform handle
+  subject         String? // email only
+  bodyText        String
+  bodyHtml        String? // email only
+  template        String? // template name used
+  templateData    String? // JSON of interpolated variables
+  socialPlatform  SocialPlatform? // SOCIAL_POST only
+  tenantId        String?
+  tenant          Tenant?         @relation(fields: [tenantId], references: [id])
   // Optional link to the entity that triggered this message (e.g. a TenantApplication).
-  relatedEntity      String?
-  relatedEntityId    String?
-  createdAt          DateTime         @default(now())
-  sentAt             DateTime?        // when manually marked or actually delivered
-  error              String?
+  relatedEntity   String?
+  relatedEntityId String?
+  createdAt       DateTime        @default(now())
+  sentAt          DateTime? // when manually marked or actually delivered
+  error           String?
 
   @@index([channel, createdAt])
   @@index([tenantId, createdAt])
@@ -1396,14 +1441,213 @@ model OutboundMessage {
 // writes through to its real domain model (no draft state) — this row only
 // records which chapters have been completed and where to resume.
 model OnboardingProgress {
-  id                       String   @id @default(cuid())
-  tenantId                 String   @unique
-  tenant                   Tenant   @relation(fields: [tenantId], references: [id])
-  currentChapter           Int      @default(1) // 1..N
-  completedChapters        String   @default("[]") // JSON array of chapter numbers (Int[] avoided to keep DB-portable)
-  subscriptionAttestedAt   DateTime? // admin self-attested they'll pay (stub for real billing)
-  completedAt              DateTime? // set when the admin presses 'Go live'
-  lastAnswerAt             DateTime?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  tenantId               String    @unique
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id])
+  currentChapter         Int       @default(1) // 1..N
+  completedChapters      String    @default("[]") // JSON array of chapter numbers (Int[] avoided to keep DB-portable)
+  // Bumped each time we change chapter numbering so a one-shot, idempotent
+  // shift can run on the next progress GET. Increments only when the
+  // chapter-set itself changes shape, not for every code change. See
+  // decisions log 2026-05-04 (chapter renumber strategy).
+  schemaVersion          Int       @default(2) // v1 = 9 chapters; v2 = 10 chapters (added "organisation" at slot 2)
+  subscriptionAttestedAt DateTime? // admin self-attested they'll pay (stub for real billing)
+  completedAt            DateTime? // set when the admin presses 'Go live'
+  lastAnswerAt           DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+// ─── Charity Accounts (UK/NI) ────────────────────────────────
+//
+// Opt-in module for clubs registered as charities under one of the UK/NI
+// regulators. Gated at runtime by Tenant.country ∈ {GB, NI} AND the
+// `charity` feature flag. See decisions log 2026-05-03 (country gate;
+// CASC distinction; export-pack-only).
+//
+// MVP scope (this branch): manual ledger + R&P report + CSV export.
+// Reserved for later phases:
+//   - source enum has OCR / BANK_FEED slots for P3 (receipt OCR) + P4
+//     (Open Banking stub). UI for those is not built yet.
+//   - PDF / TAR wizard / GoCardless live integration are separate phases.
+
+// Which regulator the tenant files with. Drives category seed + report
+// template + portal deep-links.
+enum CharityRegulator {
+  CC_EW // Charity Commission for England & Wales
+  OSCR // Office of the Scottish Charity Regulator
+  CCNI // Charity Commission for Northern Ireland
+}
+
+// R&P category direction.
+enum CharityCategoryKind {
+  RECEIPT // money in
+  PAYMENT // money out
+}
+
+// Fund accounting kind. Even Receipts & Payments accounts must split
+// restricted income from unrestricted; modelled from v1 to avoid a
+// painful retrofit later.
+enum CharityFundKind {
+  UNRESTRICTED // general charitable activities
+  RESTRICTED // donor-specified purpose; cannot be re-purposed
+  DESIGNATED // unrestricted but trustee-earmarked for a purpose
+}
+
+// Lifecycle of a financial year. LOCKED rejects further writes; unlock
+// requires PLATFORM_ADMIN + audit. Set when TAR is finalised in P5
+// (until then, year stays OPEN).
+enum CharityFinancialYearStatus {
+  OPEN
+  LOCKED
+}
+
+// Where a transaction came from. Reserved values for later phases so
+// they don't need a follow-up migration when P3/P4 land.
+enum CharityTransactionSource {
+  MANUAL // typed in by a tenant admin
+  OCR // P3: extracted from a receipt photo (deferred)
+  BANK_FEED // P4: imported from Open Banking (deferred)
+}
+
+// Asset/liability kinds for the Statement of Assets & Liabilities.
+enum CharityAssetLiabilityKind {
+  CASH_AT_BANK // bank balances at year-end
+  INVESTMENT
+  FIXED_ASSET // equipment, property
+  DEBTOR // money owed to the charity
+  CREDITOR // money the charity owes
+  STOCK // bar/clubhouse stock at year-end
+  OTHER_ASSET
+  OTHER_LIABILITY
+}
+
+// One row per tenant. Holds the charity-identity fields that drive
+// reports (number, regulator, year-end) and the narrative TAR fields
+// that the trustee writes once and re-uses each year (reserves policy,
+// public benefit statement).
+model CharitySettings {
+  id                     String           @id @default(cuid())
+  tenantId               String           @unique
+  tenant                 Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  charityNumber          String? // e.g. "1234567" (CC E&W) or "SC012345" (OSCR)
+  regulator              CharityRegulator
+  yearEndMonth           Int // 1..12 (e.g. 3 = March)
+  yearEndDay             Int // 1..31
+  reservesPolicy         String? // narrative for TAR re-use
+  publicBenefitStatement String? // narrative for TAR re-use
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+}
+
+// One per (tenant, accounting period). Closes via status=LOCKED once
+// reports are signed off.
+model CharityFinancialYear {
+  id               String                     @id @default(cuid())
+  tenantId         String
+  tenant           Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  startDate        String // ISO date "2026-04-01"
+  endDate          String // ISO date "2027-03-31"
+  status           CharityFinancialYearStatus @default(OPEN)
+  bankBalanceAtEnd Int? // pence; manual entry for SoAL until P4 banking lands
+  lockedAt         DateTime?
+  lockedById       String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  transactions     CharityTransaction[]
+  assetLiabilities CharityAssetLiability[]
+
+  @@unique([tenantId, startDate])
+  @@index([tenantId, status])
+}
+
+// Chart of accounts. Seeded per regulator on first use of the module
+// (see src/lib/charity/categories.ts). `code` matches the regulator's
+// published R&P template (e.g. CC16 line numbers, OSCR R&P workpack
+// rows, CCNI R&P toolkit rows). sortOrder controls report layout.
+model CharityCategory {
+  id        String              @id @default(cuid())
+  tenantId  String
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code      String // regulator-template line code
+  kind      CharityCategoryKind
+  label     String
+  sortOrder Int                 @default(0)
+  active    Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  transactions CharityTransaction[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, kind, sortOrder])
+}
+
+// Tenant's funds. A "General" UNRESTRICTED fund is auto-created on
+// charity-settings init so the ledger always has a default fund.
+model CharityFund {
+  id        String          @id @default(cuid())
+  tenantId  String
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  kind      CharityFundKind @default(UNRESTRICTED)
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  transactions CharityTransaction[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, kind])
+}
+
+// A single ledger entry. Amount stored as integer pence to dodge float
+// rounding (mirrors BookingPayment.amount convention). Sign is implied
+// by `kind` on the linked category — both receipts and payments are
+// stored as positive amounts; the report flips signs as needed.
+model CharityTransaction {
+  id              String                   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  financialYearId String
+  financialYear   CharityFinancialYear     @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+  date            String // ISO date "2026-05-15"
+  amount          Int // pence; always positive
+  kind            CharityCategoryKind // RECEIPT or PAYMENT
+  categoryId      String
+  category        CharityCategory          @relation(fields: [categoryId], references: [id])
+  fundId          String
+  fund            CharityFund              @relation(fields: [fundId], references: [id])
+  description     String
+  reference       String? // cheque no, invoice ref, etc.
+  source          CharityTransactionSource @default(MANUAL)
+  sourceRef       String? // P3/P4: link to receipt/bank txn id
+  createdById     String // User.id
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([tenantId, financialYearId, date])
+  @@index([tenantId, categoryId])
+  @@index([tenantId, fundId])
+  @@index([source, sourceRef])
+}
+
+// Per-financial-year line items for the Statement of Assets &
+// Liabilities. Bank balance is on the year row itself; this table
+// covers everything else (fixed assets, debtors, creditors, stock).
+model CharityAssetLiability {
+  id              String                    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  financialYearId String
+  financialYear   CharityFinancialYear      @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+  kind            CharityAssetLiabilityKind
+  name            String
+  amount          Int // pence; positive
+  notes           String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@index([tenantId, financialYearId])
 }

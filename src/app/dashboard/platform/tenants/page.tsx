@@ -3,13 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+type TenantStatus = "ONBOARDING" | "ACTIVE" | "SUSPENDED";
+
 type Tenant = {
   id: string;
   name: string;
   slug: string;
   active: boolean;
+  status: TenantStatus;
   brandColor: string;
   locale: string;
+  locality?: string | null;
   _count: { users: number; greens: number };
 };
 
@@ -55,18 +59,20 @@ export default function PlatformAdminPage() {
     }
   }
 
-  async function toggleActive(id: string, active: boolean) {
+  async function setStatus(id: string, nextActive: boolean) {
+    setError("");
+    setSuccess("");
     const res = await fetch(`/api/admin/tenants/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !active }),
+      body: JSON.stringify({ active: nextActive }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Failed to update tenant status");
       return;
     }
-    setSuccess(`Tenant ${!active ? "activated" : "deactivated"} successfully.`);
+    setSuccess(`Tenant ${nextActive ? "activated" : "suspended"} successfully.`);
     load();
   }
 
@@ -97,20 +103,35 @@ export default function PlatformAdminPage() {
       </form>
 
       <div className="space-y-2">
-        {tenants.map((t) => (
-          <div key={t.id} className="rounded-xl border bg-white p-4 flex justify-between items-center">
-            <div>
-              <h3 className="font-semibold"><Link href={`/dashboard/platform/tenants/${t.id}`} className="hover:underline">{t.name}</Link> <span className="text-xs text-gray-400">/{t.slug}</span></h3>
-              <p className="text-xs text-gray-500">{t._count?.users ?? 0} users · {t._count?.greens ?? 0} greens · {t.locale}</p>
+        {tenants.map((t) => {
+          // Status drives the badge and what (if anything) clicking does.
+          // ONBOARDING is intentionally non-clickable: activation must go
+          // through the proper go-live flow (impersonate → wizard → Go Live).
+          const status: TenantStatus = t.status ?? (t.active ? "ACTIVE" : "SUSPENDED");
+          const badge =
+            status === "ACTIVE"
+              ? { label: "Active", classes: "bg-green-100 text-green-700 hover:bg-green-200", title: "Click to suspend", clickable: true, nextActive: false }
+              : status === "SUSPENDED"
+                ? { label: "Suspended", classes: "bg-red-100 text-red-700 hover:bg-red-200", title: "Click to reactivate", clickable: true, nextActive: true }
+                : { label: "Onboarding", classes: "bg-gray-100 text-gray-600 cursor-not-allowed", title: "Tenant must complete go-live (impersonate → wizard)", clickable: false, nextActive: false };
+          return (
+            <div key={t.id} className="rounded-xl border bg-white p-4 flex justify-between items-center">
+              <div>
+                <h3 className="font-semibold"><Link href={`/dashboard/platform/tenants/${t.id}`} className="hover:underline">{t.name}</Link> <span className="text-xs text-gray-400">/{t.slug}</span></h3>
+                  <p className="text-xs text-gray-500">{t._count?.users ?? 0} users · {t._count?.greens ?? 0} greens · {t.locale}{t.locality ? ` · ${t.locality}` : ""}</p>
+              </div>
+              <button
+                type="button"
+                disabled={!badge.clickable}
+                onClick={badge.clickable ? () => setStatus(t.id, badge.nextActive) : undefined}
+                title={badge.title}
+                className={`text-xs px-3 py-1 rounded ${badge.classes}`}
+              >
+                {badge.label}
+              </button>
             </div>
-            <button
-              onClick={() => toggleActive(t.id, t.active)}
-              className={`text-xs px-3 py-1 rounded ${t.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-            >
-              {t.active ? "Active" : "Inactive"}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

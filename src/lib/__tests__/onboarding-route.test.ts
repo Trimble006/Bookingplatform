@@ -62,12 +62,24 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.onboardingProgress.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
-  await prisma.auditEvent.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
-  await prisma.user.updateMany({ where: { tenantId: { in: cleanup.tenantIds } }, data: { tenantId: null } });
-  await prisma.user.deleteMany({ where: { id: { in: cleanup.userIds } } });
-  await prisma.tenant.deleteMany({ where: { id: { in: cleanup.tenantIds } } });
-  await prisma.$disconnect();
+  // Order matters: clear FK dependents before parents.
+  // AuditEvent.actorId references User. Filtering AuditEvent by tenantId
+  // alone leaves rows where this test's user was actor on OTHER tenants
+  // (accumulated from prior runs), which then FK-blocks the user delete
+  // and strands the tenant rows. Hence two AuditEvent passes: by actor
+  // first, by tenant second.
+  try {
+    await prisma.onboardingProgress.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
+    await prisma.userInvitation.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
+    await prisma.membership.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
+    await prisma.auditEvent.deleteMany({ where: { actorId: { in: cleanup.userIds } } });
+    await prisma.auditEvent.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
+    await prisma.user.updateMany({ where: { tenantId: { in: cleanup.tenantIds } }, data: { tenantId: null } });
+    await prisma.user.deleteMany({ where: { id: { in: cleanup.userIds } } });
+    await prisma.tenant.deleteMany({ where: { id: { in: cleanup.tenantIds } } });
+  } finally {
+    await prisma.$disconnect();
+  }
 });
 
 describe("/api/onboarding/progress", () => {
@@ -84,7 +96,7 @@ describe("/api/onboarding/progress", () => {
     expect(body.currentChapter).toBe(1);
     expect(body.completedChapters).toEqual([]);
     expect(body.isComplete).toBe(false);
-    expect(body.totalChapters).toBe(9);
+    expect(body.totalChapters).toBe(10);
   });
 
   test("POST advances current chapter and marks complete", async () => {
@@ -104,13 +116,13 @@ describe("/api/onboarding/progress", () => {
   test("POST does NOT auto-set completedAt when all chapters done (go-live is the explicit completion event)", async () => {
     await prisma.onboardingProgress.deleteMany({ where: { tenantId } });
     await prisma.onboardingProgress.create({
-      data: { tenantId, currentChapter: 8, completedChapters: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8]) },
+      data: { tenantId, currentChapter: 9, completedChapters: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9]) },
     });
 
-    const res = await POST(postReq({ chapter: 9, markComplete: true }));
+    const res = await POST(postReq({ chapter: 10, markComplete: true }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.completedChapters).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(body.completedChapters).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(body.isComplete).toBe(false);
     expect(body.completedAt).toBeNull();
   });
@@ -136,5 +148,34 @@ describe("/api/onboarding/progress", () => {
     };
     const res = await POST(postReq({ chapter: 1 }));
     expect(res.status).toBe(403);
+  });
+
+  test("GET migrates v1 progress: chapters >= 2 shift up by 1, schemaVersion bumped", async () => {
+    // Simulate a tenant who started onboarding under the old 9-chapter shape.
+    await prisma.onboardingProgress.deleteMany({ where: { tenantId } });
+    await prisma.onboardingProgress.create({
+      data: {
+        tenantId,
+        currentChapter: 4,
+        completedChapters: JSON.stringify([1, 2, 3]),
+        schemaVersion: 1,
+      },
+    });
+
+    const res = await GET(new NextRequest("http://localhost/api/onboarding/progress"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // 1 stays; 2,3 shift to 3,4; current 4 -> 5.
+    expect(body.completedChapters).toEqual([1, 3, 4]);
+    expect(body.currentChapter).toBe(5);
+
+    // Idempotent: a second GET must not shift again.
+    const res2 = await GET(new NextRequest("http://localhost/api/onboarding/progress"));
+    const body2 = await res2.json();
+    expect(body2.completedChapters).toEqual([1, 3, 4]);
+    expect(body2.currentChapter).toBe(5);
+
+    const row = await prisma.onboardingProgress.findUnique({ where: { tenantId } });
+    expect(row?.schemaVersion).toBe(2);
   });
 });

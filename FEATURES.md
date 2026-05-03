@@ -143,6 +143,25 @@
 - **Concurrent e2e agents** — 4 Playwright agents (user, admin, maintenance, platform) running in parallel, reacting to each other through the app's UI
 - **Exploratory bot** — 6 personas (Doris, Kevin, Mallory, Sandra, Craig, Ghost) with prioritised defect report output
 
+## Charity Accounts (UK/NI only)
+- **Two-axis gate** — only available when `Tenant.country ∈ {GB, NI}` AND the `charity` feature flag is enabled. Both required. Country is set by the tenant admin in onboarding (Chapter 2); platform admin can override. Charity flag is auto-enabled by onboarding when the tenant picks a charity-style organisation type (REGISTERED_CHARITY / CIO / SCIO / CASC) in a supported jurisdiction.
+- **Auto-enable on charity-style org types** — Chapter 2 picks REGISTERED_CHARITY/CIO/SCIO/CASC in GB/NI → flag enabled, CharitySettings created with regulator inferred (NI→CCNI, SCIO→OSCR, otherwise CC_EW), chart of accounts seeded. Idempotent. Disabling stays explicit (platform-admin action).
+- **Settings** — charity number, regulator (`CC_EW` / `OSCR` / `CCNI`), financial year-end (month/day, *inherits from `Tenant.financialYearEnd*` if not overridden*), reserves policy, public benefit statement
+- **Auto-seeded chart of accounts** — on first save, seeds 10 receipt categories + 15 payment categories tuned for bowling clubs (subscriptions, green fees, bar income, grounds maintenance, affiliation fees, etc.) plus a default General unrestricted fund
+- **Funds** — `UNRESTRICTED` / `RESTRICTED` / `DESIGNATED` per Charity Commission categories
+- **Financial years** — overlap-detected, lockable; locked years reject all transaction writes
+- **Ledger** — receipt/payment transactions in integer pence, dated, categorised, fund-tagged, optional reference
+- **Reports** — Receipts & Payments matrix (categories × funds with totals + net), Statement of Assets & Liabilities (asset/liability lines + bank balance at year end), CSV export of R&P table for attachment to the regulator's annual return
+- **Audit** — `charity.settings.created/updated`, `charity.year.created/updated/locked`, `charity.transaction.created/updated/deleted`, `charity.report.viewed/exported`, `tenant.organisation.set` (onboarding KYC + side-effect summary)
+- **API surface** — `/api/charity/{settings,years,categories,funds,transactions,asset-liabilities,reports,status}` plus `/api/onboarding/organisation` (KYC entry point); all gated to TENANT_ADMIN with the two-axis check
+- **Future** (separate branches): OCR receipt capture (Gemini Vision), Open Banking ingestion (GoCardless stub), TAR/SoFA wizard for charities ≥ £500k
+
+## Onboarding KYC (Chapter 2)
+- **Self-declared organisation profile** — Chapter 2 of the 10-chapter wizard captures country (`GB` / `NI` / `OTHER`), organisation type (10-value enum: REGISTERED_CHARITY, CIO, SCIO, CASC, COMMUNITY_INTEREST_COMPANY, LIMITED_COMPANY, UNINCORPORATED_ASSOCIATION, PRIVATE_MEMBERS_CLUB, OTHER, NOT_CONSTITUTED), and financial year end (month + day with day-cap-by-month).
+- **Tailored advice** — live `<Advice>` callout with 4 visual variants: NOT_CONSTITUTED (loud amber, links to a path-to-constituted help article); willEnableCharity (emerald, "we'll set up charity accounting"); UNINCORPORATED_ASSOCIATION (amber, mild); default (slate, brief). Each org type also has a per-form help article under `content/help/en/getting-started/legal-form-*.md`.
+- **Side-effects** — charity-style org in GB/NI auto-flips the `charity` flag, creates CharitySettings, seeds chart of accounts (see Charity Accounts section above).
+- **In-progress migration** — `OnboardingProgress.schemaVersion` (default 2; backfilled to 1 for existing rows). GET shifts entries ≥ 2 up by 1 once and bumps the version. Idempotent. Existing tenants mid-onboarding under the 9-chapter shape land back where they conceptually were.
+
 ## Help Centre
 - **In-dashboard help** — `/dashboard/help` browse-by-category index, full-text client-side search, article view with breadcrumb
 - **Audience-aware** — articles declare `audience: tenant_admin | platform_admin | both`; tenant admins never see platform-only articles

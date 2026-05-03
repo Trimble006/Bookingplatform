@@ -223,7 +223,7 @@ export default function ApplicationDetailPage() {
           <ol className="text-sm text-gray-700 list-decimal pl-5 space-y-1">
             <li>Send the invitation link below to the club&rsquo;s contact.</li>
             <li>They set a password, sign in, and land on the onboarding wizard.</li>
-            <li>The wizard guides them through 9 chapters: about, location, hours, greens, people, agent knowledge, features, subscription, and review.</li>
+            <li>The wizard guides them through 10 chapters: about, organisation, location, hours, greens, people, agent knowledge, features, subscription, and review.</li>
             <li>When they press <span className="font-semibold">Go live</span>, the tenant flips to ACTIVE, queued invitations are released, and the public URL works.</li>
           </ol>
           <div className="border-t pt-3">
