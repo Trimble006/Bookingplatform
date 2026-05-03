@@ -118,6 +118,10 @@ export async function POST(req: NextRequest) {
       source: "MANUAL",
       createdById: session.user.id,
     },
+    include: {
+      category: { select: { id: true, code: true, label: true, kind: true } },
+      fund: { select: { id: true, name: true, kind: true } },
+    },
   });
   logAudit({
     session,
