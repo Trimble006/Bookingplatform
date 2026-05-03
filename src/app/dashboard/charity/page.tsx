@@ -93,7 +93,7 @@ export default function CharityOverviewPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/dashboard/charity/settings"
           className="block rounded border border-slate-200 p-4 hover:border-green-700 hover:bg-green-50"
@@ -126,6 +126,18 @@ export default function CharityOverviewPage() {
           <div className="font-semibold mt-2">Reports</div>
           <div className="text-sm text-slate-600">
             Receipts &amp; Payments, Statement of Assets &amp; Liabilities, CSV export.
+          </div>
+        </Link>
+        <Link
+          href="/dashboard/charity/tar"
+          className={`block rounded border border-slate-200 p-4 ${
+            status.configured ? "hover:border-green-700 hover:bg-green-50" : "opacity-50 pointer-events-none"
+          }`}
+        >
+          <div className="text-2xl">📝</div>
+          <div className="font-semibold mt-2">Annual Report</div>
+          <div className="text-sm text-slate-600">
+            Trustees&apos; Annual Report wizard with AI-assisted drafting.
           </div>
         </Link>
       </div>
