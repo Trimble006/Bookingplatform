@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isFeatureEnabled } from "@/lib/features";
 import { jsonError } from "@/lib/api-utils";
+import { isGreenOpenOn, seasonWindowForDate } from "@/lib/season";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    select: { id: true, active: true, openingTime: true, closingTime: true, seasonStart: true, seasonEnd: true },
+    select: { id: true, active: true, openingTime: true, closingTime: true },
   });
 
   if (!tenant || !tenant.active) {
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const greens = await prisma.green.findMany({
     where: { tenantId: tenant.id },
     include: {
+      seasons: { select: { year: true, startDate: true, endDate: true } },
       rinks: {
         include: {
           bookingSlots: {
@@ -50,6 +52,11 @@ export async function GET(req: NextRequest, { params }: Params) {
   const sanitised = greens.map((g) => ({
     id: g.id,
     name: g.name,
+    season: {
+      open: isGreenOpenOn(g, date),
+      allWeather: g.allWeather,
+      window: seasonWindowForDate(g, date),
+    },
     rinks: g.rinks.map((r) => ({
       id: r.id,
       name: r.name,
@@ -61,8 +68,6 @@ export async function GET(req: NextRequest, { params }: Params) {
     config: {
       openingTime: tenant.openingTime,
       closingTime: tenant.closingTime,
-      seasonStart: tenant.seasonStart ?? null,
-      seasonEnd: tenant.seasonEnd ?? null,
     },
     greens: sanitised,
   });

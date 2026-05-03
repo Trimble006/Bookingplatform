@@ -28,8 +28,8 @@ model Tenant {
   brandColor  String       @default("#16a34a")
   logoUrl     String?
   locale      String       @default("en")
-  seasonStart String? // ISO date string e.g. "2026-04-01"
-  seasonEnd   String?
+  seasonStart String? // DEPRECATED: migrated to Green.seasonStartMMDD. Remove after one release.
+  seasonEnd   String? // DEPRECATED: migrated to Green.seasonEndMMDD. Remove after one release.
   openingTime String       @default("08:00")
   closingTime String       @default("20:00")
   latitude    Float?
@@ -161,12 +161,31 @@ model FeatureFlag {
 // ─── Greens & Rinks ─────────────────────────────────────────
 
 model Green {
-  id       String @id @default(cuid())
-  name     String
-  tenantId String
+  id              String  @id @default(cuid())
+  name            String
+  tenantId        String
+  allWeather      Boolean @default(false)
+  seasonStartMMDD String? // recurring month-day e.g. "04-01"
+  seasonEndMMDD   String? // recurring month-day e.g. "09-30"
   maintenanceHistory MaintenanceHistory[] @relation("GreenHistory")
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-  rinks    Rink[]
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
+  rinks           Rink[]
+  seasons         GreenSeason[]
+}
+
+model GreenSeason {
+  id        String   @id @default(cuid())
+  greenId   String
+  year      Int
+  startDate String   // full ISO date e.g. "2027-03-01"
+  endDate   String   // full ISO date e.g. "2027-09-30"
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  green Green @relation(fields: [greenId], references: [id], onDelete: Cascade)
+
+  @@unique([greenId, year])
 }
 
 model Rink {

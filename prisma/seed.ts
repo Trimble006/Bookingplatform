@@ -47,6 +47,8 @@ async function main() {
       id: "seed-green-1",
       name: "Main Green",
       tenantId: tenant.id,
+      seasonStartMMDD: "04-01",
+      seasonEndMMDD: "09-30",
     },
   });
 
@@ -61,6 +63,43 @@ async function main() {
       },
     });
   }
+
+  // All-weather green (open year-round)
+  const allWeatherGreen = await prisma.green.upsert({
+    where: { id: "seed-green-2" },
+    update: {},
+    create: {
+      id: "seed-green-2",
+      name: "All Weather Green",
+      tenantId: tenant.id,
+      allWeather: true,
+    },
+  });
+
+  for (let i = 7; i <= 9; i++) {
+    await prisma.rink.upsert({
+      where: { id: `seed-rink-${i}` },
+      update: {},
+      create: {
+        id: `seed-rink-${i}`,
+        name: `Rink ${i}`,
+        greenId: allWeatherGreen.id,
+      },
+    });
+  }
+
+  // Demo GreenSeason override: 2027 season opened early for championship
+  await prisma.greenSeason.upsert({
+    where: { greenId_year: { greenId: green.id, year: 2027 } },
+    update: {},
+    create: {
+      greenId: green.id,
+      year: 2027,
+      startDate: "2027-03-15",
+      endDate: "2027-10-15",
+      note: "Extended for County Championship",
+    },
+  });
 
   // Tenant admin user
   const tenantAdminHash = await bcrypt.hash("club123", 12);

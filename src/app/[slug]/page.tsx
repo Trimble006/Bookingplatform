@@ -33,7 +33,7 @@ export default async function PublicClubPage({ params }: Params) {
     select: {
       id: true, name: true, slug: true, active: true, status: true,
       brandColor: true, logoUrl: true, locale: true,
-      openingTime: true, closingTime: true, seasonStart: true, seasonEnd: true,
+      openingTime: true, closingTime: true,
     },
   });
 

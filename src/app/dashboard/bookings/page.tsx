@@ -230,6 +230,7 @@ export default function BookingsPage() {
           greens={availability.map((green: any) => ({
             id: green.id,
             name: green.name,
+            season: green.season ?? undefined,
             rinks: (green.rinks ?? []).map((rink: any) => ({
               id: rink.id,
               name: rink.name,
@@ -239,8 +240,6 @@ export default function BookingsPage() {
           config={{
             openingTime: tenantConfig?.openingTime ?? "09:00",
             closingTime: tenantConfig?.closingTime ?? "18:00",
-            seasonStart: tenantConfig?.seasonStart ?? null,
-            seasonEnd: tenantConfig?.seasonEnd ?? null,
           }}
           date={date}
           onDateChange={setDate}

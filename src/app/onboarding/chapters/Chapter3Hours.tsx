@@ -48,7 +48,7 @@ export default function Chapter3Hours({ tenantId, onAdvance }: ChapterProps) {
   return (
     <ChapterShell
       title="When you're open"
-      intro="The hours members can book within, and the dates of the playing season."
+      intro="The hours members can book within, and the default playing season. You can override the season per-green in the next step."
       onSubmit={submit}
       busy={busy}
     >
@@ -61,11 +61,11 @@ export default function Chapter3Hours({ tenantId, onAdvance }: ChapterProps) {
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Season starts" hint="Leave blank for year-round.">
-          <input type="date" className={inputClass} value={seasonStart} onChange={(e) => setSeasonStart(e.target.value)} />
+        <Field label="Default season starts (MM-DD)" hint="Leave blank for year-round. Per-green overrides set in the next step.">
+          <input type="text" placeholder="04-01" maxLength={5} className={inputClass} value={seasonStart} onChange={(e) => setSeasonStart(e.target.value)} />
         </Field>
-        <Field label="Season ends">
-          <input type="date" className={inputClass} value={seasonEnd} onChange={(e) => setSeasonEnd(e.target.value)} />
+        <Field label="Default season ends (MM-DD)">
+          <input type="text" placeholder="09-30" maxLength={5} className={inputClass} value={seasonEnd} onChange={(e) => setSeasonEnd(e.target.value)} />
         </Field>
       </div>
     </ChapterShell>

@@ -4,6 +4,7 @@ import { getSessionOrFail, getEffective, jsonError, assertRoleOrFail } from "@/l
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
+import { isGreenOpenOn, type GreenSeasonInfo } from "@/lib/season";
 
 /** List bookings for the caller's tenant context (impersonation-aware). */
 export async function GET(req: NextRequest) {
@@ -53,17 +54,6 @@ export async function POST(req: NextRequest) {
     return jsonError("date and slots[] required");
   }
 
-  // Season enforcement — reject bookings outside the club's configured season
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { seasonStart: true, seasonEnd: true } });
-  if (tenant?.seasonStart && tenant?.seasonEnd) {
-    const bookingDate = new Date(date);
-    const seasonStart = new Date(tenant.seasonStart);
-    const seasonEnd = new Date(tenant.seasonEnd);
-    if (bookingDate < seasonStart || bookingDate > seasonEnd) {
-      return jsonError("Bookings are only accepted during the season (" + tenant.seasonStart + " to " + tenant.seasonEnd + ")", 400);
-    }
-  }
-
   // ── Book-on-behalf logic ────────────────────────────────────
   let bookeeUserId = session.user.id;
   let bookedByUserId = session.user.id;
@@ -99,10 +89,36 @@ export async function POST(req: NextRequest) {
   const rinkIds: string[] = slots.map((s) => s.rinkId);
   const rinks = await prisma.rink.findMany({
     where: { id: { in: rinkIds }, green: { tenantId } },
-    include: { green: { select: { name: true } } },
+    include: {
+      green: {
+        select: {
+          name: true,
+          allWeather: true,
+          seasonStartMMDD: true,
+          seasonEndMMDD: true,
+          seasons: { select: { year: true, startDate: true, endDate: true } },
+        },
+      },
+    },
   });
   if (rinks.length !== rinkIds.length) {
     return jsonError("One or more rinks not found for this club", 404);
+  }
+
+  // ── Per-green season enforcement ────────────────────────────
+  if (!useOverride) {
+    const checkedGreens = new Set<string>();
+    for (const rink of rinks) {
+      if (checkedGreens.has(rink.greenId)) continue;
+      checkedGreens.add(rink.greenId);
+      const g = rink.green as GreenSeasonInfo & { name: string };
+      if (!isGreenOpenOn(g, date)) {
+        return jsonError(
+          `${g.name} is closed for the season on ${date}`,
+          400,
+        );
+      }
+    }
   }
 
   // ── Conflict check (skipped when adminOverride) ─────────────

@@ -4,12 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
-type Green = { id: string; name: string; rinks: { id: string; name: string }[] };
+type Green = { id: string; name: string; allWeather: boolean; seasonStartMMDD: string | null; seasonEndMMDD: string | null; rinks: { id: string; name: string }[] };
 
 export default function Chapter4Greens({ onAdvance }: ChapterProps) {
   const [greens, setGreens] = useState<Green[]>([]);
   const [newName, setNewName] = useState("");
   const [newRinkCount, setNewRinkCount] = useState(6);
+  const [newAllWeather, setNewAllWeather] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -27,10 +28,11 @@ export default function Chapter4Greens({ onAdvance }: ChapterProps) {
     await fetch("/api/admin/greens", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim(), rinks }),
+      body: JSON.stringify({ name: newName.trim(), rinks, allWeather: newAllWeather }),
     });
     setNewName("");
     setNewRinkCount(6);
+    setNewAllWeather(false);
     setBusy(false);
     await load();
   };
@@ -55,6 +57,12 @@ export default function Chapter4Greens({ onAdvance }: ChapterProps) {
               <div>
                 <span className="font-medium">{g.name}</span>
                 <span className="text-sm text-gray-500 ml-2">{g.rinks.length} rink{g.rinks.length === 1 ? "" : "s"}</span>
+                {g.allWeather && <span className="text-xs bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded ml-2">All weather</span>}
+                {!g.allWeather && g.seasonStartMMDD && (
+                  <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded ml-2">
+                    Season: {g.seasonStartMMDD} – {g.seasonEndMMDD}
+                  </span>
+                )}
               </div>
               <button type="button" onClick={() => removeGreen(g.id)} className="text-sm text-red-600 hover:text-red-700">Remove</button>
             </li>
@@ -70,6 +78,10 @@ export default function Chapter4Greens({ onAdvance }: ChapterProps) {
         <Field label="Number of rinks">
           <input type="number" min={1} max={12} className={inputClass} value={newRinkCount} onChange={(e) => setNewRinkCount(Math.max(1, Math.min(12, Number(e.target.value) || 1)))} />
         </Field>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={newAllWeather} onChange={(e) => setNewAllWeather(e.target.checked)} />
+          All-weather surface (open year-round)
+        </label>
         <button
           type="button"
           onClick={addGreen}

@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
   try {
     const greens = await prisma.green.findMany({
       where: { tenantId },
-      include: { rinks: { orderBy: { name: "asc" } } },
+      include: {
+        rinks: { orderBy: { name: "asc" } },
+        seasons: { orderBy: { year: "asc" } },
+      },
       orderBy: { name: "asc" },
     });
     return NextResponse.json(greens);
@@ -45,7 +48,13 @@ export async function POST(req: NextRequest) {
     return jsonError("Invalid JSON body", 400);
   }
 
-  const { name, rinks } = body as { name?: string; rinks?: { name: string }[] };
+  const { name, rinks, allWeather, seasonStartMMDD, seasonEndMMDD } = body as {
+    name?: string;
+    rinks?: { name: string }[];
+    allWeather?: boolean;
+    seasonStartMMDD?: string;
+    seasonEndMMDD?: string;
+  };
   if (!name || !name.trim()) return jsonError("name is required");
 
   try {
@@ -53,11 +62,14 @@ export async function POST(req: NextRequest) {
       data: {
         tenantId,
         name: name.trim(),
+        allWeather: allWeather === true,
+        seasonStartMMDD: seasonStartMMDD?.trim() || null,
+        seasonEndMMDD: seasonEndMMDD?.trim() || null,
         rinks: Array.isArray(rinks) && rinks.length
           ? { create: rinks.map((r) => ({ name: r.name?.trim() || "Unnamed" })) }
           : undefined,
       },
-      include: { rinks: true },
+      include: { rinks: true, seasons: true },
     });
 
     logAudit({ session, action: "green.created", entity: "Green", entityId: green.id, tenantId, meta: { name: green.name, rinkCount: green.rinks.length } });

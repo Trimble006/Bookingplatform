@@ -28,17 +28,27 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return jsonError("Invalid JSON body", 400);
   }
 
-  const { name } = body as { name?: string };
-  if (!name || !name.trim()) return jsonError("name is required");
+  const { name, allWeather, seasonStartMMDD, seasonEndMMDD } = body as {
+    name?: string;
+    allWeather?: boolean;
+    seasonStartMMDD?: string | null;
+    seasonEndMMDD?: string | null;
+  };
+  if (name !== undefined && (!name || !name.trim())) return jsonError("name must not be empty");
 
   try {
     const updated = await prisma.green.update({
       where: { id },
-      data: { name: name.trim() },
-      include: { rinks: true },
+      data: {
+        ...(name ? { name: name.trim() } : {}),
+        ...(allWeather !== undefined ? { allWeather } : {}),
+        ...(seasonStartMMDD !== undefined ? { seasonStartMMDD: seasonStartMMDD?.trim() || null } : {}),
+        ...(seasonEndMMDD !== undefined ? { seasonEndMMDD: seasonEndMMDD?.trim() || null } : {}),
+      },
+      include: { rinks: true, seasons: true },
     });
 
-    logAudit({ session, action: "green.updated", entity: "Green", entityId: id, tenantId, meta: { name: updated.name } });
+    logAudit({ session, action: "green.updated", entity: "Green", entityId: id, tenantId, meta: { name: updated.name, allWeather: updated.allWeather } });
 
     return NextResponse.json(updated);
   } catch {

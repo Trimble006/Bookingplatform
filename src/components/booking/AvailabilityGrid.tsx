@@ -6,17 +6,22 @@ type RinkData = {
   bookedSlots: string[];
 };
 
+type SeasonWindow = { start: string; end: string } | null;
+
 type GreenData = {
   id: string;
   name: string;
   rinks: RinkData[];
+  season?: {
+    open: boolean;
+    allWeather: boolean;
+    window: SeasonWindow;
+  };
 };
 
 type Config = {
   openingTime: string;
   closingTime: string;
-  seasonStart: string | null;
-  seasonEnd: string | null;
 };
 
 function generateTimeSlots(open: string, close: string): string[] {
@@ -53,61 +58,81 @@ export default function AvailabilityGrid({
         value={date}
         onChange={(e) => onDateChange(e.target.value)}
         className="mt-2 rounded border p-2"
-        {...(config.seasonStart ? { min: config.seasonStart } : {})}
-        {...(config.seasonEnd ? { max: config.seasonEnd } : {})}
       />
-      {config.seasonStart && config.seasonEnd && (
-        <span className="ml-3 text-xs text-gray-400">
-          Season: {config.seasonStart} – {config.seasonEnd}
-        </span>
-      )}
       <div className="mt-4 space-y-6">
-        {greens.map((green) => (
-          <div key={green.id}>
-            <h3 className="font-medium text-green-700 mb-2">{green.name}</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="border bg-gray-50 px-3 py-2 text-left text-gray-600 font-medium">Time</th>
-                    {green.rinks.map((rink) => (
-                      <th key={rink.id} className="border bg-gray-50 px-3 py-2 text-center font-medium">{rink.name}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeSlots.map((slot) => (
-                    <tr key={slot}>
-                      <td className="border px-3 py-2 font-medium text-gray-600 whitespace-nowrap">{slot}</td>
-                      {green.rinks.map((rink) => {
-                        const isBooked = rink.bookedSlots.includes(slot);
-                        return isBooked ? (
-                          <td key={rink.id} className="border px-3 py-2 bg-red-100 text-red-700 text-center text-xs">
-                            Booked
-                          </td>
-                        ) : (
-                          <td
-                            key={rink.id}
-                            className={`border px-3 py-2 bg-green-50 text-green-700 text-center text-xs ${
-                              onSlotClick ? "cursor-pointer hover:bg-green-200 transition-colors" : ""
-                            }`}
-                            {...(onSlotClick ? {
-                              role: "button",
-                              "aria-label": `Book ${rink.name} at ${slot}`,
-                              onClick: () => onSlotClick(rink, slot),
-                            } : {})}
-                          >
-                            Open
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {greens.map((green) => {
+          const season = green.season;
+          const isOpen = season ? season.open : true;
+
+          return (
+            <div key={green.id}>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-medium text-green-700">{green.name}</h3>
+                {season?.allWeather && (
+                  <span className="text-xs bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded">All weather</span>
+                )}
+                {season && !season.allWeather && season.window && (
+                  <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                    Season: {season.window.start} – {season.window.end}
+                  </span>
+                )}
+              </div>
+
+              {!isOpen ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                  Closed for season
+                  {season?.window && (
+                    <span className="block text-xs mt-1">
+                      Next season: {season.window.start} – {season.window.end}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="border bg-gray-50 px-3 py-2 text-left text-gray-600 font-medium">Time</th>
+                        {green.rinks.map((rink) => (
+                          <th key={rink.id} className="border bg-gray-50 px-3 py-2 text-center font-medium">{rink.name}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {timeSlots.map((slot) => (
+                        <tr key={slot}>
+                          <td className="border px-3 py-2 font-medium text-gray-600 whitespace-nowrap">{slot}</td>
+                          {green.rinks.map((rink) => {
+                            const isBooked = rink.bookedSlots.includes(slot);
+                            return isBooked ? (
+                              <td key={rink.id} className="border px-3 py-2 bg-red-100 text-red-700 text-center text-xs">
+                                Booked
+                              </td>
+                            ) : (
+                              <td
+                                key={rink.id}
+                                className={`border px-3 py-2 bg-green-50 text-green-700 text-center text-xs ${
+                                  onSlotClick ? "cursor-pointer hover:bg-green-200 transition-colors" : ""
+                                }`}
+                                {...(onSlotClick ? {
+                                  role: "button",
+                                  "aria-label": `Book ${rink.name} at ${slot}`,
+                                  onClick: () => onSlotClick(rink, slot),
+                                } : {})}
+                              >
+                                Open
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         {greens.length === 0 && <p className="text-gray-400">No greens configured for this club.</p>}
       </div>
     </div>

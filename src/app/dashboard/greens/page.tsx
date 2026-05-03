@@ -6,7 +6,12 @@ import HelpHint from "@/components/help/HelpHint";
 
 type Tenant = { id: string; name: string; slug: string };
 type Rink = { id: string; name: string; greenId: string };
-type Green = { id: string; name: string; tenantId: string; rinks: Rink[] };
+type GreenSeason = { id: string; year: number; startDate: string; endDate: string; note: string | null };
+type Green = {
+  id: string; name: string; tenantId: string;
+  allWeather: boolean; seasonStartMMDD: string | null; seasonEndMMDD: string | null;
+  rinks: Rink[]; seasons: GreenSeason[];
+};
 
 export default function GreensPage() {
   const { data: session } = useSession();
@@ -14,6 +19,9 @@ export default function GreensPage() {
   const [selectedTenant, setSelectedTenant] = useState("");
   const [greens, setGreens] = useState<Green[]>([]);
   const [newGreenName, setNewGreenName] = useState("");
+  const [newGreenAllWeather, setNewGreenAllWeather] = useState(false);
+  const [newGreenSeasonStart, setNewGreenSeasonStart] = useState("04-01");
+  const [newGreenSeasonEnd, setNewGreenSeasonEnd] = useState("09-30");
   const [newRinkNames, setNewRinkNames] = useState<Record<string, string>>({});
   const [editingGreen, setEditingGreen] = useState<string | null>(null);
   const [editGreenName, setEditGreenName] = useState("");
@@ -21,6 +29,11 @@ export default function GreensPage() {
   const [editRinkName, setEditRinkName] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [seasonFormGreen, setSeasonFormGreen] = useState<string | null>(null);
+  const [seasonYear, setSeasonYear] = useState(new Date().getFullYear() + 1);
+  const [seasonStart, setSeasonStart] = useState("");
+  const [seasonEnd, setSeasonEnd] = useState("");
+  const [seasonNote, setSeasonNote] = useState("");
 
   const isPlatformAdmin = false; // platform admins only reach this page while impersonating; layout enforces this
   void session;
@@ -60,7 +73,12 @@ export default function GreensPage() {
     const res = await fetch(`/api/admin/greens${qs}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newGreenName.trim() }),
+      body: JSON.stringify({
+        name: newGreenName.trim(),
+        allWeather: newGreenAllWeather,
+        seasonStartMMDD: newGreenAllWeather ? null : newGreenSeasonStart || null,
+        seasonEndMMDD: newGreenAllWeather ? null : newGreenSeasonEnd || null,
+      }),
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
@@ -68,6 +86,9 @@ export default function GreensPage() {
       return;
     }
     setNewGreenName("");
+    setNewGreenAllWeather(false);
+    setNewGreenSeasonStart("04-01");
+    setNewGreenSeasonEnd("09-30");
     flash("Green created!");
     loadGreens(selectedTenant || undefined);
   }
@@ -88,6 +109,74 @@ export default function GreensPage() {
     }
     setEditingGreen(null);
     flash("Green renamed.");
+    loadGreens(selectedTenant || undefined);
+  }
+
+  // ── Toggle all-weather ──
+  async function handleToggleAllWeather(g: Green) {
+    const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
+    const res = await fetch(`/api/admin/greens/${g.id}${qs}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ allWeather: !g.allWeather }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      flash(d.error ?? "Failed to update green", true);
+      return;
+    }
+    flash(g.allWeather ? "Seasonal mode enabled." : "All-weather mode enabled.");
+    loadGreens(selectedTenant || undefined);
+  }
+
+  // ── Update season dates ──
+  async function handleUpdateSeasonDates(greenId: string, startMMDD: string, endMMDD: string) {
+    const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
+    const res = await fetch(`/api/admin/greens/${greenId}${qs}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seasonStartMMDD: startMMDD, seasonEndMMDD: endMMDD }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      flash(d.error ?? "Failed to update season dates", true);
+      return;
+    }
+    flash("Season dates updated.");
+    loadGreens(selectedTenant || undefined);
+  }
+
+  // ── Add season override ──
+  async function handleAddSeason(greenId: string) {
+    if (!seasonStart || !seasonEnd) { flash("Start and end dates required", true); return; }
+    const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
+    const res = await fetch(`/api/admin/greens/${greenId}/seasons${qs}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year: seasonYear, startDate: seasonStart, endDate: seasonEnd, note: seasonNote || null }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      flash(d.error ?? "Failed to add season override", true);
+      return;
+    }
+    setSeasonFormGreen(null);
+    setSeasonStart(""); setSeasonEnd(""); setSeasonNote("");
+    flash(`Season override for ${seasonYear} added.`);
+    loadGreens(selectedTenant || undefined);
+  }
+
+  // ── Delete season override ──
+  async function handleDeleteSeason(greenId: string, year: number) {
+    if (!confirm(`Remove the ${year} season override?`)) return;
+    const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
+    const res = await fetch(`/api/admin/greens/${greenId}/seasons${qs}&year=${year}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      flash(d.error ?? "Failed to delete season override", true);
+      return;
+    }
+    flash(`Season override for ${year} removed.`);
     loadGreens(selectedTenant || undefined);
   }
 
@@ -199,6 +288,21 @@ export default function GreensPage() {
               />
               <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Add Green</button>
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={newGreenAllWeather} onChange={(e) => setNewGreenAllWeather(e.target.checked)} />
+              All-weather (open year-round)
+            </label>
+            {!newGreenAllWeather && (
+              <div className="flex gap-3 items-center text-sm">
+                <label>Season:
+                  <input type="text" placeholder="MM-DD" value={newGreenSeasonStart} onChange={(e) => setNewGreenSeasonStart(e.target.value)}
+                    className="ml-1 w-20 rounded border p-1 text-sm" maxLength={5} />
+                </label>
+                <span>to</span>
+                <input type="text" placeholder="MM-DD" value={newGreenSeasonEnd} onChange={(e) => setNewGreenSeasonEnd(e.target.value)}
+                  className="w-20 rounded border p-1 text-sm" maxLength={5} />
+              </div>
+            )}
           </form>
 
           {/* Greens list */}
@@ -223,6 +327,13 @@ export default function GreensPage() {
                     <h3 className="font-semibold text-lg">{g.name}</h3>
                   )}
                   <div className="flex gap-2">
+                    {g.allWeather ? (
+                      <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded">All weather</span>
+                    ) : g.seasonStartMMDD && g.seasonEndMMDD ? (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
+                        Season: {g.seasonStartMMDD} – {g.seasonEndMMDD}
+                      </span>
+                    ) : null}
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                       {g.rinks.length} rink{g.rinks.length !== 1 ? "s" : ""}
                     </span>
@@ -239,6 +350,71 @@ export default function GreensPage() {
                       </>
                     )}
                   </div>
+                </div>
+
+                {/* Season controls */}
+                <div className="mt-3 rounded border border-gray-100 bg-gray-50 p-3 space-y-2 text-sm">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5">
+                      <input type="checkbox" checked={g.allWeather} onChange={() => handleToggleAllWeather(g)} />
+                      All-weather (open year-round)
+                    </label>
+                  </div>
+                  {!g.allWeather && (
+                    <div className="flex gap-2 items-center">
+                      <span className="text-gray-500">Default season:</span>
+                      <input type="text" placeholder="MM-DD" defaultValue={g.seasonStartMMDD ?? ""} maxLength={5}
+                        className="w-20 rounded border p-1 text-sm"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== g.seasonStartMMDD) handleUpdateSeasonDates(g.id, v, g.seasonEndMMDD ?? "");
+                        }} />
+                      <span>to</span>
+                      <input type="text" placeholder="MM-DD" defaultValue={g.seasonEndMMDD ?? ""} maxLength={5}
+                        className="w-20 rounded border p-1 text-sm"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== g.seasonEndMMDD) handleUpdateSeasonDates(g.id, g.seasonStartMMDD ?? "", v);
+                        }} />
+                    </div>
+                  )}
+                  {/* Season overrides */}
+                  {g.seasons.length > 0 && (
+                    <div className="space-y-1">
+                      <span className="text-xs font-medium text-gray-500">Season overrides:</span>
+                      {g.seasons.map((s) => (
+                        <div key={s.id} className="flex items-center gap-2 text-xs">
+                          <span className="font-medium">{s.year}:</span>
+                          <span>{s.startDate} – {s.endDate}</span>
+                          {s.note && <span className="text-gray-400">({s.note})</span>}
+                          <button onClick={() => handleDeleteSeason(g.id, s.year)} className="text-red-500 hover:underline">Remove</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {seasonFormGreen === g.id ? (
+                    <div className="flex gap-2 items-end flex-wrap">
+                      <label className="text-xs">Year:
+                        <input type="number" value={seasonYear} onChange={(e) => setSeasonYear(+e.target.value)}
+                          className="ml-1 w-20 rounded border p-1 text-sm" />
+                      </label>
+                      <label className="text-xs">Start:
+                        <input type="date" value={seasonStart} onChange={(e) => setSeasonStart(e.target.value)}
+                          className="ml-1 rounded border p-1 text-sm" />
+                      </label>
+                      <label className="text-xs">End:
+                        <input type="date" value={seasonEnd} onChange={(e) => setSeasonEnd(e.target.value)}
+                          className="ml-1 rounded border p-1 text-sm" />
+                      </label>
+                      <input type="text" placeholder="Note (optional)" value={seasonNote} onChange={(e) => setSeasonNote(e.target.value)}
+                        className="rounded border p-1 text-sm flex-1" />
+                      <button onClick={() => handleAddSeason(g.id)} className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700">Save</button>
+                      <button onClick={() => setSeasonFormGreen(null)} className="rounded bg-gray-300 px-3 py-1 text-xs hover:bg-gray-400">Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setSeasonFormGreen(g.id); setSeasonYear(new Date().getFullYear() + 1); }}
+                      className="text-xs text-green-700 hover:underline">+ Add season override</button>
+                  )}
                 </div>
 
                 {/* Rinks list */}
