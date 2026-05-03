@@ -112,6 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {isTenantAdminEffective && <Link href="/dashboard/greens" className="hover:bg-green-700 rounded px-3 py-2">Greens</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
+              {isTenantAdminEffective && <Link href="/dashboard/settings" className="hover:bg-green-700 rounded px-3 py-2">Settings</Link>}
               <Link href="/dashboard/audit" className="hover:bg-green-700 rounded px-3 py-2">
                 {isTenantAdminEffective ? "Audit Log" : "My Activity"}
               </Link>
@@ -131,10 +132,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
         <main className="flex-1 p-6">
           {showWeatherBanner && inTenantMode && (
-            <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-2 text-sm text-amber-800">
+            <Link
+              href="/dashboard/settings/location"
+              className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-2 text-sm text-amber-800 hover:bg-amber-100"
+            >
               <span>📍</span>
-              <span>Set your venue location to enable weather forecasts on the booking page.</span>
-            </div>
+              <span>
+                Set your venue location to enable weather forecasts on the booking page.
+                <span className="ml-1 underline">Open settings →</span>
+              </span>
+            </Link>
           )}
           {children}
         </main>
