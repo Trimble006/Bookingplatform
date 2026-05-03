@@ -46,6 +46,50 @@ function penceToPounds(p: number): string {
   return (p / 100).toFixed(2);
 }
 
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+/**
+ * Compute sensible start/end dates for a new financial year based on the
+ * tenant's FY end month/day. If existing years exist, the next year starts
+ * the day after the latest year's end date. Otherwise we find the current
+ * FY window from today's date.
+ */
+function defaultYearDates(
+  fyMonth: number,
+  fyDay: number,
+  existingYears: Year[],
+): { startDate: string; endDate: string } {
+  if (existingYears.length > 0) {
+    const sorted = [...existingYears].sort((a, b) => (a.endDate > b.endDate ? -1 : 1));
+    const latestEnd = new Date(sorted[0].endDate + "T00:00:00");
+    const nextStart = new Date(latestEnd);
+    nextStart.setDate(nextStart.getDate() + 1);
+    const nextEnd = new Date(nextStart);
+    nextEnd.setFullYear(nextEnd.getFullYear() + 1);
+    nextEnd.setDate(nextEnd.getDate() - 1);
+    return {
+      startDate: `${nextStart.getFullYear()}-${pad2(nextStart.getMonth() + 1)}-${pad2(nextStart.getDate())}`,
+      endDate: `${nextEnd.getFullYear()}-${pad2(nextEnd.getMonth() + 1)}-${pad2(nextEnd.getDate())}`,
+    };
+  }
+
+  const today = new Date();
+  const thisYearEnd = new Date(today.getFullYear(), fyMonth - 1, fyDay);
+  const endDate = thisYearEnd >= today
+    ? thisYearEnd
+    : new Date(today.getFullYear() + 1, fyMonth - 1, fyDay);
+  const startDate = new Date(endDate);
+  startDate.setFullYear(startDate.getFullYear() - 1);
+  startDate.setDate(startDate.getDate() + 1);
+
+  return {
+    startDate: `${startDate.getFullYear()}-${pad2(startDate.getMonth() + 1)}-${pad2(startDate.getDate())}`,
+    endDate: `${endDate.getFullYear()}-${pad2(endDate.getMonth() + 1)}-${pad2(endDate.getDate())}`,
+  };
+}
+
 export default function CharityLedgerPage() {
   const [loading, setLoading] = useState(true);
   const [years, setYears] = useState<Year[]>([]);
@@ -58,6 +102,7 @@ export default function CharityLedgerPage() {
   // New year form
   const [showNewYear, setShowNewYear] = useState(false);
   const [yearForm, setYearForm] = useState({ startDate: "", endDate: "" });
+  const [fyEnd, setFyEnd] = useState<{ month: number; day: number } | null>(null);
 
   // New fund form
   const [showNewFund, setShowNewFund] = useState(false);
@@ -93,12 +138,20 @@ export default function CharityLedgerPage() {
       fetch("/api/charity/years").then((r) => (r.ok ? r.json() : [])),
       fetch("/api/charity/categories").then((r) => (r.ok ? r.json() : [])),
       fetch("/api/charity/funds").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/charity/settings").then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([y, c, f]: [Year[], Category[], Fund[]]) => {
+      .then(([y, c, f, s]: [Year[], Category[], Fund[], any]) => {
         setYears(y);
         setCategories(c);
         setFunds(f);
         if (y.length > 0) setSelectedYearId(y[0].id);
+
+        const m = s?.yearEndMonth as number | undefined;
+        const d = s?.yearEndDay as number | undefined;
+        if (m && d) {
+          setFyEnd({ month: m, day: d });
+          setYearForm(defaultYearDates(m, d, y));
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -137,9 +190,10 @@ export default function CharityLedgerPage() {
       return;
     }
     const created: Year = await res.json();
-    setYears([created, ...years]);
+    const updatedYears = [created, ...years];
+    setYears(updatedYears);
     setSelectedYearId(created.id);
-    setYearForm({ startDate: "", endDate: "" });
+    setYearForm(fyEnd ? defaultYearDates(fyEnd.month, fyEnd.day, updatedYears) : { startDate: "", endDate: "" });
     setShowNewYear(false);
   }
 
