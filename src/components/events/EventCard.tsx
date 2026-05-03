@@ -15,6 +15,7 @@ type EventData = {
   imageUrl: string | null;
   visibility: string;
   tenantName?: string;
+  tenantLocality?: string | null;
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -77,7 +78,7 @@ export default function EventCard({ event }: { event: EventData }) {
           <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">{PLAYER_COUNT_LABELS[event.playerCount] ?? event.playerCount}</span>
         )}
         {event.tenantName && (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{event.tenantName}</span>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">{event.tenantName}{event.tenantLocality ? ` — ${event.tenantLocality}` : ""}</span>
         )}
       </div>
 

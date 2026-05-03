@@ -34,6 +34,20 @@ export default async function SettingsPage() {
       <ul className="divide-y rounded-xl border bg-white">
         <li>
           <Link
+            href="/dashboard/settings/locality"
+            className="flex items-center justify-between px-4 py-4 hover:bg-gray-50"
+          >
+            <div>
+              <p className="font-medium text-gray-900">Town / city</p>
+              <p className="text-sm text-gray-500">
+                Shown alongside your club name so members can tell clubs apart.
+              </p>
+            </div>
+            <span className="text-emerald-700 text-sm">Edit →</span>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/dashboard/settings/location"
             className="flex items-center justify-between px-4 py-4 hover:bg-gray-50"
           >

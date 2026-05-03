@@ -4,6 +4,11 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Chapter1About from "./chapters/Chapter1About";
+import Chapter2Organisation from "./chapters/Chapter2Organisation";
+// NB: file names below preserve their original numbering (Chapter2Where ...
+// Chapter9Review) for git-history continuity. Their *slot* in the wizard
+// shifted by 1 when we inserted the new "organisation" chapter at slot 2.
+// See decisions log 2026-05-04 (chapter renumber strategy).
 import Chapter2Where from "./chapters/Chapter2Where";
 import Chapter3Hours from "./chapters/Chapter3Hours";
 import Chapter4Greens from "./chapters/Chapter4Greens";
@@ -24,17 +29,18 @@ export type Progress = {
 
 const CHAPTERS: { num: number; key: string; title: string }[] = [
   { num: 1, key: "about", title: "About your club" },
-  { num: 2, key: "where", title: "Where you are" },
-  { num: 3, key: "hours", title: "When you're open" },
-  { num: 4, key: "greens", title: "Your greens" },
-  { num: 5, key: "people", title: "Your people" },
-  { num: 6, key: "knowledge", title: "What the agents should know" },
-  { num: 7, key: "features", title: "What you want enabled" },
-  { num: 8, key: "subscription", title: "Subscription" },
-  { num: 9, key: "review", title: "Review & Go live" },
+  { num: 2, key: "organisation", title: "Your organisation" },
+  { num: 3, key: "where", title: "Where you are" },
+  { num: 4, key: "hours", title: "When you're open" },
+  { num: 5, key: "greens", title: "Your greens" },
+  { num: 6, key: "people", title: "Your people" },
+  { num: 7, key: "knowledge", title: "What the agents should know" },
+  { num: 8, key: "features", title: "What you want enabled" },
+  { num: 9, key: "subscription", title: "Subscription" },
+  { num: 10, key: "review", title: "Review & Go live" },
 ];
 
-const FINAL_CHAPTER = 9;
+const FINAL_CHAPTER = 10;
 
 export default function OnboardingPage() {
   return (
@@ -93,13 +99,14 @@ function OnboardingPageInner() {
 
   const ChapterComp =
     currentChapter === 1 ? Chapter1About :
-    currentChapter === 2 ? Chapter2Where :
-    currentChapter === 3 ? Chapter3Hours :
-    currentChapter === 4 ? Chapter4Greens :
-    currentChapter === 5 ? Chapter5People :
-    currentChapter === 6 ? Chapter6Knowledge :
-    currentChapter === 7 ? Chapter7Features :
-    currentChapter === 8 ? Chapter8Subscription :
+    currentChapter === 2 ? Chapter2Organisation :
+    currentChapter === 3 ? Chapter2Where :
+    currentChapter === 4 ? Chapter3Hours :
+    currentChapter === 5 ? Chapter4Greens :
+    currentChapter === 6 ? Chapter5People :
+    currentChapter === 7 ? Chapter6Knowledge :
+    currentChapter === 8 ? Chapter7Features :
+    currentChapter === 9 ? Chapter8Subscription :
     Chapter9Review;
 
   // Always prefer the effective tenant from progress (which the API resolved

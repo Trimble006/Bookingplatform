@@ -23,7 +23,7 @@ export default async function HomePage() {
         active: true,
         featureFlags: { some: { key: { in: ["publicContent", "publicEvents", "publicAvailability"] }, enabled: true } },
       },
-      select: { id: true, name: true, slug: true, brandColor: true, logoUrl: true },
+      select: { id: true, name: true, slug: true, brandColor: true, logoUrl: true, locality: true },
       orderBy: { name: "asc" },
     }),
     publicTenantIds.length > 0
@@ -35,7 +35,7 @@ export default async function HomePage() {
             date: { gte: today },
             tenant: { active: true },
           },
-          include: { tenant: { select: { name: true, slug: true } } },
+          include: { tenant: { select: { name: true, slug: true, locality: true } } },
           orderBy: { date: "asc" },
           take: 6,
         })
@@ -99,6 +99,7 @@ export default async function HomePage() {
                   {club.name.charAt(0)}
                 </div>
                 <span className="font-medium text-gray-800">{club.name}</span>
+                {club.locality && <span className="text-xs text-gray-500 ml-1">{club.locality}</span>}
               </Link>
             ))}
           </div>
@@ -117,7 +118,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {publicEvents.map((ev) => (
               <Link key={ev.id} href={`/${ev.tenant.slug}`} className="block">
-                <EventCard event={{ ...ev, tenantName: ev.tenant.name }} />
+                <EventCard event={{ ...ev, tenantName: ev.tenant.name, tenantLocality: ev.tenant.locality }} />
               </Link>
             ))}
           </div>

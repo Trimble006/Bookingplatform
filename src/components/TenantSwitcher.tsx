@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 
 type Membership = {
   tenantId: string;
-  tenant: { id: string; name: string; slug: string; brandColor: string };
+  tenant: { id: string; name: string; slug: string; brandColor: string; locality?: string | null };
   role: string;
 };
 
@@ -59,7 +59,7 @@ export default function TenantSwitcher() {
       >
         {memberships.map((m) => (
           <option key={m.tenantId} value={m.tenantId}>
-            {m.tenant.name} ({m.role.toLowerCase().replace("_", " ")})
+            {m.tenant.name}{m.tenant.locality ? ` — ${m.tenant.locality}` : ""} ({m.role.toLowerCase().replace("_", " ")})
           </option>
         ))}
       </select>

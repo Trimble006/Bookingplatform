@@ -11,7 +11,7 @@ export default async function PublicAvailabilityPage({ params }: Params) {
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    select: { id: true, name: true, slug: true, active: true, brandColor: true },
+      select: { id: true, name: true, slug: true, active: true, brandColor: true, locality: true },
   });
 
   if (!tenant || !tenant.active) notFound();
@@ -25,8 +25,7 @@ export default async function PublicAvailabilityPage({ params }: Params) {
         <Link href={`/${slug}`} className="text-white/80 hover:text-white text-sm">
           &larr; Back to {tenant.name}
         </Link>
-        <h1 className="text-2xl font-bold text-white mt-2">Availability — {tenant.name}</h1>
-      </header>
+        <h1 className="text-2xl font-bold text-white mt-2">Availability — {tenant.name}</h1>          {tenant.locality && <p className="text-white/80 text-sm mt-1">{tenant.locality}</p>}      </header>
       <div className="max-w-6xl mx-auto px-4 py-8">
         <PublicAvailabilityClient slug={slug} />
       </div>

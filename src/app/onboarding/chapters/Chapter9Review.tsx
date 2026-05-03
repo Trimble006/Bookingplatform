@@ -20,7 +20,9 @@ type GoLiveStatus = {
 };
 
 /**
- * Chapter 9 — Review & Go live.
+ * Chapter 10 — Review & Go live. (File name kept as Chapter9Review.tsx for
+ * git-history continuity; the wizard slot moved from 9 → 10 when we inserted
+ * "organisation" at slot 2. See decisions log 2026-05-04.)
  *
  * The terminal chapter. Shows a summary of everything captured, lists any
  * remaining blockers, and offers the explicit "Go live" button. Pressing
@@ -46,7 +48,7 @@ export default function Chapter9Review({ tenantId, onGoTo }: ChapterProps) {
     fetch("/api/onboarding/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chapter: 9 }),
+      body: JSON.stringify({ chapter: 10 }),
     });
     refresh();
   }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps

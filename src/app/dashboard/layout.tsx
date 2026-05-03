@@ -4,7 +4,6 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import ImpersonationBanner from "@/components/ImpersonationBanner";
 import TenantSwitcher from "@/components/TenantSwitcher";
 
 type ActingAs = {
@@ -27,6 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [unread, setUnread] = useState(0);
   const [eventsEnabled, setEventsEnabled] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
+  const [charityAvailable, setCharityAvailable] = useState(false);
   const [showWeatherBanner, setShowWeatherBanner] = useState(false);
 
   const role = (session?.user as any)?.role;
@@ -63,6 +63,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       fetch("/api/tracking/stats?period=7d")
         .then((r) => { if (r.ok) setAnalyticsEnabled(true); })
         .catch(() => {});
+      fetch("/api/charity/status")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((s) => { if (s && s.available) setCharityAvailable(true); })
+        .catch(() => {});
       fetch("/api/bookings/weather?date=" + new Date().toISOString().slice(0, 10))
         .then((r) => r.json())
         .then((d) => {
@@ -74,7 +78,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col">
-      <ImpersonationBanner />
       {!inPlatformMode && (
         <div className="bg-white border-b px-4 py-2 flex items-center justify-end">
           <TenantSwitcher />
@@ -111,6 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
               {isTenantAdminEffective && <Link href="/dashboard/content" className="hover:bg-green-700 rounded px-3 py-2">Content</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/greens" className="hover:bg-green-700 rounded px-3 py-2">Greens</Link>}
+              {isTenantAdminEffective && charityAvailable && <Link href="/dashboard/charity" className="hover:bg-green-700 rounded px-3 py-2">💷 Charity</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/settings" className="hover:bg-green-700 rounded px-3 py-2">Settings</Link>}

@@ -9,7 +9,7 @@ type Invitation = {
   email: string;
   role: string;
   expiresAt: string;
-  tenant: { id: string; name: string; slug: string };
+  tenant: { id: string; name: string; slug: string; locality?: string | null };
   invitedBy: { name: string | null; email: string } | null;
   status: string;
   stale: boolean;
@@ -141,6 +141,9 @@ export default function AcceptInvitePage() {
           <h1 className="text-2xl font-bold text-gray-800">
             Welcome to {invite.tenant.name}
           </h1>
+          {invite.tenant.locality && (
+            <p className="text-gray-400 text-sm">{invite.tenant.locality}</p>
+          )}
           <p className="text-gray-600 mt-2">
             You've been invited to join as a{" "}
             <strong>{invite.role.replace(/_/g, " ").toLowerCase()}</strong>.

@@ -32,7 +32,7 @@ export default async function PublicClubPage({ params }: Params) {
     where: { slug },
     select: {
       id: true, name: true, slug: true, active: true, status: true,
-      brandColor: true, logoUrl: true, locale: true,
+      brandColor: true, logoUrl: true, locale: true, locality: true,
       openingTime: true, closingTime: true,
     },
   });
@@ -139,6 +139,7 @@ export default async function PublicClubPage({ params }: Params) {
           <img src={tenant.logoUrl} alt={tenant.name} className="mx-auto h-16 mb-4" />
         )}
         <h1 className="text-3xl font-bold text-white">{tenant.name}</h1>
+        {tenant.locality && <p className="text-white/80 text-sm mt-1">{tenant.locality}</p>}
       </header>
 
       {/* CMS content sections */}

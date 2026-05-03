@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest) {
   const [tenant, progress, queuedInvitationCount] = await Promise.all([
     prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, slug: true, name: true, status: true, goLiveAt: true },
+      select: { id: true, slug: true, name: true, status: true, goLiveAt: true, locality: true },
     }),
     prisma.onboardingProgress.findUnique({
       where: { tenantId },
@@ -96,7 +96,7 @@ export async function POST(_req: NextRequest) {
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { id: true, name: true, slug: true, status: true, goLiveAt: true },
+    select: { id: true, name: true, slug: true, status: true, goLiveAt: true, locality: true },
   });
   if (!tenant) return jsonError("Tenant not found", 404);
   if (tenant.status === "ACTIVE" || tenant.goLiveAt) {

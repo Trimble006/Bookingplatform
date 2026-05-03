@@ -9,6 +9,10 @@ import { logAudit } from "@/lib/audit";
 // non-impersonating PLATFORM_ADMIN cannot reach in to edit these directly:
 // they must start an impersonation first. This preserves the orthogonal
 // role model (PLATFORM_ADMIN has no implicit tenant powers).
+//
+// `country`, `organisationType`, `financialYearEnd*` are KYC fields: set in
+// onboarding chapter 2 (Your organisation) and editable thereafter from the
+// tenant settings page. See decisions log 2026-05-04 (country self-declared).
 const TENANT_PLANE_FIELDS = new Set([
   "name",
   "brandColor",
@@ -20,6 +24,25 @@ const TENANT_PLANE_FIELDS = new Set([
   "closingTime",
   "latitude",
   "longitude",
+  "locality",
+  "country",
+  "organisationType",
+  "financialYearEndMonth",
+  "financialYearEndDay",
+]);
+
+const ALLOWED_COUNTRIES = new Set(["GB", "NI", "OTHER"]);
+const ALLOWED_ORG_TYPES = new Set([
+  "REGISTERED_CHARITY",
+  "CIO",
+  "SCIO",
+  "CASC",
+  "COMMUNITY_INTEREST_COMPANY",
+  "LIMITED_COMPANY",
+  "UNINCORPORATED_ASSOCIATION",
+  "PRIVATE_MEMBERS_CLUB",
+  "OTHER",
+  "NOT_CONSTITUTED",
 ]);
 
 // Platform-plane fields. Only a real, non-impersonating PLATFORM_ADMIN may
@@ -114,7 +137,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return jsonError("Forbidden: platform-plane fields require a non-impersonating platform admin.", 403);
     }
     allowed = { ...platformPlaneRequested };
-    if (typeof allowed.status === "string") {
+
+    // The admin "Activate" toggle is for ACTIVE ↔ SUSPENDED only. It must
+    // NOT be used to bypass go-live: an ONBOARDING tenant has no
+    // `goLiveAt`, no flushed invitations, and no `tenant.went_live` audit
+    // — flipping `active=true` here would publish a half-built public
+    // site at /[slug]. Force admins through the proper go-live flow
+    // (impersonate → onboarding wizard → Go Live).
+    if ("active" in allowed && !("status" in allowed)) {
+      const current = await prisma.tenant.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!current) return jsonError("Tenant not found", 404);
+      if (current.status === "ONBOARDING") {
+        return jsonError(
+          "Use the go-live flow to activate an onboarding tenant. Impersonate the tenant admin and complete the onboarding wizard.",
+          409,
+        );
+      }
+      // Keep status coherent with the active flip. (`active` is a
+      // DEPRECATED mirror of status === ACTIVE per schema comment.)
+      if (allowed.active === true) allowed.status = "ACTIVE";
+      else if (allowed.active === false) allowed.status = "SUSPENDED";
+    } else if (typeof allowed.status === "string") {
       // Keep `active` boolean mirror in sync.
       allowed.active = allowed.status === "ACTIVE";
     }
@@ -133,6 +179,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return jsonError("Forbidden", 403);
     }
     allowed = { ...tenantPlaneRequested };
+
+    // Validate the KYC enum + numeric fields. Other tenant-plane fields are
+    // free-text or coords with no further constraints worth enforcing here.
+    if ("country" in allowed) {
+      if (typeof allowed.country !== "string" || !ALLOWED_COUNTRIES.has(allowed.country)) {
+        return jsonError(`country must be one of ${[...ALLOWED_COUNTRIES].join(", ")}`);
+      }
+    }
+    if ("organisationType" in allowed) {
+      if (allowed.organisationType !== null) {
+        if (typeof allowed.organisationType !== "string" || !ALLOWED_ORG_TYPES.has(allowed.organisationType)) {
+          return jsonError(`organisationType must be one of ${[...ALLOWED_ORG_TYPES].join(", ")} or null`);
+        }
+      }
+    }
+    if ("financialYearEndMonth" in allowed && allowed.financialYearEndMonth !== null) {
+      const m = allowed.financialYearEndMonth;
+      if (typeof m !== "number" || !Number.isInteger(m) || m < 1 || m > 12) {
+        return jsonError("financialYearEndMonth must be 1..12 or null");
+      }
+    }
+    if ("financialYearEndDay" in allowed && allowed.financialYearEndDay !== null) {
+      const d = allowed.financialYearEndDay;
+      if (typeof d !== "number" || !Number.isInteger(d) || d < 1 || d > 31) {
+        return jsonError("financialYearEndDay must be 1..31 or null");
+      }
+    }
+
     action = "admin.tenant.updated";
   }
 
