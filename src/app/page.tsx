@@ -70,6 +70,12 @@ export default async function HomePage() {
               >
                 Register
               </Link>
+              <Link
+                href="/join"
+                className="rounded-lg border border-green-600 px-6 py-3 text-green-700 font-medium hover:bg-green-50"
+              >
+                Add your club
+              </Link>
             </>
           )}
         </div>

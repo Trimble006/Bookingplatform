@@ -32,6 +32,10 @@ export default function PlatformAdminPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    if (!form.name.trim()) { setError("Club name is required"); return; }
+    if (!form.slug.trim()) { setError("Slug is required"); return; }
+    if (!form.adminEmail.trim()) { setError("Admin email is required"); return; }
+    if (!form.adminPassword) { setError("Admin password is required"); return; }
     const res = await fetch("/api/admin/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -42,8 +46,8 @@ export default function PlatformAdminPage() {
       }),
     });
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error);
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? `Failed to create club (${res.status})`);
     } else {
       setForm({ name: "", slug: "", adminEmail: "", adminPassword: "", brandColor: "#16a34a", locale: "en", latitude: "", longitude: "" });
       setSuccess("Club created successfully!");
@@ -75,10 +79,10 @@ export default function PlatformAdminPage() {
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-600 text-sm">{success}</p>}
         <div className="grid grid-cols-2 gap-3">
-          <input placeholder="Club name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded border p-2" required />
-          <input placeholder="Slug" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded border p-2" required />
-          <input type="email" placeholder="Admin email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} className="rounded border p-2" required />
-          <input type="password" placeholder="Admin password" value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} className="rounded border p-2" required />
+          <input placeholder="Club name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setError(""); }} className="rounded border p-2" />
+          <input placeholder="Slug" value={form.slug} onChange={(e) => { setForm({ ...form, slug: e.target.value }); setError(""); }} className="rounded border p-2" />
+          <input type="email" placeholder="Admin email" value={form.adminEmail} onChange={(e) => { setForm({ ...form, adminEmail: e.target.value }); setError(""); }} className="rounded border p-2" />
+          <input type="password" placeholder="Admin password" value={form.adminPassword} onChange={(e) => { setForm({ ...form, adminPassword: e.target.value }); setError(""); }} className="rounded border p-2" />
           <input type="color" value={form.brandColor} onChange={(e) => setForm({ ...form, brandColor: e.target.value })} className="rounded border p-1 h-10" />
           <select value={form.locale} onChange={(e) => setForm({ ...form, locale: e.target.value })} className="rounded border p-2">
             <option value="en">English</option>

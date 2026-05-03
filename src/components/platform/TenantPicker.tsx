@@ -9,6 +9,7 @@ type Tenant = {
   name: string;
   slug: string;
   brandColor: string;
+  status?: "ACTIVE" | "ONBOARDING" | "SUSPENDED" | "CHURNED" | "LEAD";
 };
 
 /**
@@ -62,7 +63,9 @@ export default function TenantPicker({
       }
       // Push the new actingAs claim into the JWT/session.
       await update({ actingAs: data.actingAs });
-      router.push("/" + tenant.slug);
+      // ONBOARDING tenants don't have a public site yet; route to the wizard.
+      const dest = tenant.status === "ONBOARDING" ? "/onboarding" : "/" + tenant.slug;
+      router.push(dest);
       router.refresh();
     } catch {
       setError("Network error starting impersonation.");
@@ -113,9 +116,18 @@ export default function TenantPicker({
               {t.name.charAt(0)}
             </div>
             <div>
-              <p className="font-semibold text-green-700">{t.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-green-700">{t.name}</p>
+                {t.status === "ONBOARDING" && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">ONBOARDING</span>
+                )}
+              </div>
               <p className="text-xs text-gray-500">
-                {busyId === t.id ? "Starting impersonation…" : `Act as TENANT_ADMIN of ${t.name}`}
+                {busyId === t.id
+                  ? "Starting impersonation\u2026"
+                  : t.status === "ONBOARDING"
+                    ? `Help drive the wizard for ${t.name}`
+                    : `Act as TENANT_ADMIN of ${t.name}`}
               </p>
             </div>
           </button>

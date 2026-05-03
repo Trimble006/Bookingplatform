@@ -37,6 +37,7 @@ export default function MessagingPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const [tenantUsers, setTenantUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
   const [featureDisabled, setFeatureDisabled] = useState(false);
@@ -160,6 +161,7 @@ export default function MessagingPage() {
 
   // Create channel
   async function handleCreateChannel(data: { name: string; type: string; description?: string; memberIds: string[] }) {
+    setCreateError(null);
     const res = await fetch("/api/messaging/channels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -170,7 +172,10 @@ export default function MessagingPage() {
       await loadChannels();
       const ch = await res.json();
       setActiveChannelId(ch.id);
+      return;
     }
+    const body = await res.json().catch(() => ({}));
+    setCreateError(body?.error ?? `Failed to create channel (${res.status})`);
   }
 
   // Delete message
@@ -305,9 +310,11 @@ export default function MessagingPage() {
 
       {showCreate && (
         <CreateChannelModal
-          onClose={() => setShowCreate(false)}
+          onClose={() => { setShowCreate(false); setCreateError(null); }}
           onCreate={handleCreateChannel}
           tenantUsers={tenantUsers}
+          error={createError}
+          onClearError={() => setCreateError(null)}
         />
       )}
     </div>

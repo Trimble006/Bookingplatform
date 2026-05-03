@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 
 type Green = {
@@ -16,11 +17,15 @@ type FeatureFlag = {
   enabled: boolean;
 };
 
+type TenantStatus = "LEAD" | "ONBOARDING" | "ACTIVE" | "SUSPENDED" | "CHURNED";
+
 type Tenant = {
   id: string;
   name: string;
   slug: string;
   active: boolean;
+  status: TenantStatus;
+  goLiveAt: string | null;
   brandColor: string;
   logoUrl: string | null;
   locale: string;
@@ -33,22 +38,23 @@ type Tenant = {
   featureFlags: FeatureFlag[];
 };
 
+const STATUS_BADGE: Record<TenantStatus, string> = {
+  LEAD: "bg-gray-100 text-gray-700",
+  ONBOARDING: "bg-amber-100 text-amber-800",
+  ACTIVE: "bg-green-100 text-green-700",
+  SUSPENDED: "bg-red-100 text-red-700",
+  CHURNED: "bg-gray-200 text-gray-500",
+};
+
 export default function TenantDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { update } = useSession();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    brandColor: "#16a34a",
-    locale: "en",
-    seasonStart: "",
-    seasonEnd: "",
-    openingTime: "08:00",
-    closingTime: "20:00",
-  });
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
 
   function load() {
     fetch(`/api/admin/tenants/${id}`)
@@ -56,18 +62,7 @@ export default function TenantDetailsPage() {
         if (!r.ok) throw new Error("Failed to load");
         return r.json();
       })
-      .then((d) => {
-        setTenant(d);
-        setForm({
-          name: d.name,
-          brandColor: d.brandColor,
-          locale: d.locale,
-          seasonStart: d.seasonStart ?? "",
-          seasonEnd: d.seasonEnd ?? "",
-          openingTime: d.openingTime,
-          closingTime: d.closingTime,
-        });
-      })
+      .then((d) => setTenant(d))
       .catch(() => setError("Tenant not found"));
   }
 
@@ -75,37 +70,57 @@ export default function TenantDetailsPage() {
     load();
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function startImpersonation() {
+    if (!tenant) return;
     setError("");
     setSuccessMsg("");
-    const res = await fetch(`/api/admin/tenants/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        seasonStart: form.seasonStart || null,
-        seasonEnd: form.seasonEnd || null,
-      }),
-    });
-    if (!res.ok) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/platform/impersonation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId: tenant.id, reason: reason.trim() || undefined }),
+      });
       const data = await res.json();
-      setError(data.error ?? "Update failed");
-    } else {
-      setEditing(false);
-      setSuccessMsg("Tenant updated successfully!");
-      load();
+      if (!res.ok) {
+        setError(data.error ?? "Could not start impersonation.");
+        setBusy(false);
+        return;
+      }
+      await update({ actingAs: data.actingAs });
+      // ONBOARDING tenants land on the wizard; others on their tenant home.
+      const dest = tenant.status === "ONBOARDING" ? "/onboarding" : "/" + tenant.slug;
+      router.push(dest);
+      router.refresh();
+    } catch {
+      setError("Network error starting impersonation.");
+      setBusy(false);
     }
   }
 
-  async function toggleFlag(key: string, enabled: boolean) {
-    await fetch(`/api/admin/tenants/${id}/flags`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, enabled: !enabled }),
-    });
-    setSuccessMsg(`Flag "${key}" ${!enabled ? "enabled" : "disabled"}.`);
-    load();
+  async function setStatus(next: TenantStatus) {
+    if (!tenant) return;
+    if (next === "CHURNED" && !confirm(`Mark ${tenant.name} as CHURNED? This soft-deletes the tenant.`)) return;
+    if (next === "SUSPENDED" && !confirm(`Suspend ${tenant.name}? Members will be locked out until you reactivate.`)) return;
+    setError("");
+    setSuccessMsg("");
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? data.message ?? "Status change failed.");
+      } else {
+        setSuccessMsg(`Tenant status set to ${next}.`);
+        load();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (error && !tenant) {
@@ -121,6 +136,9 @@ export default function TenantDetailsPage() {
     return <p className="text-gray-500">Loading…</p>;
   }
 
+  const status = tenant.status ?? (tenant.active ? "ACTIVE" : "SUSPENDED");
+  const canImpersonate = status === "ACTIVE" || status === "ONBOARDING";
+
   return (
     <div className="space-y-6">
       <Link href="/dashboard/platform" className="text-sm text-green-700 hover:underline">&larr; Back to tenants</Link>
@@ -129,76 +147,81 @@ export default function TenantDetailsPage() {
         <div className="h-4 w-4 rounded-full" style={{ backgroundColor: tenant.brandColor }} />
         <h1 className="text-2xl font-bold">{tenant.name}</h1>
         <span className="text-sm text-gray-400">/{tenant.slug}</span>
-        <span className={`ml-2 text-xs px-2 py-0.5 rounded ${tenant.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-          {tenant.active ? "Active" : "Inactive"}
-        </span>
+        <span className={`ml-2 text-xs px-2 py-0.5 rounded ${STATUS_BADGE[status]}`}>{status}</span>
       </div>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
       {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
-      {/* Details / Edit form */}
+      {/* Tenant-plane: read-only. Edits require impersonation. */}
       <div className="rounded-xl bg-white p-6 shadow space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="font-semibold">Details</h2>
-          {!editing && (
-            <button onClick={() => setEditing(true)} className="text-sm text-green-700 hover:underline">Edit</button>
-          )}
+        <div className="flex justify-between items-start gap-3">
+          <div>
+            <h2 className="font-semibold">Tenant content</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Branding, hours, season, and feature flags are tenant-plane settings. To change them, start
+              an impersonation and you&rsquo;ll be acting as a tenant admin for this club.
+            </p>
+          </div>
         </div>
 
-        {editing ? (
-          <form onSubmit={handleSave} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Name</span>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded border p-2 w-full" required />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Brand colour</span>
-                <input type="color" value={form.brandColor} onChange={(e) => setForm({ ...form, brandColor: e.target.value })} className="rounded border p-1 h-10 w-full" />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Locale</span>
-                <select value={form.locale} onChange={(e) => setForm({ ...form, locale: e.target.value })} className="rounded border p-2 w-full">
-                  <option value="en">English</option>
-                  <option value="cy">Cymraeg</option>
-                  <option value="fr">Français</option>
-                  <option value="gd">Gàidhlig</option>
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Season start</span>
-                <input type="date" value={form.seasonStart} onChange={(e) => setForm({ ...form, seasonStart: e.target.value })} className="rounded border p-2 w-full" />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Season end</span>
-                <input type="date" value={form.seasonEnd} onChange={(e) => setForm({ ...form, seasonEnd: e.target.value })} className="rounded border p-2 w-full" />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Opening time</span>
-                <input type="time" value={form.openingTime} onChange={(e) => setForm({ ...form, openingTime: e.target.value })} className="rounded border p-2 w-full" />
-              </label>
-              <label className="space-y-1">
-                <span className="text-xs text-gray-500">Closing time</span>
-                <input type="time" value={form.closingTime} onChange={(e) => setForm({ ...form, closingTime: e.target.value })} className="rounded border p-2 w-full" />
-              </label>
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white text-sm hover:bg-green-700">Save</button>
-              <button type="button" onClick={() => setEditing(false)} className="rounded border px-4 py-2 text-sm">Cancel</button>
-            </div>
-          </form>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <dt className="text-gray-500">Public URL</dt>
+          <dd className="font-mono">
+            {tenant.slug.startsWith("t-") ? (
+              <span className="inline-block px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-600">PLACEHOLDER</span>
+            ) : tenant.goLiveAt ? (
+              <span>/{tenant.slug} <span className="ml-1 text-xs text-emerald-700">[LIVE]</span></span>
+            ) : (
+              <span>/{tenant.slug} <span className="ml-1 text-xs text-amber-700">[CHOSEN, not yet live]</span></span>
+            )}
+          </dd>
+          <dt className="text-gray-500">Locale</dt><dd>{tenant.locale}</dd>
+          <dt className="text-gray-500">Season</dt><dd>{tenant.seasonStart && tenant.seasonEnd ? `${tenant.seasonStart} — ${tenant.seasonEnd}` : "Not set"}</dd>
+          <dt className="text-gray-500">Hours</dt><dd>{tenant.openingTime} – {tenant.closingTime}</dd>
+          <dt className="text-gray-500">Brand colour</dt><dd className="font-mono">{tenant.brandColor}</dd>
+          <dt className="text-gray-500">Logo URL</dt><dd className="truncate">{tenant.logoUrl ?? <span className="text-gray-400">—</span>}</dd>
+          <dt className="text-gray-500">Created</dt><dd>{new Date(tenant.createdAt).toLocaleDateString()}</dd>
+          {tenant.goLiveAt && (
+            <>
+              <dt className="text-gray-500">Went live</dt>
+              <dd>{new Date(tenant.goLiveAt).toLocaleString("en-GB")}</dd>
+            </>
+          )}
+        </dl>
+
+        {canImpersonate ? (
+          <div className="border-t pt-4 space-y-2">
+            <label htmlFor="reason" className="block text-xs font-medium text-gray-600">
+              Reason for impersonation (recorded in the audit log)
+            </label>
+            <input
+              id="reason"
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Helping admin set opening hours"
+              className="w-full rounded border p-2 text-sm"
+              maxLength={500}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              onClick={startImpersonation}
+              disabled={busy}
+              className="rounded bg-green-600 px-4 py-2 text-white text-sm hover:bg-green-700 disabled:opacity-50"
+            >
+              {busy ? "Starting…" : `Impersonate to edit (${tenant.name})`}
+            </button>
+          </div>
         ) : (
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <dt className="text-gray-500">Locale</dt><dd>{tenant.locale}</dd>
-            <dt className="text-gray-500">Season</dt><dd>{tenant.seasonStart && tenant.seasonEnd ? `${tenant.seasonStart} — ${tenant.seasonEnd}` : "Not set"}</dd>
-            <dt className="text-gray-500">Hours</dt><dd>{tenant.openingTime} – {tenant.closingTime}</dd>
-            <dt className="text-gray-500">Created</dt><dd>{new Date(tenant.createdAt).toLocaleDateString()}</dd>
-          </dl>
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            Impersonation is disabled for tenants in {status} state. Reactivate the tenant first if changes are needed.
+          </p>
         )}
       </div>
 
-      {/* Greens */}
+      {/* Greens — read-only summary */}
       <div className="rounded-xl bg-white p-6 shadow space-y-3">
         <h2 className="font-semibold">Greens ({tenant.greens.length})</h2>
         {tenant.greens.length === 0 ? (
@@ -215,9 +238,12 @@ export default function TenantDetailsPage() {
         )}
       </div>
 
-      {/* Feature flags */}
+      {/* Feature flags — read-only on the platform plane */}
       <div className="rounded-xl bg-white p-6 shadow space-y-3">
         <h2 className="font-semibold">Feature Flags</h2>
+        <p className="text-xs text-gray-500">
+          Read-only here. To toggle a tenant-toggleable flag, impersonate and use the tenant admin UI.
+        </p>
         {tenant.featureFlags.length === 0 ? (
           <p className="text-sm text-gray-500">No flags configured.</p>
         ) : (
@@ -225,16 +251,66 @@ export default function TenantDetailsPage() {
             {tenant.featureFlags.map((f) => (
               <li key={f.id} className="flex items-center justify-between rounded border px-3 py-2">
                 <span className="text-sm font-mono">{f.key}</span>
-                <button
-                  onClick={() => toggleFlag(f.key, f.enabled)}
-                  className={`text-xs px-3 py-1 rounded ${f.enabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
-                >
+                <span className={`text-xs px-3 py-1 rounded ${f.enabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                   {f.enabled ? "Enabled" : "Disabled"}
-                </button>
+                </span>
               </li>
             ))}
           </ul>
         )}
+      </div>
+
+      {/* Platform-plane: lifecycle controls */}
+      <div className="rounded-xl bg-white p-6 shadow space-y-3 border-l-4 border-purple-300">
+        <div>
+          <h2 className="font-semibold">Platform lifecycle</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            These controls are platform-plane: they manage the tenant&rsquo;s status from the outside.
+            They don&rsquo;t require impersonation.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {status !== "ACTIVE" && status !== "CHURNED" && (
+            <button
+              type="button"
+              onClick={() => setStatus("ACTIVE")}
+              disabled={busy}
+              className="rounded bg-green-600 px-3 py-1.5 text-white text-sm hover:bg-green-700 disabled:opacity-50"
+            >
+              Activate
+            </button>
+          )}
+          {status === "ACTIVE" && (
+            <button
+              type="button"
+              onClick={() => setStatus("SUSPENDED")}
+              disabled={busy}
+              className="rounded bg-amber-600 px-3 py-1.5 text-white text-sm hover:bg-amber-700 disabled:opacity-50"
+            >
+              Suspend
+            </button>
+          )}
+          {status === "SUSPENDED" && (
+            <button
+              type="button"
+              onClick={() => setStatus("ACTIVE")}
+              disabled={busy}
+              className="rounded bg-green-600 px-3 py-1.5 text-white text-sm hover:bg-green-700 disabled:opacity-50"
+            >
+              Reactivate
+            </button>
+          )}
+          {status !== "CHURNED" && (
+            <button
+              type="button"
+              onClick={() => setStatus("CHURNED")}
+              disabled={busy}
+              className="rounded border border-red-300 text-red-700 px-3 py-1.5 text-sm hover:bg-red-50 disabled:opacity-50"
+            >
+              Mark churned
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -20,8 +20,18 @@ export default async function DashboardPage() {
 
   if (!session?.user) redirect("/auth/login");
 
-  // Members of a tenant — straight to their club homepage.
+  // Members of a tenant — straight to their club homepage, unless they're a
+  // TENANT_ADMIN of an incomplete tenant (then off to the onboarding wizard).
   if (session.user.tenantId) {
+    if (session.user.role === "TENANT_ADMIN" || session.user.role === "PLATFORM_ADMIN") {
+      const progress = await prisma.onboardingProgress.findUnique({
+        where: { tenantId: session.user.tenantId },
+        select: { completedAt: true },
+      });
+      if (progress && !progress.completedAt) {
+        redirect("/onboarding");
+      }
+    }
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.user.tenantId },
       select: { slug: true },
@@ -48,8 +58,8 @@ export default async function DashboardPage() {
 
   // Platform admin (no tenant, not impersonating) — show the impersonation picker.
   const tenants = await prisma.tenant.findMany({
-    where: { active: true },
-    select: { id: true, name: true, slug: true, brandColor: true },
+    where: { status: { in: ["ACTIVE", "ONBOARDING"] } },
+    select: { id: true, name: true, slug: true, brandColor: true, status: true },
     orderBy: { name: "asc" },
   });
 

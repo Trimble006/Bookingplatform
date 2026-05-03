@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
+import TenantSwitcher from "@/components/TenantSwitcher";
 
 type ActingAs = {
   tenantId: string;
@@ -36,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const inPlatformMode = isPlatformAdmin && !isImpersonating;
   const inTenantMode = !inPlatformMode;
   const isTenantAdminEffective = effectiveRole === "TENANT_ADMIN";
+  const isMaintenanceEffective = effectiveRole === "MAINTENANCE" || effectiveRole === "TENANT_ADMIN";
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -50,12 +52,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     fetch("/api/notifications?unread=true")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((n) => setUnread(Array.isArray(n) ? n.length : 0))
       .catch(() => {});
-    fetch("/api/events")
-      .then((r) => r.json())
-      .then((d) => setEventsEnabled(d && typeof d === "object" && !Array.isArray(d)))
+    fetch("/api/features")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((flags) => setEventsEnabled(!!(flags && flags.events)))
       .catch(() => {});
     if (isTenantAdminEffective) {
       fetch("/api/tracking/stats?period=7d")
@@ -73,6 +75,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col">
       <ImpersonationBanner />
+      {!inPlatformMode && (
+        <div className="bg-white border-b px-4 py-2 flex items-center justify-end">
+          <TenantSwitcher />
+        </div>
+      )}
       <div className="flex flex-1">
         <aside className={`w-56 ${inPlatformMode ? "bg-slate-800" : "bg-green-800"} text-white flex flex-col p-4 gap-2`}>
           <h2 className="text-lg font-bold mb-4">
@@ -82,8 +89,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {inPlatformMode ? (
             <>
               <Link href="/dashboard" className="hover:bg-slate-700 rounded px-3 py-2">Overview</Link>
+              <Link href="/dashboard/platform/applications" className="hover:bg-slate-700 rounded px-3 py-2">Applications</Link>
               <Link href="/dashboard/platform/tenants" className="hover:bg-slate-700 rounded px-3 py-2">Tenants</Link>
               <Link href="/dashboard/platform/payments" className="hover:bg-slate-700 rounded px-3 py-2">Payments</Link>
+              <Link href="/dashboard/platform/outbound" className="hover:bg-slate-700 rounded px-3 py-2">Outbound</Link>
               <Link href="/dashboard/platform/audit" className="hover:bg-slate-700 rounded px-3 py-2">Platform Audit</Link>
               <Link href="/dashboard/platform/impersonations" className="hover:bg-slate-700 rounded px-3 py-2">Impersonation History</Link>
             </>
@@ -93,6 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link href="/dashboard/bookings" className="hover:bg-green-700 rounded px-3 py-2">Bookings</Link>
               {eventsEnabled && <Link href="/dashboard/events" className="hover:bg-green-700 rounded px-3 py-2">Events</Link>}
               <Link href="/dashboard/maintenance" className="hover:bg-green-700 rounded px-3 py-2">Maintenance</Link>
+              {isMaintenanceEffective && <Link href="/dashboard/agents" className="hover:bg-green-700 rounded px-3 py-2">🤖 Agents</Link>}
               <Link href="/dashboard/messaging" className="hover:bg-green-700 rounded px-3 py-2">Messaging</Link>
               <Link href="/dashboard/notifications" className="hover:bg-green-700 rounded px-3 py-2 flex justify-between">
                 Notifications

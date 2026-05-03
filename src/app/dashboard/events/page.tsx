@@ -78,10 +78,17 @@ const PLAYER_COUNT_LABELS: Record<string, string> = {
 };
 
 function emptyForm() {
+  // Default date to today and start time to next round hour from now, so the form
+  // never opens with empty `required` time/date inputs (which render a deceptive
+  // ghost placeholder like "12:30 PM" that looks like a real value).
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+  const startTime = `${String(nextHour.getHours()).padStart(2, "0")}:00`;
   return {
     title: "", description: "", category: "SOCIAL" as string,
     format: "" as string, playerCount: "" as string,
-    date: "", startTime: "", endTime: "",
+    date: today, startTime, endTime: "",
     location: "", capacity: "" as string, entryFee: "" as string,
     currency: "GBP", imageUrl: "",
     contactName: "", contactEmail: "", contactPhone: "",
@@ -169,6 +176,10 @@ export default function EventsPage() {
     e.preventDefault();
     setFormError("");
 
+    if (!form.title.trim()) { setFormError("Title is required"); return; }
+    if (!form.description.trim()) { setFormError("Description is required"); return; }
+    if (!form.date) { setFormError("Date is required"); return; }
+    if (!form.startTime) { setFormError("Start time is required"); return; }
     if (form.endTime && form.startTime && form.endTime <= form.startTime) {
       setFormError("End time must be after start time");
       return;
@@ -300,7 +311,7 @@ export default function EventsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Title *</label>
-                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="border rounded px-2 py-1 w-full" required />
+                  <input value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setFormError(""); }} className="border rounded px-2 py-1 w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Category *</label>
@@ -312,7 +323,7 @@ export default function EventsPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">Description *</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="border rounded px-2 py-1 w-full" required />
+                <textarea value={form.description} onChange={(e) => { setForm({ ...form, description: e.target.value }); setFormError(""); }} rows={3} className="border rounded px-2 py-1 w-full" />
               </div>
 
               {COMPETITIVE_CATEGORIES.includes(form.category) && (
@@ -337,14 +348,14 @@ export default function EventsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Date *</label>
-                  <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="border rounded px-2 py-1 w-full" required />
+                  <input type="date" value={form.date} onChange={(e) => { setForm({ ...form, date: e.target.value }); setFormError(""); }} className="border rounded px-2 py-1 w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Time *</label>
-                  <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="border rounded px-2 py-1 w-full" required />
+                  <input type="time" value={form.startTime} onChange={(e) => { setForm({ ...form, startTime: e.target.value }); setFormError(""); }} className="border rounded px-2 py-1 w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">End Time</label>
+                  <label className="block text-sm font-medium mb-1">End Time <span className="text-gray-400 font-normal">(optional)</span></label>
                   <input type="time" value={form.endTime} onChange={(e) => { setForm({ ...form, endTime: e.target.value }); setFormError(""); }} min={form.startTime || undefined} className="border rounded px-2 py-1 w-full" />
                 </div>
               </div>

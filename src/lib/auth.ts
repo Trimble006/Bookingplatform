@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { resolveActiveContext } from "@/lib/memberships";
 
 // On Vercel, VERCEL_URL is auto-set (without protocol). Use as fallback for NEXTAUTH_URL.
 if ((!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.includes("example.com")) && process.env.VERCEL_URL) {
@@ -29,8 +30,14 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;
 
-        // Block login for deactivated tenants (platform admins have no tenant)
-        if (user.tenant && !user.tenant.active) return null;
+        // Block login when the user's tenant is in a disciplinary state.
+        // ACTIVE and ONBOARDING are both fine — onboarding admins MUST be
+        // able to sign in to drive the wizard. SUSPENDED and CHURNED are
+        // platform-disciplinary states and lock members out. Platform admins
+        // have no tenant so this gate is skipped for them.
+        if (user.tenant && (user.tenant.status === "SUSPENDED" || user.tenant.status === "CHURNED")) {
+          return null;
+        }
 
         // Block login for suspended users
         if (user.suspended) return null;
@@ -51,6 +58,26 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.tenantId = (user as any).tenantId;
         token.actingAs = null;
+        // Multi-club support: resolve the active tenant context from
+        // memberships at sign-in time. Falls back to User.tenantId when the
+        // user has no memberships yet (e.g. platform admin).
+        const ctx = await resolveActiveContext((user as any).id, (user as any).tenantId ?? null);
+        if (ctx.tenantId) {
+          token.tenantId = ctx.tenantId;
+          token.role = ctx.role;
+        }
+        token.activeTenantId = ctx.tenantId;
+      }
+      // Tenant switcher: client calls session.update({ activeTenantId: "..." })
+      // to switch which membership is the active one.
+      if (trigger === "update" && session && typeof session === "object" && "activeTenantId" in session) {
+        const requested = (session as any).activeTenantId as string | null;
+        const ctx = await resolveActiveContext(token.sub as string, requested);
+        if (ctx.tenantId) {
+          token.tenantId = ctx.tenantId;
+          token.role = ctx.role;
+          token.activeTenantId = ctx.tenantId;
+        }
       }
       // Allow client/server to update the actingAs claim via session.update().
       // Only PLATFORM_ADMINs may carry an actingAs claim — defensively strip
@@ -71,6 +98,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.sub;
         (session.user as any).role = token.role;
         (session.user as any).tenantId = token.tenantId;
+        (session.user as any).activeTenantId = token.activeTenantId ?? token.tenantId ?? null;
         (session.user as any).actingAs = token.role === "PLATFORM_ADMIN" ? (token.actingAs ?? null) : null;
       }
       return session;

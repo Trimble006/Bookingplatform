@@ -18,6 +18,19 @@ type Task = {
   notes: { text: string; createdAt: string; user: { name: string } }[];
 };
 
+type AgentInteraction = {
+  id: string;
+  type: string;
+  createdAt: string;
+  decision: {
+    id: string;
+    action: string;
+    confidence: number;
+    reasoning: string;
+    agent: { slug: string; name: string };
+  };
+};
+
 const STATUS_TRANSITIONS: Record<string, { next: string; label: string }[]> = {
   SUBMITTED: [{ next: "ASSIGNED", label: "Assign" }],
   ASSIGNED: [{ next: "IN_PROGRESS", label: "Start Work" }],
@@ -33,6 +46,8 @@ export default function MaintenancePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [form, setForm] = useState({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
   const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
+  const [interactions, setInteractions] = useState<Record<string, AgentInteraction[]>>({});
+  const [showTimeline, setShowTimeline] = useState<Record<string, boolean>>({});
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const { data: session } = useSession();
@@ -56,7 +71,23 @@ export default function MaintenancePage() {
     const qs = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : "";
     fetch(`/api/maintenance${qs}`)
       .then((r) => r.json())
-      .then((d) => setTasks(Array.isArray(d) ? d : []))
+      .then((d) => {
+        const list = Array.isArray(d) ? d : [];
+        setTasks(list);
+        // Hydrate agent interaction counts in parallel
+        Promise.all(
+          list.map((t: Task) =>
+            fetch(`/api/agent/tasks/${t.id}/interactions`)
+              .then((r) => (r.ok ? r.json() : { interactions: [] }))
+              .then((j) => [t.id, j.interactions ?? []] as const)
+              .catch(() => [t.id, []] as const),
+          ),
+        ).then((entries) => {
+          const next: Record<string, AgentInteraction[]> = {};
+          for (const [id, ints] of entries) next[id] = ints;
+          setInteractions(next);
+        });
+      })
       .catch(() => {});
   }
 
@@ -69,6 +100,8 @@ export default function MaintenancePage() {
     e.preventDefault();
     setSuccessMsg("");
     setErrorMsg("");
+    if (!form.title.trim()) { setErrorMsg("Title is required"); return; }
+    if (!form.description.trim()) { setErrorMsg("Description is required"); return; }
     const res = await fetch("/api/maintenance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -151,8 +184,8 @@ export default function MaintenancePage() {
       {/* Submit form */}
       <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow space-y-3">
         <h2 className="font-semibold">Submit a Task</h2>
-        <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded border p-2" required />
-        <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full rounded border p-2" required />
+        <input placeholder="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrorMsg(""); }} className="w-full rounded border p-2" />
+        <textarea placeholder="Description" value={form.description} onChange={(e) => { setForm({ ...form, description: e.target.value }); setErrorMsg(""); }} className="w-full rounded border p-2" />
         <div className="flex gap-3">
           <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="rounded border p-2">
             {["GENERAL","RINK_SURFACE","EQUIPMENT","FACILITIES","SAFETY","GROUNDS","OTHER"].map((c) => <option key={c}>{c}</option>)}
@@ -169,7 +202,18 @@ export default function MaintenancePage() {
         {tasks.map((t) => (
           <div key={t.id} className="rounded-xl border bg-white p-4">
             <div className="flex justify-between">
-              <h3 className="font-semibold">{t.title}</h3>
+              <h3 className="font-semibold flex items-center gap-2">
+                {t.title}
+                {(interactions[t.id]?.length ?? 0) > 0 && (
+                  <button
+                    onClick={() => setShowTimeline((prev) => ({ ...prev, [t.id]: !prev[t.id] }))}
+                    title={`${interactions[t.id].length} agent action(s) — click to view`}
+                    className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-200"
+                  >
+                    🤖 {interactions[t.id].length}
+                  </button>
+                )}
+              </h3>
               <div className="flex gap-2">
                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{t.category}</span>
                 <span className={`text-xs px-2 py-0.5 rounded ${
@@ -180,6 +224,20 @@ export default function MaintenancePage() {
                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{t.status}</span>
               </div>
             </div>
+            {showTimeline[t.id] && (interactions[t.id]?.length ?? 0) > 0 && (
+              <div className="mt-2 rounded bg-indigo-50 border border-indigo-200 p-3 space-y-2">
+                <p className="text-xs font-semibold text-indigo-800">Agent timeline</p>
+                {interactions[t.id].map((i) => (
+                  <div key={i.id} className="text-xs">
+                    <span className="font-mono text-indigo-700">{i.type}</span>{" "}
+                    <span className="text-gray-500">by {i.decision.agent.name}</span>{" "}
+                    <span className="text-gray-400">· {new Date(i.createdAt).toLocaleString()}</span>{" "}
+                    <span className="text-gray-400">({(i.decision.confidence * 100).toFixed(0)}%)</span>
+                    <p className="text-gray-700 italic mt-0.5">{i.decision.reasoning}</p>
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="mt-1 text-sm text-gray-600">{t.description}</p>
             <p className="mt-1 text-xs text-gray-400">
               By {t.submittedBy?.name}{t.assignedTo ? ` · Assigned to ${t.assignedTo.name}` : ""}

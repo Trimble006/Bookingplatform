@@ -40,6 +40,7 @@ export default function StreamControlPage() {
   const [tokens, setTokens] = useState<StreamToken[]>([]);
   const [metrics, setMetrics] = useState<StreamMetrics | null>(null);
   const [broadcasting, setBroadcasting] = useState(false);
+  const [actionError, setActionError] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
@@ -81,10 +82,19 @@ export default function StreamControlPage() {
       setBroadcasting(true);
 
       // Start the stream on server
-      await fetch(`/api/streaming/${id}/start`, { method: "POST" });
+      const res = await fetch(`/api/streaming/${id}/start`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setActionError(d.error ?? `Failed to start stream (${res.status})`);
+        setBroadcasting(false);
+        mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+        return;
+      }
+      setActionError("");
       fetchStream();
     } catch (err) {
-      alert("Could not access camera/microphone. Please grant permissions.");
+      setActionError("Could not access camera/microphone. Please grant permissions.");
     }
   }
 
@@ -94,7 +104,13 @@ export default function StreamControlPage() {
     mediaStreamRef.current = null;
     setBroadcasting(false);
 
-    await fetch(`/api/streaming/${id}/stop`, { method: "POST" });
+    const res = await fetch(`/api/streaming/${id}/stop`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setActionError(d.error ?? `Failed to stop stream (${res.status})`);
+      return;
+    }
+    setActionError("");
     fetchStream();
   }
 
@@ -104,11 +120,19 @@ export default function StreamControlPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ expiresInHours: 24 }),
     });
-    if (res.ok) fetchTokens();
+    if (res.ok) { setActionError(""); fetchTokens(); return; }
+    const d = await res.json().catch(() => ({}));
+    setActionError(d.error ?? `Failed to generate token (${res.status})`);
   }
 
   async function revokeToken(tokenId: string) {
-    await fetch(`/api/streaming/${id}/tokens/${tokenId}`, { method: "DELETE" });
+    const res = await fetch(`/api/streaming/${id}/tokens/${tokenId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setActionError(d.error ?? `Failed to revoke token (${res.status})`);
+      return;
+    }
+    setActionError("");
     fetchTokens();
   }
 
@@ -125,6 +149,12 @@ export default function StreamControlPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {actionError && (
+        <div className="rounded bg-red-100 text-red-800 px-4 py-2 flex items-center justify-between" role="alert">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError("")} className="text-red-700 hover:text-red-900 text-sm">Dismiss</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{stream.title}</h1>

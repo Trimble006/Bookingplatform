@@ -35,10 +35,15 @@ export async function POST(req: NextRequest) {
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { id: true, name: true, slug: true, active: true },
+    select: { id: true, name: true, slug: true, active: true, status: true },
   });
   if (!tenant) return jsonError("Tenant not found.", 404);
-  if (!tenant.active) return jsonError("Cannot impersonate an inactive tenant.", 400);
+  // Allow impersonation for ACTIVE and ONBOARDING tenants. Block SUSPENDED
+  // and CHURNED — those are platform-disciplinary states; impersonating one
+  // would let a platform admin sidestep the suspension.
+  if (tenant.status !== "ACTIVE" && tenant.status !== "ONBOARDING") {
+    return jsonError(`Cannot impersonate a tenant in ${tenant.status} state.`, 400);
+  }
 
   // End any prior open impersonations for this platform admin.
   await prisma.impersonation.updateMany({

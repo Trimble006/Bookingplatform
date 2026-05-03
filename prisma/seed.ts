@@ -104,7 +104,7 @@ async function main() {
   });
 
   // Feature flags
-  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather"];
+  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent"];
   const disabledFlags = ["liveStreaming"];
   for (const key of enabledFlags) {
     await prisma.featureFlag.upsert({
@@ -190,9 +190,183 @@ async function main() {
   });
   console.log("Streaming subscription seeded (SILVER tier).");
 
+  await seedAgents(tenant.id);
+
   console.log("Seed complete.");
 }
 
 main()
   .catch((e) => { console.error(e); process.exit(1); })
   .finally(() => prisma.$disconnect());
+
+// ─── Agent Framework Seeding ────────────────────────────────────────
+//
+// Creates two system users (one per agent), AgentDefinition rows that link
+// each slug to its system user, and a starter knowledge base derived from
+// STRI / IOG bowls turf guidance. All idempotent (upsert) so safe to re-run.
+
+async function seedAgents(demoTenantId: string) {
+  const agents = [
+    { slug: "detector", name: "Complaint Detector", email: "detector@agent.system",
+      description: "Monitors chat messages and converts complaints into maintenance tasks." },
+    { slug: "triager", name: "Triage Officer", email: "triager@agent.system",
+      description: "Prioritises and assigns submitted maintenance tasks using workload, weather and history." },
+  ];
+
+  const sysHash = await bcrypt.hash(`agent-system-${Date.now()}`, 12);
+
+  for (const a of agents) {
+    const user = await prisma.user.upsert({
+      where: { email: a.email },
+      update: { name: a.name },
+      create: { email: a.email, name: a.name, passwordHash: sysHash, role: "PLATFORM_ADMIN" },
+    });
+    await prisma.agentDefinition.upsert({
+      where: { slug: a.slug },
+      update: { name: a.name, description: a.description },
+      create: { slug: a.slug, name: a.name, description: a.description, systemUserId: user.id },
+    });
+    console.log(`Agent registered: ${a.slug}`);
+  }
+
+  // ── Knowledge: GLOBAL — agronomy basics (STRI / IOG informed) ──
+  const globalKnowledge = [
+    { category: "green_care", title: "Mowing height — playing season",
+      content: "Bowls greens should be cut at 4–5 mm during competitive play, raised to 6–8 mm in shoulder seasons. Cutting below 4 mm stresses the sward and invites disease." },
+    { category: "green_care", title: "Top-dressing schedule",
+      content: "Apply 2–3 kg/m² of compatible sand-based dressing in spring and again post-renovation in autumn. Always brush in thoroughly." },
+    { category: "green_care", title: "Verti-cutting and grooming",
+      content: "Light grooming weekly during the season removes thatch and encourages upright growth. Aggressive verti-cutting should be reserved for shoulder seasons." },
+    { category: "green_care", title: "Hollow-tine aeration",
+      content: "Annual hollow-tine aeration in autumn (10–13 mm tines, 50 mm spacing) is essential to relieve compaction and gas exchange in the rootzone." },
+    { category: "irrigation", title: "Watering principles",
+      content: "Apply 6–10 mm of water 2–3 times per week, ideally before sunrise. Avoid daily light watering, which encourages shallow roots and Poa annua invasion." },
+    { category: "disease", title: "Fusarium patch — early signs",
+      content: "Look for small (5–10 cm) circular brown patches with a darker pink halo, typically after warm humid days followed by dewy nights. Improve airflow and reduce nitrogen if recurrent." },
+    { category: "disease", title: "Anthracnose — stress trigger",
+      content: "Yellow-orange patches under heat or drought stress on Poa-dominant swards. Maintain consistent moisture and avoid mowing too low during heat waves." },
+    { category: "pests", title: "Leatherjackets and chafer grubs",
+      content: "Indicated by yellow patches that lift easily, plus bird damage (corvids tearing turf). Inspect rootzone in autumn; biological control with nematodes is most effective at soil temperatures of 12 °C+." },
+    { category: "weeds", title: "Poa annua management",
+      content: "Annual meadow-grass thrives in compacted, over-irrigated turf. Manage via cultural practices: aeration, balanced nutrition, deeper less frequent watering." },
+    { category: "safety", title: "Slip hazards on banks and steps",
+      content: "Algae and moss on shaded paths/banks must be flagged as URGENT. Treat with iron sulphate or pressure wash; do not delay reporting." },
+    { category: "safety", title: "Equipment lock-out",
+      content: "Any unguarded blade, fuel leak, or live electrical fault is URGENT and triggers immediate equipment lock-out and isolation." },
+    { category: "equipment", title: "Mower blade sharpness",
+      content: "Cylinder mowers should be back-lapped weekly during peak season. Tearing rather than slicing leaves a yellow ragged tip on the leaf within 24 hours." },
+    { category: "facilities", title: "Pavilion / clubhouse hazards",
+      content: "Loose flooring, broken handrails, faulty lighting on stairs, and blocked fire exits are HIGH or URGENT depending on access. Treat as URGENT during event days." },
+  ];
+  for (const k of globalKnowledge) {
+    await upsertGlobalKnowledge(k.category, k.title, k.content, 5);
+  }
+
+  // Detector-specific guidance: how to read complaints
+  const detectorKnowledge = [
+    { category: "complaint_classification", title: "Vocabulary for severity",
+      content: "Treat words like 'dangerous', 'unsafe', 'injured', 'fell', 'fire' as URGENT. Words like 'broken', 'leak', 'not working' as HIGH. Cosmetic terms ('untidy', 'patchy', 'looks rough') as MEDIUM unless safety is implied." },
+    { category: "complaint_classification", title: "Distinguish complaint from request",
+      content: "A complaint reports a perceived problem (existing condition). A request asks for a new feature or change. Only complaints become tasks." },
+    { category: "complaint_classification", title: "False positives to ignore",
+      content: "Sarcasm, jokes, off-topic chat, and questions phrased as 'is anyone else…' without a concrete problem should NOT be treated as complaints. Confidence < 0.6." },
+  ];
+  for (const k of detectorKnowledge) {
+    await upsertAgentScopedKnowledge("detector", k.category, k.title, k.content, 5);
+  }
+
+  // Triager-specific guidance
+  const triagerKnowledge = [
+    { category: "prioritisation", title: "Weather-aware urgency",
+      content: "If heavy rain (>10 mm) is forecast in next 48h, deprioritise mowing and surface treatments; prioritise drainage clearance and bunker covers. If a heatwave (>25 °C max) is forecast, prioritise irrigation checks." },
+    { category: "prioritisation", title: "Event-day amplification",
+      content: "Tasks affecting greens, walkways, or facilities used by an upcoming event (within 7 days) should be promoted by one priority level." },
+    { category: "assignment", title: "Workload balancing",
+      content: "Avoid assigning a fifth open task to a staff member while another has fewer than two. Skill specialisation outweighs workload only for SAFETY/EQUIPMENT categories." },
+    { category: "assignment", title: "Recent activity cooldown",
+      content: "If maintenance history shows the same activity (e.g. mowing Green 4) was performed in the last 48 hours, demote duplicate-style tasks unless urgency dictates otherwise." },
+  ];
+  for (const k of triagerKnowledge) {
+    await upsertAgentScopedKnowledge("triager", k.category, k.title, k.content, 5);
+  }
+
+  // REGIONAL — UK climate band (covers Lakeview's lat 54.97 → bucket LAT_54_LNG_-2)
+  const regionalUK = [
+    { category: "seasonal_calendar", title: "April — UK opening",
+      content: "Greens typically open early April. First cut at 8 mm, lowering to 6 mm by month-end. Apply spring fertiliser (12-0-9) at 25 g/m²." },
+    { category: "seasonal_calendar", title: "July — UK peak",
+      content: "Watch for fusarium during humid spells; keep cut at 4 mm; irrigate 2× weekly deeply rather than daily. Watch for fairy ring." },
+    { category: "seasonal_calendar", title: "September — UK renovation",
+      content: "Renovation window: hollow-tine, scarify, overseed (browntop bent at 35 g/m²), top-dress 3 kg/m². Reduce nitrogen." },
+  ];
+  for (const k of regionalUK) {
+    await upsertRegionalKnowledge("LAT_54_LNG_-2", k.category, k.title, k.content, 5);
+  }
+
+  // TENANT — demo tenant only, illustrative
+  const tenantKnowledge = [
+    { category: "site_specific", title: "Main Green — drainage history",
+      content: "Main Green has historically poor drainage at the SE corner. After heavy rain (>15 mm), expect 24-hour playing restriction; flag drainage maintenance as HIGH." },
+    { category: "site_specific", title: "Pavilion — known wear points",
+      content: "Pavilion changing room door handle has been replaced twice in 2025. Treat any 'sticky door' complaint as a confirmed defect, not a one-off." },
+  ];
+  for (const k of tenantKnowledge) {
+    await upsertTenantKnowledge(demoTenantId, k.category, k.title, k.content, 5);
+  }
+
+  console.log("Agent knowledge seeded.");
+}
+
+async function upsertGlobalKnowledge(category: string, title: string, content: string, priority: number) {
+  const existing = await prisma.agentKnowledge.findFirst({
+    where: { scope: "GLOBAL", category, title, agentId: null, tenantId: null },
+  });
+  if (existing) {
+    await prisma.agentKnowledge.update({ where: { id: existing.id }, data: { content, priority } });
+  } else {
+    await prisma.agentKnowledge.create({
+      data: { scope: "GLOBAL", category, title, content, priority, source: "MANUAL" },
+    });
+  }
+}
+
+async function upsertRegionalKnowledge(region: string, category: string, title: string, content: string, priority: number) {
+  const existing = await prisma.agentKnowledge.findFirst({
+    where: { scope: "REGIONAL", region, category, title, agentId: null, tenantId: null },
+  });
+  if (existing) {
+    await prisma.agentKnowledge.update({ where: { id: existing.id }, data: { content, priority } });
+  } else {
+    await prisma.agentKnowledge.create({
+      data: { scope: "REGIONAL", region, category, title, content, priority, source: "MANUAL" },
+    });
+  }
+}
+
+async function upsertTenantKnowledge(tenantId: string, category: string, title: string, content: string, priority: number) {
+  const existing = await prisma.agentKnowledge.findFirst({
+    where: { scope: "TENANT", tenantId, category, title, agentId: null },
+  });
+  if (existing) {
+    await prisma.agentKnowledge.update({ where: { id: existing.id }, data: { content, priority } });
+  } else {
+    await prisma.agentKnowledge.create({
+      data: { scope: "TENANT", tenantId, category, title, content, priority, source: "MANUAL" },
+    });
+  }
+}
+
+async function upsertAgentScopedKnowledge(slug: string, category: string, title: string, content: string, priority: number) {
+  const def = await prisma.agentDefinition.findUnique({ where: { slug } });
+  if (!def) return;
+  const existing = await prisma.agentKnowledge.findFirst({
+    where: { scope: "GLOBAL", agentId: def.id, category, title },
+  });
+  if (existing) {
+    await prisma.agentKnowledge.update({ where: { id: existing.id }, data: { content, priority } });
+  } else {
+    await prisma.agentKnowledge.create({
+      data: { scope: "GLOBAL", agentId: def.id, category, title, content, priority, source: "MANUAL" },
+    });
+  }
+}

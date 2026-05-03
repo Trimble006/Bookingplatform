@@ -8,10 +8,14 @@ export default function CreateChannelModal({
   onClose,
   onCreate,
   tenantUsers,
+  error,
+  onClearError,
 }: {
   onClose: () => void;
   onCreate: (data: { name: string; type: ChannelType; description?: string; memberIds: string[] }) => void;
   tenantUsers: { id: string; name: string | null; email: string }[];
+  error?: string | null;
+  onClearError?: () => void;
 }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<ChannelType>("PUBLIC");
@@ -33,10 +37,16 @@ export default function CreateChannelModal({
       <form onSubmit={handleSubmit} className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
         <h3 className="font-bold text-lg mb-4">Create Channel</h3>
 
+        {error && (
+          <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            {error}
+          </div>
+        )}
+
         <label className="block text-sm font-medium mb-1">Name</label>
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); onClearError?.(); }}
           className="w-full border rounded px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-green-500"
           placeholder="general"
           required

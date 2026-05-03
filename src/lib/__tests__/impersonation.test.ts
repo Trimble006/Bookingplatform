@@ -78,7 +78,7 @@ beforeAll(async () => {
   tenantId = tenant.id;
 
   const inactive = await prisma.tenant.create({
-    data: { name: "Inactive Club", slug: slug + "-inactive", active: false },
+    data: { name: "Inactive Club", slug: slug + "-inactive", active: false, status: "SUSPENDED" },
   });
   inactiveTenantId = inactive.id;
 
@@ -142,7 +142,7 @@ describe("POST /api/platform/impersonation", () => {
     expect(res.status).toBe(404);
   });
 
-  test("returns 400 when tenant is inactive", async () => {
+  test("returns 400 when tenant is SUSPENDED", async () => {
     mockSessionReturn = platformSession();
     const res = await POST(jsonRequest({ tenantId: inactiveTenantId }));
     expect(res.status).toBe(400);

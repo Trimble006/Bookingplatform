@@ -60,6 +60,7 @@ export default function ContentPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ type: "HERO" as string, title: "", content: "{}" });
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const role = (session?.user as any)?.role;
 
   useEffect(() => {
@@ -81,7 +82,13 @@ export default function ContentPage() {
 
   function flash(msg: string) {
     setSuccessMsg(msg);
+    setErrorMsg("");
     setTimeout(() => setSuccessMsg(""), 3000);
+  }
+
+  function flashError(msg: string) {
+    setErrorMsg(msg);
+    setSuccessMsg("");
   }
 
   function openCreate() {
@@ -100,10 +107,13 @@ export default function ContentPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMsg("");
     const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
 
+    if (!form.title.trim()) { flashError("Title is required"); return; }
+
     let contentObj: object;
-    try { contentObj = JSON.parse(form.content); } catch { alert("Content must be valid JSON"); return; }
+    try { contentObj = JSON.parse(form.content); } catch { flashError("Content must be valid JSON"); return; }
 
     if (editingId) {
       const res = await fetch(`/api/content/${editingId}${qs}`, {
@@ -111,14 +121,18 @@ export default function ContentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: form.title, content: contentObj }),
       });
-      if (res.ok) { flash("Section updated"); setShowForm(false); loadSections(selectedTenant || undefined); }
+      if (res.ok) { flash("Section updated"); setShowForm(false); loadSections(selectedTenant || undefined); return; }
+      const d = await res.json().catch(() => ({}));
+      flashError(d.error ?? `Failed to update section (${res.status})`);
     } else {
       const res = await fetch(`/api/content${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: form.type, title: form.title, content: contentObj }),
       });
-      if (res.ok) { flash("Section created"); setShowForm(false); loadSections(selectedTenant || undefined); }
+      if (res.ok) { flash("Section created"); setShowForm(false); loadSections(selectedTenant || undefined); return; }
+      const d = await res.json().catch(() => ({}));
+      flashError(d.error ?? `Failed to create section (${res.status})`);
     }
   }
 
@@ -129,16 +143,23 @@ export default function ContentPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) { flash(`Status → ${newStatus}`); loadSections(selectedTenant || undefined); }
+    if (res.ok) { flash(`Status → ${newStatus}`); loadSections(selectedTenant || undefined); return; }
+    const d = await res.json().catch(() => ({}));
+    flashError(d.error ?? `Failed to change status (${res.status})`);
   }
 
   async function toggleEnabled(id: string, current: boolean) {
     const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
-    await fetch(`/api/content/${id}${qs}`, {
+    const res = await fetch(`/api/content/${id}${qs}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: !current }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      flashError(d.error ?? `Failed to toggle visibility (${res.status})`);
+      return;
+    }
     loadSections(selectedTenant || undefined);
   }
 
@@ -162,7 +183,9 @@ export default function ContentPage() {
     if (!confirm("Delete this section?")) return;
     const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
     const res = await fetch(`/api/content/${id}${qs}`, { method: "DELETE" });
-    if (res.ok) { flash("Section removed"); loadSections(selectedTenant || undefined); }
+    if (res.ok) { flash("Section removed"); loadSections(selectedTenant || undefined); return; }
+    const d = await res.json().catch(() => ({}));
+    flashError(d.error ?? `Failed to delete section (${res.status})`);
   }
 
   const filtered = filter === "ALL" ? sections : sections.filter((s) => s.status === filter);
@@ -170,6 +193,7 @@ export default function ContentPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">Content Management <HelpHint slug="edit-landing-page" /></h1>
+      {errorMsg && <div className="mb-4 rounded bg-red-100 text-red-800 px-4 py-2" role="alert">{errorMsg}</div>}
       {successMsg && <div className="mb-4 rounded bg-green-100 text-green-800 px-4 py-2">{successMsg}</div>}
 
       {isPlatformAdmin && (

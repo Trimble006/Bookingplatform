@@ -8,24 +8,40 @@ datasource db {
 
 // ─── Multi-Tenant ────────────────────────────────────────────
 
+// Tenant lifecycle states. `active` boolean is retained as a denormalised
+// mirror (`active = status == ACTIVE`) so existing call sites keep working
+// during the migration; new code should read `status` directly.
+enum TenantStatus {
+  LEAD // application received, no tenant created yet (placeholder; rarely used since approval creates ONBOARDING)
+  ONBOARDING // approved, admin invited, pre-go-live
+  ACTIVE // live and operational
+  SUSPENDED // disabled by platform (non-payment, abuse, manual)
+  CHURNED // permanently inactive; soft-deleted
+}
+
 model Tenant {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
-  slug        String   @unique
-  active      Boolean  @default(true)
-  brandColor  String   @default("#16a34a")
+  slug        String       @unique
+  status      TenantStatus @default(ACTIVE)
+  active      Boolean      @default(true) // DEPRECATED: mirror of (status == ACTIVE); kept for back-compat
+  brandColor  String       @default("#16a34a")
   logoUrl     String?
-  locale      String   @default("en")
+  locale      String       @default("en")
   seasonStart String? // ISO date string e.g. "2026-04-01"
   seasonEnd   String?
-  openingTime String   @default("08:00")
-  closingTime String   @default("20:00")
+  openingTime String       @default("08:00")
+  closingTime String       @default("20:00")
   latitude    Float?
   longitude   Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  goLiveAt    DateTime?    // set when the admin presses 'Go live' at the end of the onboarding wizard. NULL while ONBOARDING.
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   users           User[]
+  memberships     Membership[]
+  invitations     UserInvitation[]
+  application     TenantApplication?
   greens          Green[]
   bookings        Booking[]
   featureFlags    FeatureFlag[]
@@ -43,6 +59,18 @@ model Tenant {
   streamSessions  StreamSession[]
   streamTokens    StreamToken[]
   helpOverrides   HelpArticleOverride[]
+  outboundMessages OutboundMessage[]
+  onboardingProgress OnboardingProgress?
+
+  // Agent system
+  agentRuns          AgentRun[]
+  agentDecisions     AgentDecision[]
+  agentMemories      AgentMemory[]
+  agentConfigs       AgentConfig[]
+  agentKnowledge     AgentKnowledge[]
+  agentMetrics       AgentConfidenceMetrics[]
+  maintenanceHistory MaintenanceHistory[]
+  sentimentSnapshots SentimentSnapshot[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -55,17 +83,29 @@ enum Role {
   PLATFORM_ADMIN
 }
 
+// User is now a global identity. A user can hold zero or more `Membership`
+// rows linking them to tenants with role+kind. The legacy `tenantId` and
+// `role` fields are denormalised mirrors of the user's primary membership
+// (lowest membership.createdAt) and are kept for back-compat — new code
+// should read from `Membership` directly.
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String?
-  passwordHash String
-  role         Role     @default(USER)
-  suspended    Boolean  @default(false)
-  tenantId     String?
-  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String?
+  passwordHash    String   // nullable-in-spirit: invited users get a placeholder hash that cannot match any password
+  isPlatformAdmin Boolean  @default(false)
+  role            Role     @default(USER) // DEPRECATED: mirror of primary membership role; kept for back-compat
+  suspended       Boolean  @default(false)
+  profession      String?  // travels with the person, not the club (e.g. "Professional Greenkeeper")
+  qualifications  String?  // free-text or JSON; expanded later
+  specialisms     String?  // free-text; feeds future PROFESSIONAL agent-knowledge scope
+  tenantId        String?  // DEPRECATED: mirror of primary membership tenantId
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memberships          Membership[]
+  sentInvitations      UserInvitation[] @relation("InvitationsSent")
 
   bookings             Booking[]
   bookingsCreated      Booking[]             @relation("BookingsCreatedBy")
@@ -89,6 +129,12 @@ model User {
   createdStreams       StreamSession[]       @relation("StreamCreatedBy")
   streamViewers        StreamViewer[]        @relation("StreamViewers")
   createdTokens        StreamToken[]         @relation("TokenCreatedBy")
+
+  // Agent system
+  agentDefinition      AgentDefinition?
+  agentFeedback        AgentFeedback[]
+  agentKnowledgeAuthor AgentKnowledge[]      @relation("KnowledgeCreatedBy")
+  maintenanceHistoryEntries MaintenanceHistory[] @relation("HistoryPerformedBy")
 }
 
 model PasswordResetToken {
@@ -118,6 +164,7 @@ model Green {
   id       String @id @default(cuid())
   name     String
   tenantId String
+  maintenanceHistory MaintenanceHistory[] @relation("GreenHistory")
   tenant   Tenant @relation(fields: [tenantId], references: [id])
   rinks    Rink[]
 }
@@ -337,6 +384,7 @@ enum TaskCategory {
   FACILITIES
   SAFETY
   GROUNDS
+  PREVENTIVE // proactive tasks suggested by an agent (no complaint received)
   OTHER
 }
 
@@ -371,7 +419,8 @@ model MaintenanceTask {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  notes TaskNote[]
+  notes        TaskNote[]
+  agentInteractions TaskAgentInteraction[]
 }
 
 model TaskNote {
@@ -698,4 +747,446 @@ model HelpArticleOverride {
 
   @@unique([tenantId, slug, locale])
   @@index([tenantId, slug])
+}
+
+// ─── Maintenance History ─────────────────────────────────────
+//
+// Clubs log past activities (spiked, scarified, herbicide etc.) so the agents
+// can reason with context — e.g. don't escalate moss 3 days after herbicide.
+
+enum MaintenanceActivityType {
+  SPIKED
+  SCARIFIED
+  OVERSEEDED
+  FERTILISED
+  HERBICIDE_APPLIED
+  TOP_DRESSED
+  MOWED
+  WATERED
+  DRAINED
+  OTHER
+}
+
+model MaintenanceHistory {
+  id              String                  @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id])
+  greenId         String?
+  green           Green?                  @relation("GreenHistory", fields: [greenId], references: [id])
+  activityType    MaintenanceActivityType
+  description     String?
+  performedAt     DateTime
+  performedById   String?
+  performedBy     User?                   @relation("HistoryPerformedBy", fields: [performedById], references: [id])
+  notes           String?
+  createdAt       DateTime                @default(now())
+
+  @@index([tenantId, performedAt])
+  @@index([greenId, performedAt])
+}
+
+// ─── Agent Framework ─────────────────────────────────────────
+//
+// Multi-agent system. Each AgentDefinition is a globally-registered agent
+// (e.g. "detector", "triager"). Per-tenant config + memory + decisions live
+// in side tables. Two-level feedback (validity + priority + assignment) is
+// captured against each decision.
+
+enum AgentRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  RATE_LIMITED
+}
+
+enum AgentAction {
+  CREATED_TASK
+  ESCALATED_TASK
+  PRIORITY_CHANGED
+  ASSIGNED_TASK
+  CONTEXT_ADDED
+  PREDICTED_TASK
+  NO_ACTION
+}
+
+enum InteractionType {
+  CREATED
+  PRIORITY_CHANGED
+  CONTEXT_ADDED
+  ASSIGNED
+  ESCALATED
+}
+
+enum ValidityFeedback {
+  CORRECT
+  INCORRECT
+}
+
+enum PriorityFeedback {
+  CORRECT
+  TOO_HIGH
+  TOO_LOW
+}
+
+enum AssignmentFeedback {
+  CORRECT
+  WRONG_PERSON
+}
+
+enum KnowledgeScope {
+  GLOBAL
+  REGIONAL
+  TENANT
+}
+
+enum KnowledgeSource {
+  SEEDED
+  MANUAL
+  LEARNED
+}
+
+enum SentimentTrend {
+  IMPROVING
+  STABLE
+  DECLINING
+}
+
+model AgentDefinition {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  systemUserId  String   @unique
+  systemUser    User     @relation(fields: [systemUserId], references: [id])
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  runs       AgentRun[]
+  decisions  AgentDecision[]
+  memories   AgentMemory[]
+  configs    AgentConfig[]
+  knowledge  AgentKnowledge[]
+  metrics    AgentConfidenceMetrics[]
+}
+
+model AgentRun {
+  id          String         @id @default(cuid())
+  agentId     String
+  agent       AgentDefinition @relation(fields: [agentId], references: [id])
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  status      AgentRunStatus @default(RUNNING)
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+  summary     String? // JSON blob: { messagesProcessed, tasksCreated, ... }
+  error       String?
+
+  decisions AgentDecision[]
+
+  @@index([tenantId, startedAt])
+  @@index([agentId, startedAt])
+}
+
+model AgentDecision {
+  id               String       @id @default(cuid())
+  agentId          String
+  agent            AgentDefinition @relation(fields: [agentId], references: [id])
+  runId            String
+  run              AgentRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  tenantId         String
+  tenant           Tenant       @relation(fields: [tenantId], references: [id])
+  action           AgentAction
+  confidence       Float
+  reasoning        String
+
+  // Source / target links — all optional depending on action type
+  sourceMessageId  String?
+  taskId           String?
+  previousPriority TaskPriority?
+  newPriority      TaskPriority?
+  assignedToId     String?
+  contextAdded     String?
+
+  createdAt DateTime @default(now())
+
+  feedback     AgentFeedback?
+  interactions TaskAgentInteraction[]
+
+  @@index([tenantId, createdAt])
+  @@index([agentId, createdAt])
+  @@index([taskId])
+  @@index([sourceMessageId])
+}
+
+model AgentFeedback {
+  id                 String              @id @default(cuid())
+  decisionId         String              @unique
+  decision           AgentDecision       @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  validityFeedback   ValidityFeedback?
+  priorityFeedback   PriorityFeedback?
+  assignmentFeedback AssignmentFeedback?
+  note               String?
+  givenById          String
+  givenBy            User                @relation(fields: [givenById], references: [id])
+  createdAt          DateTime            @default(now())
+}
+
+model AgentMemory {
+  id        String          @id @default(cuid())
+  agentId   String
+  agent     AgentDefinition @relation(fields: [agentId], references: [id])
+  tenantId  String
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  key       String
+  value     String // JSON blob
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([agentId, tenantId, key])
+}
+
+model AgentConfig {
+  id        String          @id @default(cuid())
+  agentId   String
+  agent     AgentDefinition @relation(fields: [agentId], references: [id])
+  tenantId  String
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  enabled   Boolean         @default(true)
+  config    String          @default("{}") // JSON blob: agent-specific settings
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([agentId, tenantId])
+}
+
+model AgentKnowledge {
+  id          String          @id @default(cuid())
+  agentId     String?
+  agent       AgentDefinition? @relation(fields: [agentId], references: [id])
+  scope       KnowledgeScope
+  tenantId    String?
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id])
+  region      String?
+  category    String
+  title       String
+  content     String
+  priority    Int              @default(0)
+  active      Boolean          @default(true)
+  source      KnowledgeSource  @default(MANUAL)
+  createdById String?
+  createdBy   User?            @relation("KnowledgeCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([scope, category])
+  @@index([tenantId])
+}
+
+model TaskAgentInteraction {
+  id              String          @id @default(cuid())
+  taskId          String
+  task            MaintenanceTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  decisionId      String
+  decision        AgentDecision   @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  interactionType InteractionType
+  createdAt       DateTime        @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+model AgentConfidenceMetrics {
+  id                   String          @id @default(cuid())
+  agentId              String
+  agent                AgentDefinition @relation(fields: [agentId], references: [id])
+  tenantId             String
+  tenant               Tenant          @relation(fields: [tenantId], references: [id])
+  feedbackRate         Float           @default(0)
+  positiveFeedbackRate Float           @default(0)
+  historyCompleteness  Float           @default(0)
+  taskResolutionRate   Float           @default(0)
+  averageResolutionDays Float?
+  dataQualityScore     Float           @default(0)
+  lastCalculatedAt     DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@unique([agentId, tenantId])
+}
+
+model SentimentSnapshot {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  period        String // e.g. "2026-W18"
+  overallScore  Float
+  facilityScore Float
+  messageCount  Int
+  topComplaints String? // JSON array of category names
+  trend         SentimentTrend @default(STABLE)
+  createdAt     DateTime       @default(now())
+
+  @@unique([tenantId, period])
+}
+
+// ─── Membership ──────────────────────────────────────────────
+
+enum MembershipKind {
+  MEMBER     // ordinary club member who plays
+  STAFF      // employed by the club (admin, secretary, salaried staff)
+  CONTRACTOR // external; services multiple clubs (e.g. professional greenkeeper)
+  VOLUNTEER  // unpaid helper, restricted permissions
+}
+
+enum MembershipStatus {
+  PENDING   // invited, not yet accepted
+  ACTIVE
+  SUSPENDED
+  ENDED     // membership has formally ended; row retained for history
+}
+
+model Membership {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  role      Role             @default(USER)
+  kind      MembershipKind   @default(MEMBER)
+  status    MembershipStatus @default(ACTIVE)
+  startedAt DateTime         @default(now())
+  endedAt   DateTime?
+  notes     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([userId, tenantId])
+  @@index([tenantId, status])
+  @@index([userId, status])
+}
+
+// ─── Tenant Application (lead capture) ───────────────────────
+
+enum ApplicationStatus {
+  PENDING
+  IN_REVIEW
+  MORE_INFO_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+model TenantApplication {
+  id            String            @id @default(cuid())
+  clubName      String
+  contactName   String
+  contactEmail  String
+  contactPhone  String?
+  country       String
+  region        String?
+  notes         String?
+  status        ApplicationStatus @default(PENDING)
+  decisionNotes String?
+  reviewedAt    DateTime?
+  reviewedById  String?
+  // On approval, the created tenant is linked back here for traceability.
+  tenantId      String?           @unique
+  tenant        Tenant?           @relation(fields: [tenantId], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([contactEmail])
+}
+
+// ─── User Invitation ─────────────────────────────────────────
+
+enum InvitationStatus {
+  QUEUED   // issued during onboarding; not yet released. Outbound stub deferred until tenant goes live.
+  PENDING  // released and awaiting acceptance
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model UserInvitation {
+  id          String           @id @default(cuid())
+  token       String           @unique @default(cuid())
+  email       String
+  tenantId    String
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  role        Role             @default(TENANT_ADMIN)
+  kind        MembershipKind   @default(STAFF)
+  invitedById String
+  invitedBy   User             @relation("InvitationsSent", fields: [invitedById], references: [id])
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([email])
+  @@index([tenantId, status])
+}
+
+// ─── Outbound Messaging (stub) ───────────────────────────────
+
+enum OutboundChannel {
+  EMAIL
+  SMS
+  SOCIAL_POST
+}
+
+enum OutboundStatus {
+  STUBBED       // captured locally; not delivered
+  SENT_MANUAL   // platform admin marked as sent out-of-band
+  SENT          // (future) delivered by real provider
+  FAILED        // (future) provider rejected
+}
+
+enum SocialPlatform {
+  FACEBOOK
+  TWITTER
+  INSTAGRAM
+}
+
+model OutboundMessage {
+  id                 String           @id @default(cuid())
+  channel            OutboundChannel
+  status             OutboundStatus   @default(STUBBED)
+  toAddress          String           // email address, phone number, or platform handle
+  subject            String?          // email only
+  bodyText           String
+  bodyHtml           String?          // email only
+  template           String?          // template name used
+  templateData       String?          // JSON of interpolated variables
+  socialPlatform     SocialPlatform?  // SOCIAL_POST only
+  tenantId           String?
+  tenant             Tenant?          @relation(fields: [tenantId], references: [id])
+  // Optional link to the entity that triggered this message (e.g. a TenantApplication).
+  relatedEntity      String?
+  relatedEntityId    String?
+  createdAt          DateTime         @default(now())
+  sentAt             DateTime?        // when manually marked or actually delivered
+  error              String?
+
+  @@index([channel, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([relatedEntity, relatedEntityId])
+}
+
+// ─── Onboarding Progress ─────────────────────────────────────
+
+// Tracks a tenant's progression through the onboarding wizard. Each chapter
+// writes through to its real domain model (no draft state) — this row only
+// records which chapters have been completed and where to resume.
+model OnboardingProgress {
+  id                       String   @id @default(cuid())
+  tenantId                 String   @unique
+  tenant                   Tenant   @relation(fields: [tenantId], references: [id])
+  currentChapter           Int      @default(1) // 1..N
+  completedChapters        String   @default("[]") // JSON array of chapter numbers (Int[] avoided to keep DB-portable)
+  subscriptionAttestedAt   DateTime? // admin self-attested they'll pay (stub for real billing)
+  completedAt              DateTime? // set when the admin presses 'Go live'
+  lastAnswerAt             DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }

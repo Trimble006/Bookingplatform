@@ -9,6 +9,8 @@ declare module "next-auth" {
       name?: string | null;
       role: Role;
       tenantId: string | null;
+      /** The currently-selected tenant for multi-club users. Mirrors `tenantId`. */
+      activeTenantId?: string | null;
       /**
        * Set when a PLATFORM_ADMIN is currently impersonating a tenant.
        * Permission checks should consult `getEffectiveRole()` rather than
@@ -23,6 +25,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     role: Role;
     tenantId: string | null;
+    activeTenantId?: string | null;
     actingAs?: ActingAsClaim | null;
   }
 }

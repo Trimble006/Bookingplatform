@@ -31,13 +31,35 @@ export default async function PublicClubPage({ params }: Params) {
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
     select: {
-      id: true, name: true, slug: true, active: true,
+      id: true, name: true, slug: true, active: true, status: true,
       brandColor: true, logoUrl: true, locale: true,
       openingTime: true, closingTime: true, seasonStart: true, seasonEnd: true,
     },
   });
 
-  if (!tenant || !tenant.active) notFound();
+  if (!tenant) notFound();
+
+  // ONBOARDING tenants get a friendly "coming soon" page rather than a 404 —
+  // this happens if someone shares the URL before go-live (or stumbles on
+  // the placeholder slug).
+  if (!tenant.active) {
+    if (tenant.status === "ONBOARDING") {
+      return (
+        <main className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow p-8 text-center space-y-3">
+            <div className="text-5xl">🛠️</div>
+            <h1 className="text-2xl font-bold" style={{ color: tenant.brandColor }}>{tenant.name}</h1>
+            <p className="text-gray-600">
+              We&rsquo;re still setting things up. {tenant.name}{" "}
+              isn&rsquo;t open to members just yet — please check back once
+              the club admin finishes onboarding.
+            </p>
+          </div>
+        </main>
+      );
+    }
+    notFound();
+  }
 
   // Check if the visitor is an authenticated member
   const session = (await getServerSession(authOptions)) as
