@@ -4,7 +4,6 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import ImpersonationBanner from "@/components/ImpersonationBanner";
 import TenantSwitcher from "@/components/TenantSwitcher";
 
 type ActingAs = {
@@ -79,7 +78,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col">
-      <ImpersonationBanner />
       {!inPlatformMode && (
         <div className="bg-white border-b px-4 py-2 flex items-center justify-end">
           <TenantSwitcher />
