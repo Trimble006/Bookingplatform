@@ -4,32 +4,36 @@ import {
   AgentDefinition,
   AgentRun,
   ChannelType,
-  InteractionType,
   TaskCategory,
   TaskPriority,
-  TaskStatus,
 } from "@prisma/client";
 import { BaseAgent, RunSummary } from "@/lib/agent/base-agent";
 import { knowledgeToPromptText, regionForCoords, resolveKnowledge } from "@/lib/agent/knowledge";
+import {
+  MAINTENANCE_TASK_CREATE_KIND,
+  type MaintenanceTaskCreatePayload,
+} from "@/lib/agent/committers/maintenance-task-create";
 
 interface DetectionConfig {
   sensitivityThreshold: number;
   autoCreateTasks: boolean;
-  autoEscalate: boolean;
-  escalationThreshold: number; // complaints in 24h to bump priority
+  /**
+   * @deprecated v2 — escalation now happens on the committer side via the
+   * cluster-implied priority signal. Field kept so existing AgentConfig rows
+   * still parse; no longer read.
+   */
+  autoEscalate?: boolean;
+  /** @deprecated v2 — see autoEscalate. */
+  escalationThreshold?: number;
   maxTasksPerRun: number;
   monitorPrivateChannels: boolean;
-  channelTypes: ChannelType[]; // computed from monitorPrivateChannels
 }
 
 const DEFAULTS: DetectionConfig = {
   sensitivityThreshold: 0.6,
   autoCreateTasks: true,
-  autoEscalate: true,
-  escalationThreshold: 3,
   maxTasksPerRun: 5,
   monitorPrivateChannels: false,
-  channelTypes: [ChannelType.PUBLIC, ChannelType.GROUP],
 };
 
 interface LLMComplaint {
@@ -41,7 +45,6 @@ interface LLMComplaint {
   suggestedDescription?: string;
   confidence?: number;
   reasoning?: string;
-  relatedExistingTaskId?: string | null;
 }
 
 interface LLMResponse {
@@ -70,7 +73,6 @@ const RESPONSE_SCHEMA = {
           suggestedDescription: { type: "string" },
           confidence: { type: "number" },
           reasoning: { type: "string" },
-          relatedExistingTaskId: { type: "string", nullable: true },
         },
         required: ["messageId", "isComplaint"],
       },
@@ -79,6 +81,24 @@ const RESPONSE_SCHEMA = {
   required: ["complaints"],
 };
 
+/**
+ * DetectionAgent — reads recent member messages and emits
+ * MAINTENANCE_TASK_CREATE proposals for genuine facility complaints. The
+ * agent never writes directly to MaintenanceTask; the committer
+ * (src/lib/agent/committers/maintenance-task-create.ts) handles the
+ * merge-into-existing-open-task logic at approval time.
+ *
+ * v2 migration (decisions log 2026-05-03 — agent v2 propose-not-publish):
+ * previously this agent created tasks directly, added context notes to
+ * existing related tasks, and bumped priority via an escalation threshold.
+ * All three responsibilities have moved to the committer's smart-merge
+ * logic. The agent's job shrinks to: classify message → emit one proposal
+ * per complaint with cluster metadata.
+ *
+ * 1:1 mode (step 3c-ii): each eligible complaint = one proposal. Topic
+ * clustering across messages in the batch arrives in 3c-iii; for now
+ * `participantCount=1` and `sourceMessageIds=[messageId]`.
+ */
 export class DetectionAgent extends BaseAgent {
   readonly slug = "detector";
   readonly displayName = "Detection Agent";
@@ -93,12 +113,10 @@ export class DetectionAgent extends BaseAgent {
       return { itemsProcessed: 0, tasksAffected: 0, decisionsRecorded: 0, extras: { skipped: "disabled" } };
     }
 
-    // Channel scope respects privacy opt-in
     const channelTypes: ChannelType[] = config.monitorPrivateChannels
       ? [ChannelType.PUBLIC, ChannelType.GROUP, ChannelType.PRIVATE]
       : [ChannelType.PUBLIC, ChannelType.GROUP];
 
-    // Resume from cursor
     const cursor = await this.getMemory<{ lastProcessedAt: string }>(
       definition.id, tenantId, "last_processed_at",
     );
@@ -109,7 +127,7 @@ export class DetectionAgent extends BaseAgent {
         tenantId,
         deletedAt: null,
         createdAt: { gt: since },
-        userId: { not: definition.systemUserId }, // ignore agent's own messages
+        userId: { not: definition.systemUserId },
         channel: { type: { in: channelTypes } },
       },
       include: {
@@ -117,21 +135,13 @@ export class DetectionAgent extends BaseAgent {
         channel: { select: { name: true, type: true } },
       },
       orderBy: { createdAt: "asc" },
-      take: 50, // batch size cap
+      take: 50,
     });
 
     if (messages.length === 0) {
       return { itemsProcessed: 0, tasksAffected: 0, decisionsRecorded: 0 };
     }
 
-    // Fetch existing open tasks (so the LLM can suggest escalation)
-    const openTasks = await prisma.maintenanceTask.findMany({
-      where: { tenantId, status: { in: [TaskStatus.SUBMITTED, TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS] } },
-      select: { id: true, title: true, category: true, priority: true, status: true },
-      take: 20,
-    });
-
-    // Knowledge context
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { name: true, latitude: true, longitude: true },
@@ -141,7 +151,6 @@ export class DetectionAgent extends BaseAgent {
       tenantId, agentSlug: this.slug, region, limit: 20,
     });
 
-    // Build prompt
     const systemPrompt = [
       `You are the Facilities Detection Agent for a bowling club platform.`,
       `Your job is to read recent member chat messages and identify genuine complaints about club facilities.`,
@@ -150,14 +159,10 @@ export class DetectionAgent extends BaseAgent {
       `Domain knowledge:`,
       knowledgeToPromptText(knowledge),
       ``,
-      `Existing open tasks (consider linking complaints to these via relatedExistingTaskId):`,
-      openTasks.length > 0
-        ? openTasks.map((t) => `  ${t.id}: [${t.category}/${t.priority}] ${t.title}`).join("\n")
-        : "  (none)",
-      ``,
-      `For each message, return: isComplaint (boolean), and if true: category, priority, suggestedTitle, suggestedDescription, confidence (0-1), reasoning, relatedExistingTaskId (if it matches an existing task).`,
+      `For each message, return: isComplaint (boolean), and if true: category, priority, suggestedTitle, suggestedDescription, confidence (0-1), reasoning.`,
       `Categories: GENERAL, RINK_SURFACE, EQUIPMENT, FACILITIES, SAFETY, GROUNDS, OTHER.`,
       `Priorities: LOW, MEDIUM, HIGH, URGENT. Reserve URGENT for safety risks.`,
+      `Do NOT try to deduplicate against existing tasks — that happens downstream.`,
     ].join("\n");
 
     const userPrompt = [
@@ -177,123 +182,75 @@ export class DetectionAgent extends BaseAgent {
       });
       llmResponse = (result.content as LLMResponse) ?? { complaints: [] };
     } catch (e) {
-      // Provider stub returns {} for structured calls — coerce gracefully
       llmResponse = { complaints: [] };
       // eslint-disable-next-line no-console
       console.warn(`[detector] LLM call failed for tenant ${tenantId}:`, (e as Error).message);
     }
 
-    let tasksAffected = 0;
-    let decisionsRecorded = 0;
     const eligibleComplaints = (llmResponse.complaints ?? [])
-      .filter((c) => c.isComplaint && (c.confidence ?? 0) >= config.sensitivityThreshold)
-      .slice(0, config.maxTasksPerRun + 5); // a bit of headroom for escalations vs creates
+      .filter((c) => c.isComplaint && (c.confidence ?? 0) >= config.sensitivityThreshold);
 
-    let createdCount = 0;
+    let proposalsEmitted = 0;
+    let decisionsRecorded = 0;
 
     for (const c of eligibleComplaints) {
       const sourceMessage = messages.find((m) => m.id === c.messageId);
       if (!sourceMessage) continue;
 
-      const category = parseCategory(c.category);
-      const priority = parsePriority(c.priority);
-
-      if (c.relatedExistingTaskId && openTasks.some((t) => t.id === c.relatedExistingTaskId)) {
-        // Add context note + maybe escalate
-        const taskId = c.relatedExistingTaskId;
-        await prisma.taskNote.create({
-          data: {
-            taskId,
-            userId: definition.systemUserId,
-            text: `[Detection Agent] New related complaint detected: "${truncate(sourceMessage.body, 200)}"`,
-          },
-        });
-        await this.recordDecision({
-          agentId: definition.id, runId: run.id, tenantId,
-          action: AgentAction.CONTEXT_ADDED,
-          confidence: c.confidence ?? 0.5,
-          reasoning: c.reasoning ?? "Related to existing task",
-          sourceMessageId: c.messageId,
-          taskId,
-          contextAdded: truncate(sourceMessage.body, 500),
-          interaction: InteractionType.CONTEXT_ADDED,
-        });
-        decisionsRecorded++;
-        tasksAffected++;
-
-        // Escalation check: count related decisions in last 24h
-        if (config.autoEscalate) {
-          const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-          const relatedCount = await prisma.agentDecision.count({
-            where: {
-              tenantId, taskId,
-              action: { in: [AgentAction.CONTEXT_ADDED, AgentAction.CREATED_TASK] },
-              createdAt: { gt: dayAgo },
-            },
-          });
-          if (relatedCount >= config.escalationThreshold) {
-            const task = openTasks.find((t) => t.id === taskId);
-            if (task) {
-              const next = bumpPriority(task.priority);
-              if (next !== task.priority) {
-                await prisma.maintenanceTask.update({
-                  where: { id: taskId },
-                  data: { priority: next },
-                });
-                await this.recordDecision({
-                  agentId: definition.id, runId: run.id, tenantId,
-                  action: AgentAction.ESCALATED_TASK,
-                  confidence: 0.8,
-                  reasoning: `Escalated: ${relatedCount} related complaints in 24h`,
-                  taskId,
-                  previousPriority: task.priority,
-                  newPriority: next,
-                  interaction: InteractionType.ESCALATED,
-                });
-                decisionsRecorded++;
-                task.priority = next; // local mutation so further checks see the new value
-              }
-            }
-          }
-        }
-      } else if (config.autoCreateTasks && createdCount < config.maxTasksPerRun) {
-        // Create new task
-        const task = await prisma.maintenanceTask.create({
-          data: {
-            tenantId,
-            title: c.suggestedTitle ?? truncate(sourceMessage.body, 80),
-            description: c.suggestedDescription ?? sourceMessage.body,
-            category, priority,
-            submittedById: definition.systemUserId,
-          },
-        });
-        await this.recordDecision({
-          agentId: definition.id, runId: run.id, tenantId,
-          action: AgentAction.CREATED_TASK,
-          confidence: c.confidence ?? 0.5,
-          reasoning: c.reasoning ?? "Detected facility complaint",
-          sourceMessageId: c.messageId,
-          taskId: task.id,
-          newPriority: priority,
-          interaction: InteractionType.CREATED,
-        });
-        createdCount++;
-        tasksAffected++;
-        decisionsRecorded++;
-      } else {
-        // Borderline — record NO_ACTION for learning context
+      // Cap or feature-flag short-circuit: still record the decision so we
+      // have a learning signal that we saw it and chose not to act.
+      if (!config.autoCreateTasks || proposalsEmitted >= config.maxTasksPerRun) {
         await this.recordDecision({
           agentId: definition.id, runId: run.id, tenantId,
           action: AgentAction.NO_ACTION,
           confidence: c.confidence ?? 0,
-          reasoning: c.reasoning ?? "Below threshold or cap reached",
+          reasoning: !config.autoCreateTasks
+            ? "auto-create disabled"
+            : `cap reached (${config.maxTasksPerRun})`,
           sourceMessageId: c.messageId,
         });
         decisionsRecorded++;
+        continue;
       }
+
+      const category = parseCategory(c.category);
+      const priority = parsePriority(c.priority);
+
+      const payload: MaintenanceTaskCreatePayload = {
+        title: c.suggestedTitle ?? truncate(sourceMessage.body, 80),
+        description: c.suggestedDescription ?? sourceMessage.body,
+        category,
+        priority,
+        // 1:1 mode — clustering arrives in 3c-iii.
+        sourceMessageIds: [c.messageId],
+        participantCount: 1,
+      };
+
+      const proposal = await this.emitTenantProposal({
+        agentId: definition.id,
+        runId: run.id,
+        tenantId,
+        kind: MAINTENANCE_TASK_CREATE_KIND,
+        payload,
+        confidence: c.confidence ?? 0.5,
+        reasoning: c.reasoning ?? "Detected facility complaint",
+      });
+      proposalsEmitted++;
+
+      // Decision row is the per-message provenance trail (sourceMessageId
+      // lives here, never on the eventual MaintenanceTask). Action is
+      // NO_ACTION per v2 convention — the real outcome lives on the proposal.
+      await this.recordDecision({
+        agentId: definition.id, runId: run.id, tenantId,
+        action: AgentAction.NO_ACTION,
+        confidence: c.confidence ?? 0.5,
+        reasoning: c.reasoning ?? "Detected facility complaint",
+        sourceMessageId: c.messageId,
+        proposalId: proposal.id,
+      });
+      decisionsRecorded++;
     }
 
-    // Advance cursor
     const newest = messages[messages.length - 1];
     await this.setMemory(definition.id, tenantId, "last_processed_at", {
       lastProcessedAt: newest.createdAt.toISOString(),
@@ -301,11 +258,11 @@ export class DetectionAgent extends BaseAgent {
 
     return {
       itemsProcessed: messages.length,
-      tasksAffected,
+      tasksAffected: 0, // v2: agent never touches tasks directly
       decisionsRecorded,
       extras: {
         complaintsFlagged: eligibleComplaints.length,
-        tasksCreated: createdCount,
+        proposalsEmitted,
       },
     };
   }
@@ -325,16 +282,6 @@ function parsePriority(s: string | undefined): TaskPriority {
   return Object.values(TaskPriority).includes(s as TaskPriority)
     ? (s as TaskPriority)
     : TaskPriority.MEDIUM;
-}
-
-const PRIORITY_LADDER: TaskPriority[] = [
-  TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH, TaskPriority.URGENT,
-];
-
-function bumpPriority(p: TaskPriority): TaskPriority {
-  const i = PRIORITY_LADDER.indexOf(p);
-  if (i < 0 || i >= PRIORITY_LADDER.length - 1) return p;
-  return PRIORITY_LADDER[i + 1];
 }
 
 function truncate(s: string, max: number): string {

@@ -155,6 +155,8 @@ export abstract class BaseAgent {
     assignedToId?: string;
     contextAdded?: string;
     interaction?: InteractionType;
+    /** v2: link this decision to the proposal it produced (if any). */
+    proposalId?: string;
   }) {
     const decision = await prisma.agentDecision.create({
       data: {
@@ -170,6 +172,7 @@ export abstract class BaseAgent {
         newPriority: input.newPriority,
         assignedToId: input.assignedToId,
         contextAdded: input.contextAdded,
+        proposalId: input.proposalId,
       },
     });
     if (input.interaction && input.taskId) {
