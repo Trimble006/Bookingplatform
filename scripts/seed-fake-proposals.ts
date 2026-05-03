@@ -142,7 +142,7 @@ async function seedForTenant(tenantSlug?: string) {
       tenantId: tenant.id,
       scope: AgentScope.TENANT,
       mode: AgentRunMode.MANUAL,
-      status: AgentRunStatus.SUCCESS,
+      status: AgentRunStatus.COMPLETED,
       completedAt: new Date(),
       summary: JSON.stringify({
         [FAKE_SEED_TAG]: true,
