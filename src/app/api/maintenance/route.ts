@@ -71,6 +71,11 @@ export async function POST(req: NextRequest) {
         description,
         category: category ?? "GENERAL",
         priority: priority ?? "MEDIUM",
+        // Human-submitted tasks default to MEMBERS visibility (preserves
+        // existing behaviour). Agent-emitted tasks omit the field and pick
+        // up the column default of MAINTENANCE_ONLY. See decisions log
+        // 2026-05-03 (member-message-derived tasks).
+        visibility: "MEMBERS",
         submittedById: session.user.id,
       },
     });

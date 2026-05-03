@@ -424,24 +424,44 @@ enum TaskStatus {
   REOPENED
 }
 
+// Who can see a maintenance task. Member-derived tasks (created by an
+// agent from messaging content) default to MAINTENANCE_ONLY to avoid
+// surprising members with their own words echoed back as visible tasks.
+// Promotion to MEMBERS / PUBLIC requires an explicit MAINTENANCE+ action.
+// See decisions log 2026-05-03 (member-message-derived tasks).
+enum TaskVisibility {
+  MAINTENANCE_ONLY // default for agent-derived; visible to MAINTENANCE+ only
+  MEMBERS          // visible to all club members (existing default behaviour)
+  PUBLIC           // visible on the public site (rare; e.g. "course closed")
+}
+
 model MaintenanceTask {
-  id            String       @id @default(cuid())
+  id            String         @id @default(cuid())
   tenantId      String
-  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
   title         String
   description   String
-  category      TaskCategory @default(GENERAL)
-  priority      TaskPriority @default(MEDIUM)
-  status        TaskStatus   @default(SUBMITTED)
+  category      TaskCategory   @default(GENERAL)
+  priority      TaskPriority   @default(MEDIUM)
+  status        TaskStatus     @default(SUBMITTED)
+  // Visibility default is MAINTENANCE_ONLY for newly-created rows. Existing
+  // rows backfill to MEMBERS in migration 20260503_add_task_visibility to
+  // preserve current behaviour. Tasks created via the human form
+  // (POST /api/maintenance) explicitly set MEMBERS so behaviour is unchanged
+  // for human-submitted tasks; agent-emitted tasks omit the field and get
+  // MAINTENANCE_ONLY from the column default.
+  visibility    TaskVisibility @default(MAINTENANCE_ONLY)
   submittedById String
-  submittedBy   User         @relation("SubmittedBy", fields: [submittedById], references: [id])
+  submittedBy   User           @relation("SubmittedBy", fields: [submittedById], references: [id])
   assignedToId  String?
-  assignedTo    User?        @relation("AssignedTo", fields: [assignedToId], references: [id])
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  assignedTo    User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  notes        TaskNote[]
+  notes             TaskNote[]
   agentInteractions TaskAgentInteraction[]
+
+  @@index([tenantId, visibility, status])
 }
 
 model TaskNote {
