@@ -58,7 +58,7 @@ const PRIORITY_LADDER: TaskPriority[] = [
 ];
 
 function maxPriority(...priorities: TaskPriority[]): TaskPriority {
-  let highest = TaskPriority.LOW;
+  let highest: TaskPriority = TaskPriority.LOW;
   for (const p of priorities) {
     if (PRIORITY_LADDER.indexOf(p) > PRIORITY_LADDER.indexOf(highest)) {
       highest = p;
