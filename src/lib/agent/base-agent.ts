@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import {
   AgentAction,
   AgentDefinition,
+  AgentProposal,
+  AgentProposalAudience,
   AgentRun,
   AgentRunStatus,
   InteractionType,
@@ -180,6 +182,138 @@ export abstract class BaseAgent {
       });
     }
     return decision;
+  }
+
+  // ─── Proposal emission (v2 propose-not-publish) ────────────
+  //
+  // Agents emit proposals via these helpers instead of writing to domain
+  // tables directly. A registered committer (src/lib/agent/committers/) is
+  // invoked when the proposal is approved in the agent inbox (step 4).
+  //
+  // The payload shape is per-kind and JSON-serialised. Committer authors
+  // and emitter authors must agree on the shape; consider co-locating a
+  // shared TypeScript interface for each kind.
+
+  /**
+   * Generic proposal emitter. Most agents should use one of the
+   * audience-specific wrappers below (`emitTenantProposal`,
+   * `emitUserProposal`, `emitPlatformProposal`) which enforce the
+   * audience↔target invariants.
+   */
+  protected async emitProposal(input: {
+    agentId: string;
+    runId: string;
+    kind: string;
+    payload: unknown;
+    confidence: number;
+    reasoning: string;
+    audienceScope: AgentProposalAudience;
+    /** Required when audienceScope=TENANT. */
+    tenantId?: string;
+    /** Required when audienceScope=USER. */
+    userId?: string;
+    /** Required when audienceScope=FEDERATION. */
+    federationId?: string;
+    /** Tenant whose data the proposal acts on, if different from audience. */
+    targetTenantId?: string;
+    /** Optional expiry; null means proposal never auto-expires. */
+    expiresAt?: Date | null;
+  }): Promise<AgentProposal> {
+    // Enforce audience↔ID invariants. Exactly one ID matches the audience.
+    switch (input.audienceScope) {
+      case AgentProposalAudience.TENANT:
+        if (!input.tenantId) {
+          throw new Error("emitProposal: TENANT audience requires tenantId");
+        }
+        break;
+      case AgentProposalAudience.USER:
+        if (!input.userId) {
+          throw new Error("emitProposal: USER audience requires userId");
+        }
+        break;
+      case AgentProposalAudience.FEDERATION:
+        if (!input.federationId) {
+          throw new Error("emitProposal: FEDERATION audience requires federationId");
+        }
+        break;
+      case AgentProposalAudience.PLATFORM:
+        // PLATFORM audience needs no audience-id; reviewed by platform admins.
+        break;
+    }
+
+    return prisma.agentProposal.create({
+      data: {
+        agentId: input.agentId,
+        runId: input.runId,
+        kind: input.kind,
+        payload: JSON.stringify(input.payload),
+        confidence: input.confidence,
+        reasoning: input.reasoning,
+        audienceScope: input.audienceScope,
+        tenantId: input.tenantId ?? null,
+        userId: input.userId ?? null,
+        federationId: input.federationId ?? null,
+        targetTenantId: input.targetTenantId ?? null,
+        expiresAt: input.expiresAt ?? null,
+      },
+    });
+  }
+
+  /** Convenience wrapper for the common TENANT-scoped case. */
+  protected emitTenantProposal(input: {
+    agentId: string;
+    runId: string;
+    tenantId: string;
+    kind: string;
+    payload: unknown;
+    confidence: number;
+    reasoning: string;
+    expiresAt?: Date | null;
+  }): Promise<AgentProposal> {
+    return this.emitProposal({
+      ...input,
+      audienceScope: AgentProposalAudience.TENANT,
+    });
+  }
+
+  /**
+   * Convenience wrapper for USER-scoped agents (e.g. greenkeeper-daily-plan
+   * for a contractor working multiple clubs). `targetTenantId` should be set
+   * when the proposal payload acts on a specific club's data; the inbox
+   * committer will re-check membership at approve-time.
+   */
+  protected emitUserProposal(input: {
+    agentId: string;
+    runId: string;
+    userId: string;
+    kind: string;
+    payload: unknown;
+    confidence: number;
+    reasoning: string;
+    targetTenantId?: string;
+    expiresAt?: Date | null;
+  }): Promise<AgentProposal> {
+    return this.emitProposal({
+      ...input,
+      audienceScope: AgentProposalAudience.USER,
+    });
+  }
+
+  /** Convenience wrapper for PLATFORM-scoped agents (cross-tenant work). */
+  protected emitPlatformProposal(input: {
+    agentId: string;
+    runId: string;
+    kind: string;
+    payload: unknown;
+    confidence: number;
+    reasoning: string;
+    targetTenantId?: string;
+    expiresAt?: Date | null;
+  }): Promise<AgentProposal> {
+    return this.emitProposal({
+      ...input,
+      audienceScope: AgentProposalAudience.PLATFORM,
+    });
   }
 }
 
