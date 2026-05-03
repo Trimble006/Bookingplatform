@@ -69,6 +69,8 @@ model Tenant {
   agentConfigs       AgentConfig[]
   agentKnowledge     AgentKnowledge[]
   agentMetrics       AgentConfidenceMetrics[]
+  agentProposals     AgentProposal[]
+  agentBudget        TenantAgentBudget?
   maintenanceHistory MaintenanceHistory[]
   sentimentSnapshots SentimentSnapshot[]
 }
@@ -818,6 +820,10 @@ enum AgentRunStatus {
   RATE_LIMITED
 }
 
+// DEPRECATED: maintenance-shaped action enum from the v1 agent framework.
+// New agents emit AgentProposal rows with a free-text `kind` instead.
+// Kept on AgentDecision for back-compat with existing detector/triager runs;
+// drop one release after step 3 (detector/triager migration to AgentProposal).
 enum AgentAction {
   CREATED_TASK
   ESCALATED_TASK
@@ -826,6 +832,50 @@ enum AgentAction {
   CONTEXT_ADDED
   PREDICTED_TASK
   NO_ACTION
+}
+
+// Scope of an agent — see /memories/repo/decisions-log.md and the agent
+// strategy plan. Determines the entry point (runForTenant / runForPlatform /
+// runForUser / runForFederation) and the audience of emitted proposals.
+enum AgentScope {
+  TENANT     // per-tenant; reads + writes one tenant
+  PLATFORM   // cross-tenant; platform-admin reviews
+  USER       // cross-tenant per a single user (e.g. greenkeeper for many clubs)
+  FEDERATION // reserved for Phase 10; no FK until federation models exist
+}
+
+// Whether the agent's logic depends on a generative LLM call.
+// Used by cost dashboards to highlight cosmetic LLM spend.
+enum AgentLlmUsage {
+  ALWAYS       // generative model is core to the agent (drafting, vision, open-class)
+  SUMMARY_ONLY // deterministic logic with optional LLM prose summary
+  NEVER        // pure rules / arithmetic; no model calls
+}
+
+// Audience that reviews a proposal. Different from the agent's scope:
+// e.g. a USER-scope agent can emit TENANT-audience proposals if appropriate,
+// though typically scope and audience match.
+enum AgentProposalAudience {
+  TENANT
+  PLATFORM
+  USER
+  FEDERATION
+}
+
+// Lifecycle of an AgentProposal.
+enum AgentProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUPERSEDED
+  EXPIRED
+}
+
+// How a run was triggered.
+enum AgentRunMode {
+  SCHEDULED
+  MANUAL
+  TRIGGERED
 }
 
 enum InteractionType {
@@ -878,6 +928,14 @@ model AgentDefinition {
   systemUserId  String   @unique
   systemUser    User     @relation(fields: [systemUserId], references: [id])
   enabled       Boolean  @default(true)
+  // Strategic fields — see agent strategy plan §B/§H/§L.
+  // Defaulted to TENANT/ALWAYS for back-compat with existing detector/triager;
+  // new agents must set these explicitly.
+  scope         AgentScope    @default(TENANT)
+  usesLLM       AgentLlmUsage @default(ALWAYS)
+  // Optional per-agent model preference (overrides env tier mapping).
+  // Null = use the env-configured model for the requested tier.
+  preferredModel String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -887,24 +945,45 @@ model AgentDefinition {
   configs    AgentConfig[]
   knowledge  AgentKnowledge[]
   metrics    AgentConfidenceMetrics[]
+  proposals  AgentProposal[]
 }
 
 model AgentRun {
   id          String         @id @default(cuid())
   agentId     String
   agent       AgentDefinition @relation(fields: [agentId], references: [id])
-  tenantId    String
-  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  // Nullable from v2: PLATFORM/USER-scope runs may have no single tenant.
+  tenantId    String?
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id])
+  // Run-time copy of the agent's scope; lets us reason about runs without joining.
+  scope       AgentScope     @default(TENANT)
+  // For USER-scope runs.
+  userId      String?
+  // For FEDERATION-scope runs (no FK until federation table exists).
+  federationId String?
+  // How this run was triggered.
+  mode        AgentRunMode   @default(SCHEDULED)
   status      AgentRunStatus @default(RUNNING)
   startedAt   DateTime       @default(now())
   completedAt DateTime?
   summary     String? // JSON blob: { messagesProcessed, tasksCreated, ... }
   error       String?
 
+  // Cost + provider observability (populated by provider wrapper).
+  // costsCents is platform-attributable spend in pennies; 0 for local providers.
+  costsCents  Int            @default(0)
+  tokensIn    Int            @default(0)
+  tokensOut  Int             @default(0)
+  provider    String? // e.g. "ollama", "gemini", "anthropic", "stub"
+  model       String? // e.g. "qwen2.5:3b", "gemini-flash-1.5", "stub"
+  traceJson   String? // optional structured trace (model calls, latencies, cache hits)
+
   decisions AgentDecision[]
+  proposals AgentProposal[]
 
   @@index([tenantId, startedAt])
   @@index([agentId, startedAt])
+  @@index([userId, startedAt])
 }
 
 model AgentDecision {
@@ -913,13 +992,21 @@ model AgentDecision {
   agent            AgentDefinition @relation(fields: [agentId], references: [id])
   runId            String
   run              AgentRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
-  tenantId         String
-  tenant           Tenant       @relation(fields: [tenantId], references: [id])
+  // Nullable from v2 to match AgentRun.tenantId becoming nullable.
+  tenantId         String?
+  tenant           Tenant?      @relation(fields: [tenantId], references: [id])
+  // DEPRECATED in v2 — kept populated for back-compat by detector/triager;
+  // new agents leave this NO_ACTION and reference the proposal instead.
   action           AgentAction
   confidence       Float
   reasoning        String
 
-  // Source / target links — all optional depending on action type
+  // v2: link to the proposal this decision produced (if any).
+  proposalId       String?
+  proposal         AgentProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  // DEPRECATED structured fields — payload moves into AgentProposal.payload.
+  // Kept for back-compat; drop one release after detector/triager migration.
   sourceMessageId  String?
   taskId           String?
   previousPriority TaskPriority?
@@ -936,6 +1023,7 @@ model AgentDecision {
   @@index([agentId, createdAt])
   @@index([taskId])
   @@index([sourceMessageId])
+  @@index([proposalId])
 }
 
 model AgentFeedback {
@@ -1002,6 +1090,10 @@ model AgentKnowledge {
   @@index([tenantId])
 }
 
+// DEPRECATED in v2: maintenance-shaped join from the v1 framework.
+// New agents capture the same information via AgentProposal.committedEntityType
+// + committedEntityId. Drop one release after detector/triager migration to
+// AgentProposal (step 3).
 model TaskAgentInteraction {
   id              String          @id @default(cuid())
   taskId          String
@@ -1012,6 +1104,92 @@ model TaskAgentInteraction {
   createdAt       DateTime        @default(now())
 
   @@index([taskId, createdAt])
+}
+
+// ─── v2: AgentProposal (propose-not-publish) ────────────────
+//
+// Canonical record of an action an agent suggests. Domain tables are NOT
+// written by agents directly; they're written by per-kind "committers" when
+// a proposal is approved. See agent strategy plan §B/§C.
+//
+// Audience routing: exactly one of (tenantId, userId, federationId) is set
+// to match audienceScope. targetTenantId may differ from tenantId — e.g. a
+// USER-scope greenkeeper proposal reviewed by the user but acting on a
+// specific club's data.
+model AgentProposal {
+  id          String                @id @default(cuid())
+  agentId     String
+  agent       AgentDefinition       @relation(fields: [agentId], references: [id])
+  runId       String
+  run         AgentRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  // Free-text discriminator. Convention: <DOMAIN>_<NOUN>_<VERB>.
+  // Examples: MAINTENANCE_TASK_CREATE, MAINTENANCE_TASK_PRIORITY,
+  // CONTENT_DRAFT, AD_CREATIVE_DRAFT, CANCELLATION_RISK_REPORT,
+  // GREENKEEPER_DAILY_PLAN, INVOICE_LINE_DRAFT.
+  kind        String
+  payload     String // JSON blob — domain payload the committer applies
+  confidence  Float
+  reasoning   String
+
+  // Audience — exactly one of (tenantId, userId, federationId) must be set
+  // matching audienceScope. Enforced in code, not schema.
+  audienceScope AgentProposalAudience
+  tenantId      String?
+  tenant        Tenant?               @relation(fields: [tenantId], references: [id])
+  userId        String?
+  // No FK on userId yet — federation/user audience routing TBD; document and add when stable.
+  federationId  String? // No FK until federation models exist.
+
+  // The tenant whose data the proposal acts on, when different from audience.
+  // Null for proposals that don't mutate tenant data (e.g. info-only reports).
+  targetTenantId String?
+
+  status      AgentProposalStatus   @default(PENDING)
+  expiresAt   DateTime?
+
+  // Commit metadata — populated when status moves PENDING → APPROVED.
+  committedAt          DateTime?
+  committedById        String? // user who clicked approve (no FK yet to keep migration cheap)
+  committedEntityType  String? // e.g. "MaintenanceTask"
+  committedEntityId    String? // e.g. cuid of the created/updated row
+  // Diff between proposed payload and committed payload (approve-with-edits).
+  // Critical training-data signal — see strategy plan §L.4.
+  committedPayloadDiff String?
+
+  // Reject metadata — populated when status moves PENDING → REJECTED.
+  rejectedAt    DateTime?
+  rejectedById  String?
+  rejectReason  String? // free-text; see strategy plan §L.4
+
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  decisions   AgentDecision[]
+
+  @@index([audienceScope, status, createdAt])
+  @@index([tenantId, status, createdAt])
+  @@index([userId, status, createdAt])
+  @@index([targetTenantId])
+  @@index([agentId, kind, createdAt])
+  @@index([runId])
+}
+
+// ─── v2: TenantAgentBudget (LLM cost capping) ───────────────
+//
+// Per-tenant monthly cap on LLM spend. When currentSpendCents exceeds
+// monthlyCapCents, agent runs return RATE_LIMITED with reason=BUDGET.
+// Reset by a scheduled job at month start. See strategy plan §E.6.
+model TenantAgentBudget {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  monthlyCapCents   Int      @default(0) // 0 = uncapped
+  currentSpendCents Int      @default(0)
+  cappedUntil       DateTime?
+  resetAt           DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model AgentConfidenceMetrics {
