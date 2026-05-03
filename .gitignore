@@ -6,3 +6,9 @@ prisma/dev.db-journal
 dev.db
 dev.db-journal
 coverage/
+
+# build artefacts
+tsconfig.tsbuildinfo
+
+# local-only workshop facilitator notes
+.cache-loader/
