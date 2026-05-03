@@ -281,3 +281,126 @@ describe("DetectionAgent v2 — propose-not-publish", () => {
     expect(memory).not.toBeNull();
   });
 });
+
+describe("DetectionAgent v2 — clustering (3c-iii)", () => {
+  let memberB: string;
+  let memberC: string;
+
+  beforeAll(async () => {
+    const b = await prisma.user.create({
+      data: { email: `det-memB-${Date.now()}@test.com`, name: "MemB", passwordHash: "x", role: "USER", tenantId },
+    });
+    memberB = b.id;
+    const c = await prisma.user.create({
+      data: { email: `det-memC-${Date.now()}@test.com`, name: "MemC", passwordHash: "x", role: "USER", tenantId },
+    });
+    memberC = c.id;
+  });
+
+  afterAll(async () => {
+    // Inner block teardown runs BEFORE outer afterAll. Delete cluster
+    // messages first so the user delete doesn't trip the FK.
+    await prisma.agentDecision.deleteMany({ where: { tenantId } });
+    await prisma.agentProposal.deleteMany({ where: { tenantId } });
+    await prisma.message.deleteMany({ where: { tenantId, userId: { in: [memberB, memberC] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [memberB, memberC] } } });
+  });
+
+  async function seedFromUser(userId: string, body: string): Promise<string> {
+    const m = await prisma.message.create({
+      data: { tenantId, channelId, userId, body },
+    });
+    return m.id;
+  }
+
+  test("merges similar messages from multiple authors into ONE proposal with participantCount=N", async () => {
+    const m1 = await seedFromUser(memberId, "Rink 3 surface uneven near south end");
+    const m2 = await seedFromUser(memberB, "Rink 3 surface uneven and bumpy");
+    const m3 = await seedFromUser(memberC, "Yeah rink 3 surface really uneven today");
+
+    const agent = new DetectionAgent();
+    (agent as unknown as { provider: unknown }).provider = makeFakeProvider([
+      { messageId: m1, isComplaint: true, category: "RINK_SURFACE", priority: "MEDIUM",
+        suggestedTitle: "Rink 3 surface uneven", suggestedDescription: "Multiple reports",
+        confidence: 0.7, toneSeverity: 0.5, toneLabel: "concerned" },
+      { messageId: m2, isComplaint: true, category: "RINK_SURFACE", priority: "MEDIUM",
+        suggestedTitle: "Rink 3 uneven", suggestedDescription: "x",
+        confidence: 0.85, toneSeverity: 0.7, toneLabel: "frustrated" }, // highest confidence → canonical
+      { messageId: m3, isComplaint: true, category: "RINK_SURFACE", priority: "MEDIUM",
+        suggestedTitle: "Rink 3 uneven again", suggestedDescription: "x",
+        confidence: 0.75, toneSeverity: 0.4 },
+    ]);
+
+    await agent.runForTenant(tenantId);
+
+    const proposals = await prisma.agentProposal.findMany({
+      where: { tenantId, kind: MAINTENANCE_TASK_CREATE_KIND },
+    });
+    expect(proposals).toHaveLength(1);
+
+    const payload = JSON.parse(proposals[0].payload);
+    expect(payload.title).toBe("Rink 3 uneven"); // canonical = highest confidence
+    expect(payload.participantCount).toBe(3);
+    expect(payload.sourceMessageIds).toEqual(expect.arrayContaining([m1, m2, m3]));
+    expect(payload.toneSeverity).toBe(0.7); // max across cluster
+    expect(payload.toneLabel).toBe("frustrated"); // label of max-severity voice
+
+    // 3 decisions, all referencing the same proposal
+    const decisions = await prisma.agentDecision.findMany({
+      where: { tenantId, proposalId: proposals[0].id },
+    });
+    expect(decisions).toHaveLength(3);
+  });
+
+  test("unrelated complaints do NOT cluster — one proposal each", async () => {
+    const m1 = await seedFromUser(memberId, "Sprinkler on green 1 stuck running");
+    const m2 = await seedFromUser(memberB, "Net torn on rink 4");
+
+    const agent = new DetectionAgent();
+    (agent as unknown as { provider: unknown }).provider = makeFakeProvider([
+      { messageId: m1, isComplaint: true, category: "GROUNDS", priority: "MEDIUM",
+        suggestedTitle: "Sprinkler stuck", suggestedDescription: "x", confidence: 0.8 },
+      { messageId: m2, isComplaint: true, category: "EQUIPMENT", priority: "MEDIUM",
+        suggestedTitle: "Net torn rink 4", suggestedDescription: "x", confidence: 0.8 },
+    ]);
+
+    await agent.runForTenant(tenantId);
+    const proposals = await prisma.agentProposal.findMany({
+      where: { tenantId, kind: MAINTENANCE_TASK_CREATE_KIND },
+    });
+    expect(proposals).toHaveLength(2);
+  });
+
+  test("cluster with mix of complaint + non-complaint emits proposal covering all cluster members", async () => {
+    const m1 = await seedFromUser(memberId, "Heating broken clubhouse lounge");
+    const m2 = await seedFromUser(memberB, "Heating broken clubhouse lounge yes");
+    // m3 has strong topical overlap → SAME cluster — but LLM disagrees on
+    // whether it's a complaint. Cluster membership is topical, not
+    // classification-based; participantCount counts all cluster authors.
+    const m3 = await seedFromUser(memberC, "Heating broken clubhouse lounge actually fine now");
+
+    const agent = new DetectionAgent();
+    (agent as unknown as { provider: unknown }).provider = makeFakeProvider([
+      { messageId: m1, isComplaint: true, category: "FACILITIES", priority: "MEDIUM",
+        suggestedTitle: "Heating broken clubhouse", suggestedDescription: "x", confidence: 0.85 },
+      { messageId: m2, isComplaint: true, category: "FACILITIES", priority: "MEDIUM",
+        suggestedTitle: "Heating broken", suggestedDescription: "x", confidence: 0.75 },
+      { messageId: m3, isComplaint: false, confidence: 0.9 },
+    ]);
+
+    await agent.runForTenant(tenantId);
+    const proposals = await prisma.agentProposal.findMany({
+      where: { tenantId, kind: MAINTENANCE_TASK_CREATE_KIND },
+    });
+    expect(proposals).toHaveLength(1);
+    const payload = JSON.parse(proposals[0].payload);
+    // participantCount counts distinct authors of cluster members
+    expect(payload.participantCount).toBe(3);
+    expect(payload.sourceMessageIds).toHaveLength(3);
+    // Only the 2 complaint members get decision rows linked to this proposal
+    const decisions = await prisma.agentDecision.findMany({
+      where: { tenantId, proposalId: proposals[0].id },
+    });
+    expect(decisions).toHaveLength(2);
+  });
+});

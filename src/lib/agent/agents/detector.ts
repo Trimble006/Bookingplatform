@@ -13,6 +13,7 @@ import {
   MAINTENANCE_TASK_CREATE_KIND,
   type MaintenanceTaskCreatePayload,
 } from "@/lib/agent/committers/maintenance-task-create";
+import { clusterMessages } from "@/lib/agent/clustering";
 
 interface DetectionConfig {
   sensitivityThreshold: number;
@@ -45,6 +46,9 @@ interface LLMComplaint {
   suggestedDescription?: string;
   confidence?: number;
   reasoning?: string;
+  /** 0..1; 1.0 = safety-critical / explicit anger. Drives committer-side priority. */
+  toneSeverity?: number;
+  toneLabel?: string;
 }
 
 interface LLMResponse {
@@ -73,6 +77,8 @@ const RESPONSE_SCHEMA = {
           suggestedDescription: { type: "string" },
           confidence: { type: "number" },
           reasoning: { type: "string" },
+          toneSeverity: { type: "number" },
+          toneLabel: { type: "string" },
         },
         required: ["messageId", "isComplaint"],
       },
@@ -159,7 +165,7 @@ export class DetectionAgent extends BaseAgent {
       `Domain knowledge:`,
       knowledgeToPromptText(knowledge),
       ``,
-      `For each message, return: isComplaint (boolean), and if true: category, priority, suggestedTitle, suggestedDescription, confidence (0-1), reasoning.`,
+      `For each message, return: isComplaint (boolean), and if true: category, priority, suggestedTitle, suggestedDescription, confidence (0-1), reasoning, toneSeverity (0-1; 1.0 = safety-critical or angry), toneLabel (e.g. frustrated, concerned, angry).`,
       `Categories: GENERAL, RINK_SURFACE, EQUIPMENT, FACILITIES, SAFETY, GROUNDS, OTHER.`,
       `Priorities: LOW, MEDIUM, HIGH, URGENT. Reserve URGENT for safety risks.`,
       `Do NOT try to deduplicate against existing tasks — that happens downstream.`,
@@ -187,43 +193,90 @@ export class DetectionAgent extends BaseAgent {
       console.warn(`[detector] LLM call failed for tenant ${tenantId}:`, (e as Error).message);
     }
 
-    const eligibleComplaints = (llmResponse.complaints ?? [])
-      .filter((c) => c.isComplaint && (c.confidence ?? 0) >= config.sensitivityThreshold);
+    // Index classifications by messageId for cluster-level aggregation.
+    const classifyById = new Map<string, LLMComplaint>();
+    for (const c of llmResponse.complaints ?? []) {
+      classifyById.set(c.messageId, c);
+    }
+
+    // Pre-cluster messages so an "ongoing discussion" emits one proposal,
+    // not one per voice. See plan §A.10 / decisions log 2026-05-03.
+    const clusters = clusterMessages(
+      messages.map((m) => ({
+        id: m.id,
+        channelId: m.channelId,
+        body: m.body,
+        userId: m.userId,
+        createdAt: m.createdAt,
+      })),
+    );
 
     let proposalsEmitted = 0;
     let decisionsRecorded = 0;
 
-    for (const c of eligibleComplaints) {
-      const sourceMessage = messages.find((m) => m.id === c.messageId);
-      if (!sourceMessage) continue;
+    for (const cluster of clusters) {
+      // Pull the cluster's classifications. A cluster is "eligible" if at
+      // least one member is flagged as complaint above the threshold.
+      const memberClassifications = cluster.messageIds
+        .map((id) => classifyById.get(id))
+        .filter((c): c is LLMComplaint => !!c);
+      const eligibleMembers = memberClassifications.filter(
+        (c) => c.isComplaint && (c.confidence ?? 0) >= config.sensitivityThreshold,
+      );
 
-      // Cap or feature-flag short-circuit: still record the decision so we
-      // have a learning signal that we saw it and chose not to act.
-      if (!config.autoCreateTasks || proposalsEmitted >= config.maxTasksPerRun) {
-        await this.recordDecision({
-          agentId: definition.id, runId: run.id, tenantId,
-          action: AgentAction.NO_ACTION,
-          confidence: c.confidence ?? 0,
-          reasoning: !config.autoCreateTasks
-            ? "auto-create disabled"
-            : `cap reached (${config.maxTasksPerRun})`,
-          sourceMessageId: c.messageId,
-        });
-        decisionsRecorded++;
+      if (eligibleMembers.length === 0) {
         continue;
       }
 
-      const category = parseCategory(c.category);
-      const priority = parsePriority(c.priority);
+      // Cap or feature-flag short-circuit: still record a decision per
+      // *member* so we keep the learning signal at message granularity.
+      if (!config.autoCreateTasks || proposalsEmitted >= config.maxTasksPerRun) {
+        for (const c of eligibleMembers) {
+          await this.recordDecision({
+            agentId: definition.id, runId: run.id, tenantId,
+            action: AgentAction.NO_ACTION,
+            confidence: c.confidence ?? 0,
+            reasoning: !config.autoCreateTasks
+              ? "auto-create disabled"
+              : `cap reached (${config.maxTasksPerRun})`,
+            sourceMessageId: c.messageId,
+          });
+          decisionsRecorded++;
+        }
+        continue;
+      }
+
+      // Canonical classification: highest-confidence member.
+      const canonical = eligibleMembers.reduce((best, cur) =>
+        (cur.confidence ?? 0) > (best.confidence ?? 0) ? cur : best,
+      );
+      const sourceMessage = messages.find((m) => m.id === canonical.messageId);
+      if (!sourceMessage) continue;
+
+      const category = parseCategory(canonical.category);
+      const priority = parsePriority(canonical.priority);
+
+      // Cluster-level tone severity: max across eligible members. Same goes
+      // for label — pick the label of the highest-severity voice.
+      let toneSeverity = 0;
+      let toneLabel: string | undefined;
+      for (const m of eligibleMembers) {
+        const sev = m.toneSeverity ?? 0;
+        if (sev > toneSeverity) {
+          toneSeverity = sev;
+          toneLabel = m.toneLabel;
+        }
+      }
 
       const payload: MaintenanceTaskCreatePayload = {
-        title: c.suggestedTitle ?? truncate(sourceMessage.body, 80),
-        description: c.suggestedDescription ?? sourceMessage.body,
+        title: canonical.suggestedTitle ?? truncate(sourceMessage.body, 80),
+        description: canonical.suggestedDescription ?? sourceMessage.body,
         category,
         priority,
-        // 1:1 mode — clustering arrives in 3c-iii.
-        sourceMessageIds: [c.messageId],
-        participantCount: 1,
+        sourceMessageIds: cluster.messageIds,
+        participantCount: cluster.participantCount,
+        toneSeverity: toneSeverity > 0 ? toneSeverity : undefined,
+        toneLabel,
       };
 
       const proposal = await this.emitTenantProposal({
@@ -232,24 +285,31 @@ export class DetectionAgent extends BaseAgent {
         tenantId,
         kind: MAINTENANCE_TASK_CREATE_KIND,
         payload,
-        confidence: c.confidence ?? 0.5,
-        reasoning: c.reasoning ?? "Detected facility complaint",
+        confidence: canonical.confidence ?? 0.5,
+        reasoning: canonical.reasoning ?? "Detected facility complaint",
       });
       proposalsEmitted++;
 
-      // Decision row is the per-message provenance trail (sourceMessageId
-      // lives here, never on the eventual MaintenanceTask). Action is
-      // NO_ACTION per v2 convention — the real outcome lives on the proposal.
-      await this.recordDecision({
-        agentId: definition.id, runId: run.id, tenantId,
-        action: AgentAction.NO_ACTION,
-        confidence: c.confidence ?? 0.5,
-        reasoning: c.reasoning ?? "Detected facility complaint",
-        sourceMessageId: c.messageId,
-        proposalId: proposal.id,
-      });
-      decisionsRecorded++;
+      // One AgentDecision per cluster member — provenance trail at message
+      // granularity. All members reference the same proposalId so the inbox
+      // / training-data exporter can reconstruct "this proposal came from
+      // these N messages".
+      for (const c of eligibleMembers) {
+        await this.recordDecision({
+          agentId: definition.id, runId: run.id, tenantId,
+          action: AgentAction.NO_ACTION,
+          confidence: c.confidence ?? 0.5,
+          reasoning: c.reasoning ?? "Cluster member",
+          sourceMessageId: c.messageId,
+          proposalId: proposal.id,
+        });
+        decisionsRecorded++;
+      }
     }
+
+    const eligibleComplaints = (llmResponse.complaints ?? []).filter(
+      (c) => c.isComplaint && (c.confidence ?? 0) >= config.sensitivityThreshold,
+    );
 
     const newest = messages[messages.length - 1];
     await this.setMemory(definition.id, tenantId, "last_processed_at", {
