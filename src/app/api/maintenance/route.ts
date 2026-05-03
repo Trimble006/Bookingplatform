@@ -4,9 +4,20 @@ import { getSessionOrFail, getEffective, assertEffectiveRoleOrFail, jsonError } 
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
-import type { TaskCategory, TaskPriority } from "@prisma/client";
+import type { Prisma, TaskCategory, TaskPriority } from "@prisma/client";
 
-/** List tasks — maintenance sees own, admin sees all. */
+/** List tasks — visibility-filtered by viewer role.
+ *
+ * Visibility rules (decisions log 2026-05-03 — member-message-derived tasks):
+ *  - TENANT_ADMIN+: sees all tasks for the tenant.
+ *  - MAINTENANCE: sees (own submitted OR own assigned OR MAINTENANCE_ONLY).
+ *    The MAINTENANCE_ONLY clause is the agent triage queue — without it,
+ *    agent-derived tasks would land invisibly.
+ *  - USER (member): sees (own submitted OR MEMBERS-visible OR PUBLIC-visible).
+ *    Pre-v2 members only saw own-submitted tasks; the visibility model
+ *    intentionally broadens the member view to tasks the maintenance team
+ *    has flagged as member-visible.
+ */
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
@@ -19,14 +30,25 @@ export async function GET(req: NextRequest) {
     const isAdmin = hasRole(eff.role, "TENANT_ADMIN");
     const isMaintenance = eff.role === "MAINTENANCE";
 
+    const visibilityFilter: Prisma.MaintenanceTaskWhereInput = isAdmin
+      ? {}
+      : isMaintenance
+        ? {
+            OR: [
+              { assignedToId: session.user.id },
+              { submittedById: session.user.id },
+              { visibility: "MAINTENANCE_ONLY" },
+            ],
+          }
+        : {
+            OR: [
+              { submittedById: session.user.id },
+              { visibility: { in: ["MEMBERS", "PUBLIC"] } },
+            ],
+          };
+
     const tasks = await prisma.maintenanceTask.findMany({
-      where: {
-        tenantId,
-        ...(!isAdmin && isMaintenance
-          ? { OR: [{ assignedToId: session.user.id }, { submittedById: session.user.id }] }
-          : {}),
-        ...(!isAdmin && !isMaintenance ? { submittedById: session.user.id } : {}),
-      },
+      where: { tenantId, ...visibilityFilter },
       include: {
         submittedBy: { select: { id: true, name: true } },
         assignedTo: { select: { id: true, name: true } },
