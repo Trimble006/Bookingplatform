@@ -120,6 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {isTenantAdminEffective && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/settings" className="hover:bg-green-700 rounded px-3 py-2">Settings</Link>}
+              {isTenantAdminEffective && <Link href="/dashboard/billing" className="hover:bg-green-700 rounded px-3 py-2">Billing</Link>}
               <Link href="/dashboard/audit" className="hover:bg-green-700 rounded px-3 py-2">
                 {isTenantAdminEffective ? "Audit Log" : "My Activity"}
               </Link>
