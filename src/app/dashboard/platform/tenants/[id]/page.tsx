@@ -148,6 +148,9 @@ export default function TenantDetailsPage() {
         <h1 className="text-2xl font-bold">{tenant.name}</h1>
         <span className="text-sm text-gray-400">/{tenant.slug}</span>
         <span className={`ml-2 text-xs px-2 py-0.5 rounded ${STATUS_BADGE[status]}`}>{status}</span>
+        <Link href={`/dashboard/platform/tenants/${id}/billing`} className="ml-auto rounded bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+          View Billing
+        </Link>
       </div>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
