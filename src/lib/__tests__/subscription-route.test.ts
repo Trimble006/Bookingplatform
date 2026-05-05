@@ -51,6 +51,7 @@ afterAll(async () => {
   await prisma.auditEvent.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
   await prisma.auditEvent.deleteMany({ where: { actorId: { in: cleanup.userIds } } });
   await prisma.onboardingProgress.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
+  await prisma.tenantBillingProfile.deleteMany({ where: { tenantId: { in: cleanup.tenantIds } } });
   await prisma.user.updateMany({ where: { tenantId: { in: cleanup.tenantIds } }, data: { tenantId: null } });
   await prisma.user.deleteMany({ where: { id: { in: cleanup.userIds } } });
   await prisma.tenant.deleteMany({ where: { id: { in: cleanup.tenantIds } } });
