@@ -70,15 +70,41 @@ export async function PATCH(
     data.lockedById = null;
   }
 
+  // Unlock: also revert any finalised TAR to DRAFT in the same transaction
+  if (body.unlock === true) {
+    const [updated] = await prisma.$transaction([
+      prisma.charityFinancialYear.update({ where: { id }, data }),
+      prisma.charityTAR.updateMany({
+        where: { tenantId, financialYearId: id, status: "FINALISED" },
+        data: { status: "DRAFT", finalisedAt: null, finalisedById: null },
+      }),
+    ]);
+    logAudit({
+      session,
+      action: "charity.year.unlocked",
+      entity: "CharityFinancialYear",
+      entityId: id,
+      tenantId,
+    });
+    logAudit({
+      session,
+      action: "charity.tar.reopened",
+      entity: "CharityTAR",
+      entityId: id,
+      tenantId,
+    });
+    return NextResponse.json(updated);
+  }
+
   const updated = await prisma.charityFinancialYear.update({
     where: { id },
     data,
   });
 
-  if (body.lock || body.unlock) {
+  if (body.lock) {
     logAudit({
       session,
-      action: body.lock ? "charity.year.locked" : "charity.year.unlocked",
+      action: "charity.year.locked",
       entity: "CharityFinancialYear",
       entityId: id,
       tenantId,

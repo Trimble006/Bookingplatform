@@ -66,6 +66,8 @@ export default function TARWizardPage() {
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [warnings, setWarnings] = useState<{ key: string; message: string }[]>([]);
+  const [warningsDismissed, setWarningsDismissed] = useState(false);
 
   // Load years
   useEffect(() => {
@@ -84,6 +86,8 @@ export default function TARWizardPage() {
     setTarData(null);
     setContext(null);
     setError(null);
+    setWarnings([]);
+    setWarningsDismissed(false);
 
     Promise.all([
       fetch(`/api/charity/tar?yearId=${selectedYearId}`).then((r) =>
@@ -92,13 +96,19 @@ export default function TARWizardPage() {
       fetch(`/api/charity/tar/context?yearId=${selectedYearId}`).then((r) =>
         r.ok ? r.json() : null,
       ),
-    ]).then(([tar, ctx]) => {
+      fetch(`/api/charity/tar/readiness?yearId=${selectedYearId}`).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+    ]).then(([tar, ctx, readiness]) => {
       if (!tar) {
         setError("Could not load TAR data. Ensure charity settings are configured.");
         return;
       }
       setTarData(tar as TARData);
       setContext(ctx as ContextData);
+      if (readiness?.warnings?.length) {
+        setWarnings(readiness.warnings);
+      }
       // Seed drafts from saved sections
       const d: Record<string, string> = {};
       for (const [slug, sec] of Object.entries(
@@ -309,6 +319,28 @@ export default function TARWizardPage() {
             ? new Date(tarData.tar.finalisedAt).toLocaleDateString()
             : "unknown"}
           . It is now read-only.
+        </div>
+      )}
+
+      {warnings.length > 0 && !warningsDismissed && !isFinalised && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-3 mb-4 text-amber-900 text-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="font-semibold">Heads up</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5">
+                {warnings.map((w) => (
+                  <li key={w.key}>{w.message}</li>
+                ))}
+              </ul>
+            </div>
+            <button
+              onClick={() => setWarningsDismissed(true)}
+              className="text-amber-600 hover:text-amber-800 ml-3 shrink-0"
+              aria-label="Dismiss warnings"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

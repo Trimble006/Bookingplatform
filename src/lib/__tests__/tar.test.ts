@@ -197,4 +197,37 @@ describe("CharityTAR CRUD", () => {
       }),
     ).rejects.toThrow();
   });
+
+  test("unlocking a year reverts TAR to DRAFT", async () => {
+    // Ensure TAR is FINALISED and year is LOCKED from earlier test
+    const tar = await prisma.charityTAR.findUniqueOrThrow({
+      where: { tenantId_financialYearId: { tenantId, financialYearId: yearId } },
+    });
+    expect(tar.status).toBe("FINALISED");
+
+    // Simulate the unlock transaction (same logic as PATCH handler)
+    await prisma.$transaction([
+      prisma.charityFinancialYear.update({
+        where: { id: yearId },
+        data: { status: "OPEN", lockedAt: null, lockedById: null },
+      }),
+      prisma.charityTAR.updateMany({
+        where: { tenantId, financialYearId: yearId, status: "FINALISED" },
+        data: { status: "DRAFT", finalisedAt: null, finalisedById: null },
+      }),
+    ]);
+
+    const reopened = await prisma.charityTAR.findUniqueOrThrow({
+      where: { tenantId_financialYearId: { tenantId, financialYearId: yearId } },
+    });
+    expect(reopened.status).toBe("DRAFT");
+    expect(reopened.finalisedAt).toBeNull();
+    expect(reopened.finalisedById).toBeNull();
+
+    const year = await prisma.charityFinancialYear.findUniqueOrThrow({
+      where: { id: yearId },
+    });
+    expect(year.status).toBe("OPEN");
+    expect(year.lockedAt).toBeNull();
+  });
 });
