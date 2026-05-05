@@ -229,6 +229,39 @@ async function main() {
   });
   console.log("Streaming subscription seeded (SILVER tier).");
 
+  // ─── Platform Plans ──────────────────────────────────────────────
+  const plans = [
+    { id: "plan_starter_001", name: "Starter", slug: "starter", description: "For small clubs getting started", priceMonthlyPence: 2500, trialDays: 30, maxMembers: 50, maxGreens: 2, includedStreamingTier: "NONE" as const, featureFlags: { messaging: true, events: true }, sortOrder: 1 },
+    { id: "plan_standard_001", name: "Standard", slug: "standard", description: "For established clubs with active membership", priceMonthlyPence: 5000, trialDays: 30, maxMembers: 150, maxGreens: 4, includedStreamingTier: "BRONZE" as const, featureFlags: { messaging: true, events: true, publicEvents: true, publicAvailability: true, liveStreaming: true }, sortOrder: 2 },
+    { id: "plan_premium_001", name: "Premium", slug: "premium", description: "For large clubs wanting the full platform", priceMonthlyPence: 10000, trialDays: 30, maxMembers: 500, maxGreens: 10, includedStreamingTier: "GOLD" as const, featureFlags: { messaging: true, events: true, publicEvents: true, publicAvailability: true, liveStreaming: true, analytics: true }, sortOrder: 3 },
+  ];
+  for (const plan of plans) {
+    await prisma.platformPlan.upsert({
+      where: { slug: plan.slug },
+      update: { priceMonthlyPence: plan.priceMonthlyPence, maxMembers: plan.maxMembers, maxGreens: plan.maxGreens, includedStreamingTier: plan.includedStreamingTier, featureFlags: plan.featureFlags, sortOrder: plan.sortOrder, active: true },
+      create: plan,
+    });
+  }
+  console.log("Platform plans seeded (Starter / Standard / Premium).");
+
+  // Ensure demo tenant has a billing profile
+  const existingProfile = await prisma.tenantBillingProfile.findUnique({ where: { tenantId: tenant.id } });
+  if (!existingProfile) {
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    await prisma.tenantBillingProfile.create({
+      data: {
+        tenantId: tenant.id,
+        planId: "plan_starter_001",
+        billingStatus: "TRIAL",
+        currentPeriodStart: now,
+        currentPeriodEnd: trialEnd,
+        trialEndsAt: trialEnd,
+      },
+    });
+  }
+  console.log("Demo tenant billing profile seeded.");
+
   await seedAgents(tenant.id);
 
   console.log("Seed complete.");

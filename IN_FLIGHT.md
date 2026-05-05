@@ -21,7 +21,7 @@ scratch.
 
 ## Active threads
 
-_(none currently — sessions idle as of 2026-05-05)_
+- `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).

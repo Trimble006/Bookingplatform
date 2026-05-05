@@ -99,6 +99,9 @@ model Tenant {
   outboundMessages   OutboundMessage[]
   onboardingProgress OnboardingProgress?
 
+  // Billing
+  billingProfile TenantBillingProfile?
+
   // Agent system
   agentRuns          AgentRun[]
   agentDecisions     AgentDecision[]
@@ -409,13 +412,90 @@ model WaitlistEntry {
   @@index([bookingId, createdAt])
 }
 
-// ─── Payments ────────────────────────────────────────────────
+// ─── Payments & Billing ──────────────────────────────────────
 
 enum PaymentStatus {
   PENDING
   PAID
   FAILED
   REFUNDED
+}
+
+// Type of charge on a TenantPayment row.
+enum PaymentType {
+  SUBSCRIPTION // monthly platform plan fee
+  STREAMING    // streaming tier addon
+  ADDON        // other paid extras
+  CREDIT       // credit note / refund adjustment
+  ADJUSTMENT   // manual correction by platform admin
+}
+
+// How the tenant intends to pay. INVOICE is the only real option in v1;
+// DIRECT_DEBIT and CARD are reserved for Stripe phase.
+enum BillingPaymentMethod {
+  INVOICE
+  DIRECT_DEBIT
+  CARD
+}
+
+// Billing profile lifecycle.
+enum BillingStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+}
+
+// Category for a single line item on an invoice.
+enum InvoiceLineCategory {
+  PLATFORM_SUBSCRIPTION
+  STREAMING_TIER
+  BOOKING_COMMISSION
+  ADDON
+  CREDIT
+}
+
+// Platform pricing plans. Seeded with Starter / Standard / Premium.
+model PlatformPlan {
+  id                    String        @id @default(cuid())
+  name                  String // e.g. "Starter", "Standard", "Premium"
+  slug                  String        @unique // url-safe identifier
+  description           String?
+  priceMonthlyPence     Int // e.g. 2500 = £25
+  trialDays             Int           @default(30)
+  maxMembers            Int           @default(50)
+  maxGreens             Int           @default(2)
+  includedStreamingTier StreamingTier @default(NONE)
+  featureFlags          Json?         @default("{}")
+  sortOrder             Int           @default(0)
+  active                Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  billingProfiles TenantBillingProfile[]
+}
+
+// Per-tenant billing profile. One-to-one with Tenant.
+model TenantBillingProfile {
+  id                  String               @id @default(cuid())
+  tenantId            String               @unique
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  planId              String
+  plan                PlatformPlan         @relation(fields: [planId], references: [id])
+  billingContactName  String?
+  billingContactEmail String?
+  billingAddress      Json?                @default("{}")
+  vatNumber           String?
+  paymentMethod       BillingPaymentMethod @default(INVOICE)
+  billingStatus       BillingStatus        @default(TRIAL)
+  currentPeriodStart  DateTime             @default(now())
+  currentPeriodEnd    DateTime
+  trialEndsAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  payments TenantPayment[]
 }
 
 model BookingPayment {
@@ -431,15 +511,39 @@ model BookingPayment {
 }
 
 model TenantPayment {
-  id         String        @id @default(cuid())
-  tenantId   String
-  tenant     Tenant        @relation(fields: [tenantId], references: [id])
-  amount     Int
-  currency   String        @default("GBP")
-  status     PaymentStatus @default(PENDING)
-  invoiceRef String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id               String                @id @default(cuid())
+  tenantId         String
+  tenant           Tenant                @relation(fields: [tenantId], references: [id])
+  billingProfileId String?
+  billingProfile   TenantBillingProfile? @relation(fields: [billingProfileId], references: [id])
+  amount           Int
+  currency         String                @default("GBP")
+  status           PaymentStatus         @default(PENDING)
+  type             PaymentType           @default(SUBSCRIPTION)
+  invoiceRef       String?
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  pdfUrl           String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  lineItems InvoiceLineItem[]
+
+  @@index([tenantId, status])
+  @@index([billingProfileId])
+}
+
+// Individual line items making up an invoice (TenantPayment).
+model InvoiceLineItem {
+  id              String              @id @default(cuid())
+  paymentId       String
+  payment         TenantPayment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  description     String
+  quantity        Int                 @default(1)
+  unitPricePence  Int
+  totalPricePence Int
+  category        InvoiceLineCategory
+  sortOrder       Int                 @default(0)
 }
 
 // ─── Maintenance ─────────────────────────────────────────────

@@ -18,6 +18,10 @@ _(none currently active — see `IN_FLIGHT.md`)_
 
 ## Next
 
+- `#billing` (L) — platform subscription model (`PlatformPlan`,
+  `TenantBillingProfile`, invoice generation) + financial dashboards
+  (platform finance, agent costs, tenant billing portal). Stub payment
+  engine; recharts for charts. Plan: `parked-plans/billing.md`.
 - `#permission-groups` (L) — permission groups + federation v1. Full 6-phase
   design (C1 schema → C6 federation UI). Plan: `parked-plans/permission-groups.md`.
 - `#midge-forecast` (S) — UK midge-risk badge on booking weather widget.
@@ -34,8 +38,9 @@ _(none currently active — see `IN_FLIGHT.md`)_
 - `#settings-lifecycle` (M) — tenant `/dashboard/settings` hub (branding,
   hours, language) + suspension/reactivation UI + member self-service.
   (Phase 4.)
-- `#billing` (L) — `PlatformPlan` model, plan picker, `TenantBillingProfile`,
-  invoice generation, Stripe wiring deferred. (Phase 5.)
+- `#billing-stripe` (L) — real Stripe/GoCardless integration, self-serve
+  plan changes, proration, PDF invoices. Depends on `#billing` landing
+  first. (Phase 5b.)
 - `#notifications` (M) — web push (service worker + VAPID) + email digests +
   per-channel preferences. (Phase 6.)
 - `#pwa` (M) — manifest.json + service worker + offline booking-grid

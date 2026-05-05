@@ -1,6 +1,37 @@
 # Decisions Log — BookingPlatform
 
 
+## 2026-05-05 — Platform billing plan refined: stub-first, all-encompassing dashboards (`#billing`)
+
+**Status**: decided (planned, not yet implemented)
+
+**Context**: Phase 5 of the roadmap ("platform billing model") had a one-liner scope. Session reviewed the entire existing billing/payment infrastructure (TenantSubscription is streaming-only, TenantPayment has no period/type/line-items, no PlatformPlan, no billing profiles, no financial dashboards, no charting library). User asked for an all-encompassing plan covering subscription model + financial dashboards for both platform admin and tenant admin, keeping the stub payment engine (no real Stripe yet).
+
+**Decision / outcome**:
+1. **New schema models**: `PlatformPlan` (3 seed tiers: Starter £25, Standard £50, Premium £100 with escalating limits), `TenantBillingProfile` (per-tenant, links to plan + billing contact/address/VAT + lifecycle status), `InvoiceLineItem` (per-charge detail on TenantPayment). `TenantPayment` extended with `type` enum, `periodStart/End`, `billingProfileId`, `pdfUrl`.
+2. **Stub-first billing**: invoices created as PENDING; platform admin manually marks PAID. Same pattern as outbound messaging. No Stripe integration.
+3. **Admin-mediated plan changes**: tenants view plans but cannot self-serve switch. Avoids proration. CTA is "contact platform admin".
+4. **recharts** chosen for charting (React-native, declarative, no SSR issues in dashboard pages).
+5. **Platform Finance Dashboard** (`/dashboard/platform/finance`): MRR, ARR, ARPT, churn rate, revenue by plan tier, trend charts, outstanding invoices.
+6. **Agent cost dashboard** (`/dashboard/platform/costs`): LLM spend per tenant, budget cap utilisation, model breakdown. Fields already exist on `AgentRun` + `TenantAgentBudget`.
+7. **Tenant billing portal** (`/dashboard/billing`): plan card, billing profile form, invoice history with CSV export. Plan comparison at `/dashboard/billing/plans`.
+8. **Onboarding upgrade**: subscription chapter becomes a plan picker; creates `TenantBillingProfile` with status=TRIAL. Defaults to Starter if skipped.
+9. **CSV exports**: revenue report, all-invoices, tenant summary (platform); single invoice line items (tenant).
+10. **Invoice generation via HTTP script**: `scripts/run-billing.mjs` mirrors `run-agent.mjs` pattern (cron-friendly).
+
+**Rationale**:
+- Stub-first means the full dashboard/reporting/invoice UX can be built and demonstrated without a payment provider. The same pattern worked for outbound messaging — build the whole feature, swap the provider later.
+- Explicit line items (not just a flat amount) because future charges (streaming upsell, booking commission, ad revenue share, credits) need to be visible per-invoice. Adding them later would require backfilling or losing history.
+- Admin-mediated plan changes are appropriate for a small-club SaaS at this stage. Self-serve with proration is a Stripe-phase concern where the provider handles the complexity.
+- Agent cost dashboard is nearly free (data already captured) and gives platform admins cost awareness before budget enforcement UX arrives.
+
+**Rejected alternatives**:
+- Real Stripe integration now — rejected; blocks on account setup + KYC + sandbox wiring. Stub is coherent and demoable.
+- Self-serve plan switching — rejected; proration logic without a billing provider is a quagmire (partial months, mid-cycle changes, refund calculation). Admin mediation is fine for <50 clubs.
+- chart.js / d3 — rejected; recharts is more idiomatic for React/Next.js dashboards and avoids SSR canvas issues.
+- Dashboards only (no new models) — rejected; without PlatformPlan there's nothing to visualise beyond the existing flat TenantPayment table.
+
+**Notes**: Full implementation plan at `parked-plans/billing.md`. Six phases: A (schema) → B (API) → C (platform dashboards, parallel with D) → D (tenant portal) → E (onboarding) → F (exports). Open considerations: proration (deferred), PDF generation (deferred to Stripe), booking commission model (slot reserved in enum).
 
 
 ## 2026-05-05 — Agent v2: propose-not-publish loop closed end-to-end (`#agents-v2`)
