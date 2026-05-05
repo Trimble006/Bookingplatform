@@ -54,9 +54,12 @@ _(none currently active — see `IN_FLIGHT.md`)_
 - `#forgot-password` (S) — complete the password-reset loop
   (`PasswordResetToken` table, API route, reset page, PATCH consume).
 - `#agent-self-supersede` (S) — on each detector run, supersede own stale
-  PENDING proposals whose topic cluster has been refreshed.
+  PENDING proposals whose topic cluster has been refreshed. **Pull in
+  before the inbox sees production traffic.** Plan:
+  `parked-plans/agent-v2-followups.md`.
 - `#triager-proposals` (S) — migrate triager from direct `MaintenanceTask`
-  writes to `MAINTENANCE_TASK_ASSIGN` proposal kind + committer.
+  writes to `MAINTENANCE_TASK_ASSIGN` proposal kind + committer. Plan:
+  `parked-plans/agent-v2-followups.md`.
 - `#tar-doc-uploads` (S) — document upload infrastructure for TAR wizard
   (constitution PDFs, prior CC submissions) + feed into LLM context.
   Parked pending storage backend decision (S3-compat vs GDrive API).
