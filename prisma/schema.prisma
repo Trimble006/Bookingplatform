@@ -118,6 +118,7 @@ model Tenant {
   charityFunds            CharityFund[]
   charityTransactions     CharityTransaction[]
   charityAssetLiabilities CharityAssetLiability[]
+  charityTARs             CharityTAR[]
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -1557,6 +1558,7 @@ model CharityFinancialYear {
 
   transactions     CharityTransaction[]
   assetLiabilities CharityAssetLiability[]
+  tars             CharityTAR[]
 
   @@unique([tenantId, startDate])
   @@index([tenantId, status])
@@ -1650,4 +1652,33 @@ model CharityAssetLiability {
   updatedAt       DateTime                  @updatedAt
 
   @@index([tenantId, financialYearId])
+}
+
+// TAR lifecycle. DRAFT allows editing; FINALISED locks the year.
+enum CharityTARStatus {
+  DRAFT
+  FINALISED
+}
+
+// One Trustees' Annual Report per (tenant, financial year). The
+// `sections` column is a JSON blob keyed by regulator section slug
+// (see src/lib/charity/tar-sections.ts) with shape:
+//   { [slug]: { content, suggestedContent?, lastEditedAt?, source } }
+// where source ∈ "manual" | "suggested" | "carried_forward".
+model CharityTAR {
+  id              String             @id @default(cuid())
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  financialYearId String
+  financialYear   CharityFinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+  status          CharityTARStatus   @default(DRAFT)
+  sections        String             @default("{}") // JSON blob
+  generatedAt     DateTime?          // last LLM suggestion run
+  finalisedAt     DateTime?
+  finalisedById   String?            // User.id who finalised
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([tenantId, financialYearId])
+  @@index([tenantId, status])
 }

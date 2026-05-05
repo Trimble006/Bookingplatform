@@ -154,7 +154,18 @@
 - **Reports** — Receipts & Payments matrix (categories × funds with totals + net), Statement of Assets & Liabilities (asset/liability lines + bank balance at year end), CSV export of R&P table for attachment to the regulator's annual return
 - **Audit** — `charity.settings.created/updated`, `charity.year.created/updated/locked`, `charity.transaction.created/updated/deleted`, `charity.report.viewed/exported`, `tenant.organisation.set` (onboarding KYC + side-effect summary)
 - **API surface** — `/api/charity/{settings,years,categories,funds,transactions,asset-liabilities,reports,status}` plus `/api/onboarding/organisation` (KYC entry point); all gated to TENANT_ADMIN with the two-axis check
-- **Future** (separate branches): OCR receipt capture (Gemini Vision), Open Banking ingestion (GoCardless stub), TAR/SoFA wizard for charities ≥ £500k
+- **Future** (separate branches): OCR receipt capture (Gemini Vision), Open Banking ingestion (GoCardless stub)
+
+## Trustees' Annual Report (TAR) Wizard
+- **Guided wizard** — `/dashboard/charity/tar` stepper walks trustees through each TAR section (reference details, objectives, achievements, financial review, reserves policy, public benefit, governance, future plans)
+- **All three regulators** — CC E&W (CC15d guidance), OSCR (Scottish Annual Return), CCNI (NI Annual Monitoring Return). Section definitions in `src/lib/charity/tar-sections.ts`; same slugs across all three, regulator-specific titles and guidance text
+- **AI-assisted drafting** — "Suggest with AI" button per section calls Gemini (via existing `getProvider()`) at temperature 0.3 with a factual-charity-writer system prompt. Context is pre-aggregated from platform data (events, financials, bookings, members, maintenance, streaming). Stub fallback when no API key
+- **Data context sidebar** — each section shows relevant platform data (financial summary, event counts, member numbers, maintenance log, streaming stats, trustee list) so the trustee can cross-reference while writing
+- **Carry-forward** — prior year's TAR sections are surfaced for reference; source tracking (`manual` / `suggested` / `carried_forward`) per section
+- **Lifecycle** — DRAFT → FINALISED. Finalising validates all required sections are filled, then locks the TAR and the parent financial year in a transaction. Audit logged as `CHARITY_TAR_FINALISED`
+- **Export** — `GET /api/charity/tar/export?yearId=` returns structured JSON keyed by regulator section (title + content), ready for pasting into the regulator's template. Only available once finalised
+- **Schema** — `CharityTAR` model with `sections` JSON blob (`{ [slug]: { content, suggestedContent?, lastEditedAt?, source } }`), one per tenant+year (unique constraint), linked to `CharityFinancialYear`
+- **API surface** — `/api/charity/tar` (GET upsert/PATCH save), `/api/charity/tar/context` (data aggregation), `/api/charity/tar/suggest` (LLM), `/api/charity/tar/finalise`, `/api/charity/tar/export`; all TENANT_ADMIN + charity gate
 
 ## Onboarding KYC (Chapter 2)
 - **Self-declared organisation profile** — Chapter 2 of the 10-chapter wizard captures country (`GB` / `NI` / `OTHER`), organisation type (10-value enum: REGISTERED_CHARITY, CIO, SCIO, CASC, COMMUNITY_INTEREST_COMPANY, LIMITED_COMPANY, UNINCORPORATED_ASSOCIATION, PRIVATE_MEMBERS_CLUB, OTHER, NOT_CONSTITUTED), and financial year end (month + day with day-cap-by-month).
