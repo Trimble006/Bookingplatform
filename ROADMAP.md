@@ -1,0 +1,120 @@
+# Roadmap — BookingPlatform
+
+Where this is headed. Curated deliberately — edit when a real direction shifts,
+not on every tactical decision. Newly identified work usually lands in **Later**
+first; promotion to **Next** signals it's queued for the upcoming sprint;
+**Now** is what's actively in flight (mirrored in `IN_FLIGHT.md`).
+
+`#tags` thread through to `IN_FLIGHT.md`, `DECISIONS.md`,
+`parked-plans/<tag>.md`, and `/memories/repo/open-questions.md`.
+
+`VISION.md` is the longer-horizon north star this roadmap serves.
+
+---
+
+## Now
+
+_(none currently active — see `IN_FLIGHT.md`)_
+
+## Next
+
+- `#permission-groups` (L) — permission groups + federation v1. Full 6-phase
+  design (C1 schema → C6 federation UI). Plan: `parked-plans/permission-groups.md`.
+- `#midge-forecast` (S) — UK midge-risk badge on booking weather widget.
+  Heuristic from Open-Meteo data. Gated on `Tenant.country ∈ {GB, NI}` +
+  `midgeForecast` flag. Plan: `parked-plans/midge-forecast.md`.
+- `#multi-slot-booking` (M) — multi-select availability grid, aggregate
+  pricing (`slotCount × £10`), atomic conflict reporting. Plan in
+  `DECISIONS.md` 2026-05-03.
+
+## Later
+
+- `#site-health` (L) — modular Site Advisor + Platform Health agents,
+  content onboarding gate, benchmarks utility. (Phase 12.)
+- `#settings-lifecycle` (M) — tenant `/dashboard/settings` hub (branding,
+  hours, language) + suspension/reactivation UI + member self-service.
+  (Phase 4.)
+- `#billing` (L) — `PlatformPlan` model, plan picker, `TenantBillingProfile`,
+  invoice generation, Stripe wiring deferred. (Phase 5.)
+- `#notifications` (M) — web push (service worker + VAPID) + email digests +
+  per-channel preferences. (Phase 6.)
+- `#pwa` (M) — manifest.json + service worker + offline booking-grid
+  read-only fallback + touch-first review. (Phase 7.)
+- `#reports-exports` (M) — CSV exports (bookings, members, payments, audit) +
+  monthly report email. (Phase 8.)
+- `#advertising` (L) — two-sided digital hoardings system (direct-sold v1),
+  ad-serving substrate, 3 standalone agents + 2 evaluator modules in
+  Site/Platform Health. (Phase 13.)
+- `#agents-v2` (M) — agent config to platform plane, structured form,
+  new agents (scheduler, anomaly, churn-warning), cost capping. (Phase 14.)
+- `#booking-fee` (S) — tenant-configurable per-slot fee.
+  `TenantConfig.bookingFeePence` + settings UI + correct FEATURES.md.
+- `#settings-hub` (M) — broaden `/dashboard/settings` beyond location
+  (branding, hours, language entries).
+- `#forgot-password` (S) — complete the password-reset loop
+  (`PasswordResetToken` table, API route, reset page, PATCH consume).
+- `#agent-self-supersede` (S) — on each detector run, supersede own stale
+  PENDING proposals whose topic cluster has been refreshed.
+- `#triager-proposals` (S) — migrate triager from direct `MaintenanceTask`
+  writes to `MAINTENANCE_TASK_ASSIGN` proposal kind + committer.
+- `#tar-doc-uploads` (S) — document upload infrastructure for TAR wizard
+  (constitution PDFs, prior CC submissions) + feed into LLM context.
+  Parked pending storage backend decision (S3-compat vs GDrive API).
+
+## Deferred
+
+- `#i18n` (L) — `next-intl` integration, locale routing, first non-English
+  locale. (Phase 9.)
+- `#federations` — subsumed by `#permission-groups` phases C4–C6. No
+  standalone work until permission groups land.
+- `#observability` (M) — error tracking (Sentry), health endpoint,
+  rate-limit + agent-cost dashboards. (Phase 11.)
+
+---
+
+## Done (shipped to main)
+
+- `#acquisition-pipeline` — lead capture, `TenantApplication`, platform
+  approval queue, provisioning on approve. (2026-05-04)
+- `#email-delivery` — stubbed `OutboundMessage` + templates + platform
+  inspector. Real provider (Resend) wiring deferred. (2026-05-04)
+- `#onboarding-wizard` — 10-chapter guided flow, `OnboardingProgress`,
+  go-live transition ONBOARDING→ACTIVE. (2026-05-04)
+- `#charity-accounts` — UK/NI charity ledger, R&P + SoAL reports, CSV
+  export, year-lock lifecycle. (2026-05-04)
+- `#tar-wizard` — TAR wizard with LLM-assisted drafting, unlock cascade,
+  readiness warnings. All three regulators. (2026-05-05)
+
+---
+
+## Sequencing summary
+
+```
+[SHIPPED] #acquisition-pipeline → #email-delivery → #onboarding-wizard
+                                                          │
+                                    ┌─────────────────────┘
+                                    ↓
+                          #settings-lifecycle
+                                    │
+                                    ├─→ #site-health ─→ #advertising ─→ #agents-v2
+                                    ↓
+                               #billing
+                                    │
+                                    ↓
+                               #notifications ─→ #pwa
+                                    │
+                                    ↓
+                               #reports-exports ─→ #i18n ─→ #federations
+
+#observability — runs alongside, not blocking
+#permission-groups — independent track (no pipeline dependency)
+#midge-forecast — independent (Tenant.country already landed)
+```
+
+**Critical path to "real club can self-serve onboard end-to-end"**:
+`#acquisition-pipeline` → `#email-delivery` → `#onboarding-wizard`.
+Everything else is value-add.
+
+---
+
+**Sizing key**: S = a session, M = a few sessions, L = a focused sprint.
