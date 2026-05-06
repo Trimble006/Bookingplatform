@@ -6,6 +6,7 @@ import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
 import WeatherCard from "@/components/booking/WeatherCard";
 import { useTrack } from "@/components/TrackingProvider";
 import { getClientEffectiveRole } from "@/lib/effective-role-client";
+import { useTranslations } from "next-intl";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -56,6 +57,8 @@ export default function BookingsPage() {
   const isPlatformAdmin = false;
   const isAdmin = eff.isTenantAdminEffective;
   const { trackFeature, trackAction } = useTrack();
+  const t = useTranslations("bookings");
+  const tc = useTranslations("common");
 
   useEffect(() => { trackFeature("booking.grid_opened", "Booking"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -197,7 +200,7 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Bookings</h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
@@ -218,13 +221,13 @@ export default function BookingsPage() {
       )}
 
       {isPlatformAdmin && !selectedTenant ? (
-        <p className="text-gray-400">Select a tenant above to view availability and bookings.</p>
+        <p className="text-gray-400">{t("selectTenant")}</p>
       ) : (
         <>
 
       {/* Availability grid */}
       <section>
-        <h2 className="text-lg font-semibold">Availability</h2>
+        <h2 className="text-lg font-semibold">{t("availability")}</h2>
         <WeatherCard weather={weather} />
         <AvailabilityGrid
           greens={availability.map((green: any) => ({
@@ -249,7 +252,7 @@ export default function BookingsPage() {
 
       {/* Bookings list */}
       <section>
-        <h2 className="text-lg font-semibold">{isAdmin ? "All Bookings" : "My Bookings"}</h2>
+        <h2 className="text-lg font-semibold">{isAdmin ? t("allBookings") : t("myBookings")}</h2>
         <div className="mt-2 space-y-2">
           {bookings.map((b) => (
             <div key={b.id} className="rounded border bg-white p-4 flex justify-between items-start">
@@ -284,15 +287,15 @@ export default function BookingsPage() {
                   <div className="flex gap-1 mt-1 flex-wrap justify-end">
                     {b.status === "REQUESTED" && (
                       <>
-                        <button onClick={() => updateStatus(b.id, "APPROVED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Approve</button>
-                        <button onClick={() => updateStatus(b.id, "CANCELLED")} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">Reject</button>
+                        <button onClick={() => updateStatus(b.id, "APPROVED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">{t("actions.approve")}</button>
+                        <button onClick={() => updateStatus(b.id, "CANCELLED")} className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">{t("actions.reject")}</button>
                       </>
                     )}
                     {b.status === "APPROVED" && (
-                      <button onClick={() => updateStatus(b.id, "RESERVED")} className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Send to Payment</button>
+                      <button onClick={() => updateStatus(b.id, "RESERVED")} className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">{t("actions.sendToPayment")}</button>
                     )}
                     {b.status === "RESERVED" && (
-                      <button onClick={() => updateStatus(b.id, "CONFIRMED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Confirm</button>
+                      <button onClick={() => updateStatus(b.id, "CONFIRMED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">{t("actions.confirm")}</button>
                     )}
                     {["APPROVED", "RESERVED", "CONFIRMED"].includes(b.status) && (
                       <button onClick={() => updateStatus(b.id, "CANCELLED")} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200">Cancel</button>
@@ -331,7 +334,7 @@ export default function BookingsPage() {
               </div>
             </div>
           ))}
-          {bookings.length === 0 && <p className="text-gray-400">No bookings yet.</p>}
+          {bookings.length === 0 && <p className="text-gray-400">{t("noBookings")}</p>}
         </div>
       </section>
         </>
@@ -341,40 +344,40 @@ export default function BookingsPage() {
       {bookingRink && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
-            <h2 className="text-lg font-bold">Book {bookingRink.name}</h2>
+            <h2 className="text-lg font-bold">{t("modal.bookRink", { rink: bookingRink.name })}</h2>
             <p className="text-sm text-gray-500">{date}</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time Slot</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("modal.timeSlot")}</label>
               <select
                 value={bookingTimeSlot}
                 onChange={(e) => setBookingTimeSlot(e.target.value)}
                 className="w-full rounded border p-2 text-sm"
               >
-                <option value="">— Select a time —</option>
+                <option value="">{t("modal.selectTime")}</option>
                 {timeSlots.filter((s) => !bookingRink.bookedSlots.includes(s)).map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Player Name (optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t("modal.playerName")}</label>
               <input
                 type="text"
                 value={bookingPlayerName}
                 onChange={(e) => setBookingPlayerName(e.target.value)}
                 className="w-full rounded border p-2 text-sm"
-                placeholder="Your name"
+                placeholder={t("modal.playerNamePlaceholder")}
               />
             </div>
             {isAdmin && members.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Book for</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("modal.bookFor")}</label>
                 <select
                   value={bookForUserId}
                   onChange={(e) => setBookForUserId(e.target.value)}
                   className="w-full rounded border p-2 text-sm"
                 >
-                  <option value="">Myself</option>
+                  <option value="">{t("modal.myself")}</option>
                   {members.map((m) => (
                     <option key={m.id} value={m.id}>{m.name ?? m.email}</option>
                   ))}
@@ -388,7 +391,7 @@ export default function BookingsPage() {
                   onClick={() => setShowOverride(!showOverride)}
                   className="text-sm text-amber-700 hover:underline"
                 >
-                  {showOverride ? "▾ Admin Override" : "▸ Admin Override"}
+                  {showOverride ? `▾ ${t("modal.adminOverride")}` : `▸ ${t("modal.adminOverride")}`}
                 </button>
                 {showOverride && (
                   <div className="mt-2">
@@ -396,7 +399,7 @@ export default function BookingsPage() {
                       value={overrideReason}
                       onChange={(e) => setOverrideReason(e.target.value)}
                       className="w-full rounded border p-2 text-sm"
-                      placeholder="Reason for override (required)"
+                      placeholder={t("modal.overridePlaceholder")}
                       rows={2}
                     />
                   </div>
@@ -409,14 +412,14 @@ export default function BookingsPage() {
                 onClick={() => setBookingRink(null)}
                 className="px-4 py-2 text-sm rounded border text-gray-600 hover:bg-gray-50"
               >
-                Cancel
+                {tc("actions.cancel")}
               </button>
               <button
                 onClick={handleBook}
                 disabled={!bookingTimeSlot || bookingLoading}
                 className="px-4 py-2 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
-                {bookingLoading ? "Booking…" : "Request Booking"}
+                {bookingLoading ? t("modal.booking") : t("modal.requestBooking")}
               </button>
             </div>
           </div>

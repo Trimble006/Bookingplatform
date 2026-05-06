@@ -1,0 +1,59 @@
+{
+  "title": "Digwyddiadau",
+  "noEvents": "Dim digwyddiadau eto.",
+  "createEvent": "Creu Digwyddiad",
+  "editEvent": "Golygu Digwyddiad",
+  "selectTenant": "Dewiswch denant uchod i reoli digwyddiadau.",
+  "form": {
+    "titlePlaceholder": "Teitl y digwyddiad",
+    "descriptionPlaceholder": "Disgrifiad",
+    "date": "Dyddiad",
+    "startTime": "Amser Dechrau",
+    "endTime": "Amser Gorffen (dewisol)",
+    "location": "Lleoliad",
+    "capacity": "Capasiti",
+    "entryFee": "Ffi Mynediad",
+    "currency": "Arian Cyfred",
+    "imageUrl": "URL Delwedd",
+    "contactName": "Enw Cyswllt",
+    "contactEmail": "E-bost Cyswllt",
+    "contactPhone": "Ffôn Cyswllt",
+    "visibility": "Gwelededd",
+    "submit": "Creu",
+    "update": "Diweddaru"
+  },
+  "categories": {
+    "SOCIAL": "Cymdeithasol",
+    "COMPETITION": "Cystadleuaeth",
+    "LEAGUE": "Cynghrair",
+    "OPEN_DAY": "Diwrnod Agored",
+    "TOURNAMENT": "Twrnament",
+    "OTHER": "Arall"
+  },
+  "formats": {
+    "KNOCKOUT": "Cnocio Allan",
+    "AMERICAN": "Americanaidd",
+    "LEAGUE_FORMAT": "Cynghrair",
+    "CANADIAN": "Canadaidd",
+    "OTHER_FORMAT": "Arall"
+  },
+  "playerCounts": {
+    "SINGLES": "Senglau",
+    "PAIRS": "Parau",
+    "TRIPLES": "Triplau",
+    "FOURS": "Pedwarawdau"
+  },
+  "visibility": {
+    "MEMBERS_ONLY": "Aelodau yn Unig",
+    "PUBLIC": "Cyhoeddus"
+  },
+  "status": {
+    "DRAFT": "Drafft",
+    "PUBLISHED": "Cyhoeddwyd"
+  },
+  "filters": {
+    "ALL": "Pob un",
+    "DRAFT": "Drafft",
+    "PUBLISHED": "Cyhoeddwyd"
+  }
+}

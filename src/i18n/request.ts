@@ -11,6 +11,10 @@ export default getRequestConfig(async () => {
 
   const common = (await import(`../../content/messages/ui/${locale}/common.json`)).default;
   const auth = (await import(`../../content/messages/ui/${locale}/auth.json`)).default;
+  const bookings = (await import(`../../content/messages/ui/${locale}/bookings.json`)).default;
+  const maintenance = (await import(`../../content/messages/ui/${locale}/maintenance.json`)).default;
+  const events = (await import(`../../content/messages/ui/${locale}/events.json`)).default;
+  const messaging = (await import(`../../content/messages/ui/${locale}/messaging.json`)).default;
 
-  return { locale, messages: { common, auth } };
+  return { locale, messages: { common, auth, bookings, maintenance, events, messaging } };
 });
