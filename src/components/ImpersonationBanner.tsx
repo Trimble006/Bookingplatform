@@ -2,7 +2,6 @@
 
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 /**
  * Persistent banner shown sitewide when a PLATFORM_ADMIN is acting as a tenant.
@@ -10,7 +9,6 @@ import { useRouter } from "next/navigation";
  */
 export default function ImpersonationBanner() {
   const { data: session, update } = useSession();
-  const router = useRouter();
   const [exiting, setExiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,8 +33,11 @@ export default function ImpersonationBanner() {
       }
       // Clear the actingAs claim from the session JWT.
       await update({ actingAs: null });
-      router.push("/dashboard");
-      router.refresh();
+      // Full navigation (not soft) ensures the entire page re-renders from
+      // the updated JWT cookie. Same pattern as TenantSwitcher — router.push
+      // + router.refresh leaves stale client-side session in sitewide
+      // components like this banner.
+      window.location.href = "/dashboard";
     } catch {
       setError("Network error ending impersonation.");
       setExiting(false);
