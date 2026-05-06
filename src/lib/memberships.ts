@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Membership, MembershipKind, MembershipStatus, Role } from "@prisma/client";
 
 export type MembershipWithTenant = Membership & {
-  tenant: { id: string; name: string; slug: string; brandColor: string; status: string; active: boolean };
+  tenant: { id: string; name: string; slug: string; brandColor: string; status: string; active: boolean; locale: string };
 };
 
 /**
@@ -13,7 +13,7 @@ export async function getMembershipsForUser(userId: string): Promise<MembershipW
   return prisma.membership.findMany({
     where: { userId },
     include: {
-      tenant: { select: { id: true, name: true, slug: true, brandColor: true, status: true, active: true, locality: true } },
+      tenant: { select: { id: true, name: true, slug: true, brandColor: true, status: true, active: true, locality: true, locale: true } },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -53,6 +53,7 @@ export type ResolvedActiveContext = {
   role: Role;
   kind: MembershipKind | null;
   status: MembershipStatus | null;
+  locale: string;
 };
 
 /**
@@ -68,17 +69,17 @@ export async function resolveActiveContext(
 ): Promise<ResolvedActiveContext> {
   const memberships = await getMembershipsForUser(userId);
   if (memberships.length === 0) {
-    return { tenantId: null, role: "USER", kind: null, status: null };
+    return { tenantId: null, role: "USER", kind: null, status: null, locale: "en" };
   }
 
   if (preferredTenantId) {
     const match = memberships.find((m) => m.tenantId === preferredTenantId && m.status === "ACTIVE");
     if (match) {
-      return { tenantId: match.tenantId, role: match.role, kind: match.kind, status: match.status };
+      return { tenantId: match.tenantId, role: match.role, kind: match.kind, status: match.status, locale: match.tenant.locale };
     }
   }
 
   const primary = pickPrimaryMembership(memberships);
-  if (!primary) return { tenantId: null, role: "USER", kind: null, status: null };
-  return { tenantId: primary.tenantId, role: primary.role, kind: primary.kind, status: primary.status };
+  if (!primary) return { tenantId: null, role: "USER", kind: null, status: null, locale: "en" };
+  return { tenantId: primary.tenantId, role: primary.role, kind: primary.kind, status: primary.status, locale: primary.tenant.locale };
 }

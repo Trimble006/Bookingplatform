@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "bookings": "Bookings",
+    "notifications": "Notifications",
+    "maintenance": "Maintenance",
+    "events": "Events",
+    "messaging": "Messaging",
+    "streaming": "Streaming",
+    "settings": "Settings",
+    "help": "Help",
+    "signOut": "Sign Out",
+    "dashboard": "Dashboard"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "loading": "Loading…",
+    "submit": "Submit",
+    "search": "Search",
+    "retry": "Retry"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "cancelled": "Cancelled",
+    "confirmed": "Confirmed"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "networkError": "Network error. Please check your connection.",
+    "notFound": "Not found.",
+    "unauthorized": "You are not authorised to perform this action."
+  },
+  "empty": {
+    "noResults": "No results found.",
+    "noNotifications": "No notifications.",
+    "noBookings": "No bookings."
+  }
+}

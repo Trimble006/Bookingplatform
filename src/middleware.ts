@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { defaultLocale, locales } from "@/i18n/config";
 
 // Platform-mode (non-impersonating PLATFORM_ADMIN) users must remain inside
 // /dashboard, /dashboard/platform/* and the platform-only API surface. This
@@ -10,7 +11,7 @@ const PLATFORM_ALLOWED_DASHBOARD_EXACT = new Set(["/dashboard"]);
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token as
-      | { role?: string; actingAs?: { tenantId?: string } | null }
+      | { role?: string; actingAs?: { tenantId?: string } | null; locale?: string }
       | null;
     if (!token) return NextResponse.next();
 
@@ -31,7 +32,13 @@ export default withAuth(
       }
     }
 
-    return NextResponse.next();
+    // Sync the locale cookie from the JWT so getRequestConfig can read it.
+    const locale = (locales as readonly string[]).includes(token.locale ?? "")
+      ? token.locale!
+      : defaultLocale;
+    const response = NextResponse.next();
+    response.cookies.set("locale", locale, { path: "/", httpOnly: false, sameSite: "lax" });
+    return response;
   },
   {
     pages: { signIn: "/auth/login" },

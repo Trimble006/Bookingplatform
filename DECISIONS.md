@@ -1372,3 +1372,37 @@ the dispatch implementation.
 **Notes**: Templates cached only in production (NODE_ENV check) so
 template edits show up immediately in dev. Missing template variables
 render as `[varname]` for visibility instead of silently empty.
+
+
+## 2026-05-06 — i18n foundation: `next-intl`, tenant-locale, no URL prefix (`#i18n`)
+
+**Status**: decided
+
+**Context**: Platform supports bowling clubs globally (bowling is growing fast
+in Asia). Need multiple language support. `#i18n` was deferred at Phase 9;
+promoted to Next after scoping decisions. Key question was routing strategy:
+path prefix (`/cy/dashboard`), cookie, or tenant-setting-only.
+
+**Decision / outcome**: Ship `next-intl` v4 with tenant-setting-only locale
+routing. No URL locale prefix — language follows `Tenant.locale` (already in
+schema). Middleware syncs a `locale` cookie from the JWT so
+`getRequestConfig()` can read it server-side. Welsh (cy) is the first
+non-English locale. Machine-generated translations acceptable for local dev;
+professional translator required before production.
+
+**Rationale**:
+- Tenant-setting routing is simplest: no middleware rewrites, no link
+  generation changes, no SEO implications (club sites aren't indexed by
+  locale). Language is a club-level decision, not a per-user/per-URL one.
+- `next-intl` was already named in the roadmap; it has mature App Router
+  support, ICU message format, and works in both server and client components.
+- Welsh first because UK bowling club geography includes bilingual Welsh clubs
+  (Welsh Language Standards apply to public-facing services).
+- Rejected: path-prefix routing (over-engineered for a setting that changes
+  once per club), per-user locale override (deferred to future if demand
+  emerges).
+
+**Notes**: Phase 1 (infra) shipped in this commit. Plan for remaining phases
+lives at `parked-plans/i18n.md`. CJK/Asian locale UI resilience (word-break,
+font stack) is not needed yet — flagged as future consideration when the first
+Asian locale is requested.
