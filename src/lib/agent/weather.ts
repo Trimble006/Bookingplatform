@@ -1,17 +1,8 @@
 /**
- * Weather provider for the agent system.
+ * Weather provider for the agent system (OpenWeatherMap One Call 3.0).
  *
- * IMPORTANT — DELIBERATE ARCHITECTURAL CHOICE FOR QE TRAINING:
- *
- * The booking platform already integrates Open-Meteo (free, no API key) for
- * the public booking weather widget — see src/app/api/bookings/weather/route.ts.
- *
- * The agent here uses a *different* provider (OpenWeatherMap) with a
- * separate API key, different request shape, and different response shape.
- *
- * This is an intentional architectural inconsistency planted for QEs to
- * identify as a defect / improvement opportunity ("why does the agent use
- * a different weather provider than the rest of the app?").
+ * Provides multi-day forecast data used by the Triage Agent when
+ * evaluating weather-sensitive booking decisions.
  *
  * Env:
  *   AGENT_OWM_API_KEY  — required; missing = weather context disabled
