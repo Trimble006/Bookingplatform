@@ -3,9 +3,11 @@
     "bookings": "Archebion",
     "notifications": "Hysbysiadau",
     "maintenance": "Cynnal a Chadw",
+    "content": "Cynnwys",
+    "streaming": "Ffrydio",
+    "admin": "Gweinyddu",
     "events": "Digwyddiadau",
     "messaging": "Negeseuon",
-    "streaming": "Ffrydio",
     "settings": "Gosodiadau",
     "help": "Cymorth",
     "signOut": "Allgofnodi",
@@ -24,7 +26,8 @@
     "loading": "Yn llwytho…",
     "submit": "Cyflwyno",
     "search": "Chwilio",
-    "retry": "Ailgynnig"
+    "retry": "Ailgynnig",
+    "markAllRead": "Marcio pob un fel wedi'i ddarllen"
   },
   "status": {
     "active": "Gweithredol",
@@ -45,5 +48,21 @@
     "noResults": "Dim canlyniadau.",
     "noNotifications": "Dim hysbysiadau.",
     "noBookings": "Dim archebion."
+  },
+  "impersonation": {
+    "actingAs": "{name} — yn gweithredu fel {role} o {tenant}",
+    "exit": "Gadael dynwarediad",
+    "exiting": "Yn gadael…",
+    "exitFailed": "Methu â gorffen y dynwarediad.",
+    "networkError": "Gwall rhwydwaith wrth orffen y dynwarediad.",
+    "staleSession": "Mae sesiwn dynwarediad blaenorol wedi dod i ben. Dewiswch glwb i ddechrau un newydd."
+  },
+  "notifications": {
+    "title": "Hysbysiadau",
+    "allRead": "Pob hysbysiad wedi'i farcio fel wedi'i ddarllen."
+  },
+  "platformDashboard": {
+    "title": "Dangosfwrdd y Platfform",
+    "welcome": "Croeso, {name}. Dewiswch glwb i weithredu ar ei ran. Mae eich hunaniaeth go iawn wedi'i chadw ym mhob cofnod archwilio."
   }
 }
