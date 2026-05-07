@@ -83,6 +83,7 @@ export default function LocationEditor({
     });
     setBusy(false);
     if (res.ok) {
+      setGeoError(null); // Clear geo error on successful manual save.
       setSavedMsg("Location saved.");
       if (onSaved) await onSaved();
     } else {
@@ -111,7 +112,10 @@ export default function LocationEditor({
           <input
             className={inputCls}
             value={latitude}
-            onChange={(e) => setLatitude(e.target.value)}
+            onChange={(e) => {
+              setLatitude(e.target.value);
+              setSavedMsg(null);
+            }}
             placeholder="55.953"
             inputMode="decimal"
           />
@@ -122,7 +126,10 @@ export default function LocationEditor({
           <input
             className={inputCls}
             value={longitude}
-            onChange={(e) => setLongitude(e.target.value)}
+            onChange={(e) => {
+              setLongitude(e.target.value);
+              setSavedMsg(null);
+            }}
             placeholder="-3.188"
             inputMode="decimal"
           />
