@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDateCustom } from "@/lib/format";
 
 interface Booking {
   id: string;
@@ -21,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function UpcomingBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const locale = useLocale();
 
   useEffect(() => {
     fetch("/api/bookings")
@@ -65,7 +68,7 @@ export default function UpcomingBookings() {
             <li key={b.id} className="flex items-center justify-between rounded-md bg-gray-50 px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-gray-800">
-                  {new Date(b.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  {formatDateCustom(b.date + "T00:00:00", locale, { weekday: "short", month: "short", day: "numeric" })}
                 </p>
                 <p className="text-xs text-gray-500">
                   {b.slots.map((s) => `${s.greenName ? s.greenName + " — " : ""}${s.rink.name} @ ${s.timeSlot}`).join(", ")}

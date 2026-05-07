@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { formatDateTime } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -8,6 +10,7 @@ export default async function PlatformOverviewPage() {
   const session = (await getServerSession(authOptions)) as
     | { user: { id: string; role: string } }
     | null;
+  const locale = await getLocale();
 
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN") redirect("/dashboard");
@@ -60,7 +63,7 @@ export default async function PlatformOverviewPage() {
                   {imp.tenant.name}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {imp.endedAt ? "ended" : "active"} · {new Date(imp.startedAt).toLocaleString()}
+                  {imp.endedAt ? "ended" : "active"} · {formatDateTime(imp.startedAt, locale)}
                 </span>
               </li>
             ))}

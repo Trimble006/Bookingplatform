@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useLocale } from "next-intl";
+import { formatDateTime, formatDate } from "@/lib/format";
 import Link from "next/link";
 
 type Application = {
@@ -39,6 +41,7 @@ type Invitation = {
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const locale = useLocale();
   const { update } = useSession();
   const [app, setApp] = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +144,7 @@ export default function ApplicationDetailPage() {
         </Link>
         <h1 className="text-2xl font-bold text-gray-800 mt-2">{app.clubName}</h1>
         <div className="text-sm text-gray-500">
-          Submitted {new Date(app.createdAt).toLocaleString("en-GB")}
+          Submitted {formatDateTime(app.createdAt, locale)}
         </div>
       </div>
 
@@ -292,7 +295,7 @@ export default function ApplicationDetailPage() {
                     <div className="text-sm">
                       <div className="font-medium text-gray-800">{inv.email}</div>
                       <div className="text-xs text-gray-500">
-                        {inv.role.replace(/_/g, " ").toLowerCase()} · expires {new Date(inv.expiresAt).toLocaleDateString("en-GB")}
+                        {inv.role.replace(/_/g, " ").toLowerCase()} · expires {formatDate(inv.expiresAt, locale)}
                       </div>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusClass}`}>
@@ -326,7 +329,7 @@ export default function ApplicationDetailPage() {
                   )}
                   {inv.acceptedAt && (
                     <div className="text-xs text-gray-500">
-                      Accepted {new Date(inv.acceptedAt).toLocaleString("en-GB")}
+                      Accepted {formatDateTime(inv.acceptedAt, locale)}
                     </div>
                   )}
                 </li>

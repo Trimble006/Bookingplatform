@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 import Link from "next/link";
 
 interface Plan {
@@ -48,6 +50,7 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function TenantBillingPage() {
+  const locale = useLocale();
   const [profile, setProfile] = useState<BillingProfile | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [totalInvoices, setTotalInvoices] = useState(0);
@@ -140,8 +143,8 @@ export default function TenantBillingPage() {
           <div><dt className="text-gray-500">Payment</dt><dd className="font-medium">{profile.paymentMethod}</dd></div>
         </dl>
         <div className="mt-4 flex gap-6 text-sm text-gray-500">
-          <span>Next billing: <strong className="text-gray-900">{new Date(profile.currentPeriodEnd).toLocaleDateString()}</strong></span>
-          {profile.trialEndsAt && <span>Trial ends: <strong className="text-gray-900">{new Date(profile.trialEndsAt).toLocaleDateString()}</strong></span>}
+          <span>Next billing: <strong className="text-gray-900">{formatDate(profile.currentPeriodEnd, locale)}</strong></span>
+          {profile.trialEndsAt && <span>Trial ends: <strong className="text-gray-900">{formatDate(profile.trialEndsAt, locale)}</strong></span>}
         </div>
       </div>
 
@@ -196,9 +199,9 @@ export default function TenantBillingPage() {
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${paymentBadge(inv.status)}`}>{inv.status}</span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {inv.periodStart ? `${new Date(inv.periodStart).toLocaleDateString()} – ${new Date(inv.periodEnd!).toLocaleDateString()}` : "—"}
+                    {inv.periodStart ? `${formatDate(inv.periodStart, locale)} – ${formatDate(inv.periodEnd!, locale)}` : "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(inv.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-gray-500">{formatDate(inv.createdAt, locale)}</td>
                   <td className="px-4 py-3">
                     <a href={`/api/billing/invoices/${inv.id}?format=csv`} download className="text-xs text-blue-600 hover:underline">CSV</a>
                   </td>

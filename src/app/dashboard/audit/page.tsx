@@ -2,6 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 
 interface AuditEvent {
   id: string;
@@ -26,12 +28,13 @@ function formatAction(action: string): string {
   return action.replace(/\./g, " › ").replace(/_/g, " ");
 }
 
-function formatTimestamp(ts: string): string {
-  return new Date(ts).toLocaleString();
+function formatTimestamp(ts: string, locale: string): string {
+  return formatDateTime(ts, locale);
 }
 
 export default function AuditPage() {
   const { data: session } = useSession();
+  const locale = useLocale();
   const role = (session?.user as any)?.role;
   const acting = (session?.user as any)?.actingAs ?? null;
   const effectiveRole = acting ? acting.role : role;
@@ -160,7 +163,7 @@ export default function AuditPage() {
               <tbody>
                 {events.map((ev) => (
                   <tr key={ev.id} className={`border-b hover:bg-gray-50 ${ev.piiAccess ? "bg-yellow-50" : ""}`}>
-                    <td className="p-2 whitespace-nowrap">{formatTimestamp(ev.timestamp)}</td>
+                    <td className="p-2 whitespace-nowrap">{formatTimestamp(ev.timestamp, locale)}</td>
                     {isAdmin && (
                       <td className="p-2">
                         <span>{ev.actor.name ?? ev.actor.email}</span>

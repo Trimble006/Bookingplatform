@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 import { RevenueChart } from "@/components/billing/RevenueChart";
 import { PlanDistribution } from "@/components/billing/PlanDistribution";
 import { ChurnChart } from "@/components/billing/ChurnChart";
@@ -33,6 +35,7 @@ interface Invoice {
 }
 
 export default function PlatformFinancePage() {
+  const locale = useLocale();
   const [revenue, setRevenue] = useState<RevenueReport | null>(null);
   const [churn, setChurn] = useState<ChurnReport | null>(null);
   const [recentPayments, setRecentPayments] = useState<Invoice[]>([]);
@@ -93,7 +96,7 @@ export default function PlatformFinancePage() {
           {churn.churned.length > 0 && (
             <ul className="mt-4 max-h-40 space-y-1 overflow-y-auto text-xs text-gray-600">
               {churn.churned.map((t) => (
-                <li key={t.tenantId}>{t.tenantName} — {new Date(t.churnedAt).toLocaleDateString()}</li>
+                <li key={t.tenantId}>{t.tenantName} — {formatDate(t.churnedAt, locale)}</li>
               ))}
             </ul>
           )}
@@ -117,7 +120,7 @@ export default function PlatformFinancePage() {
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? p.id.slice(0, 8)}</td>
                   <td className="px-4 py-3">£{(p.amount / 100).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt, locale)}</td>
                 </tr>
               ))}
               {recentPayments.filter((p) => p.status === "PENDING").length === 0 && (
@@ -151,7 +154,7 @@ export default function PlatformFinancePage() {
                       {p.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt, locale)}</td>
                 </tr>
               ))}
             </tbody>

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useLocale } from "next-intl";
+import { formatDate, formatDateTime } from "@/lib/format";
 import Link from "next/link";
 
 type Green = {
@@ -49,6 +51,7 @@ const STATUS_BADGE: Record<TenantStatus, string> = {
 export default function TenantDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const locale = useLocale();
   const { update } = useSession();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [error, setError] = useState("");
@@ -184,11 +187,11 @@ export default function TenantDetailsPage() {
           <dt className="text-gray-500">Hours</dt><dd>{tenant.openingTime} – {tenant.closingTime}</dd>
           <dt className="text-gray-500">Brand colour</dt><dd className="font-mono">{tenant.brandColor}</dd>
           <dt className="text-gray-500">Logo URL</dt><dd className="truncate">{tenant.logoUrl ?? <span className="text-gray-400">—</span>}</dd>
-          <dt className="text-gray-500">Created</dt><dd>{new Date(tenant.createdAt).toLocaleDateString()}</dd>
+          <dt className="text-gray-500">Created</dt><dd>{formatDate(tenant.createdAt, locale)}</dd>
           {tenant.goLiveAt && (
             <>
               <dt className="text-gray-500">Went live</dt>
-              <dd>{new Date(tenant.goLiveAt).toLocaleString("en-GB")}</dd>
+              <dd>{formatDateTime(tenant.goLiveAt, locale)}</dd>
             </>
           )}
         </dl>

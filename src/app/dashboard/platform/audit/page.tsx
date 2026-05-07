@@ -1,5 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { formatDateTime } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -7,6 +9,7 @@ export default async function PlatformAuditPage() {
   const session = (await getServerSession(authOptions)) as
     | { user: { id: string; role: string } }
     | null;
+  const locale = await getLocale();
 
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN") redirect("/dashboard");
@@ -66,7 +69,7 @@ export default async function PlatformAuditPage() {
               return (
                 <tr key={e.id} className="border-b last:border-0">
                   <td className="p-3 whitespace-nowrap text-xs text-gray-600">
-                    {new Date(e.timestamp).toLocaleString()}
+                    {formatDateTime(e.timestamp, locale)}
                   </td>
                   <td className="p-3">
                     <div>

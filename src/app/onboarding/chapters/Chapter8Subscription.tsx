@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 import { ChapterShell } from "./shared";
 import type { ChapterProps } from "./shared";
 
@@ -24,6 +26,7 @@ interface Plan {
  * attestation flow is preserved as fallback for tenants who skip selection.
  */
 export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterProps) {
+  const locale = useLocale();
   const [attestedAt, setAttestedAt] = useState<string | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -133,7 +136,7 @@ export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterPro
 
       {attestedAt ? (
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-800 text-sm">
-          ✓ Confirmed on {new Date(attestedAt).toLocaleString("en-GB")}. You're good to move on.
+          ✓ Confirmed on {formatDateTime(attestedAt, locale)}. You’re good to move on.
         </div>
       ) : (
         <p className="text-sm text-gray-600">

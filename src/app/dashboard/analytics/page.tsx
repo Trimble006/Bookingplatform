@@ -2,6 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatNumber } from "@/lib/format";
 
 interface Stats {
   period: string;
@@ -198,10 +200,11 @@ export default function AnalyticsPage() {
 // ─── Helper components ───────────────────────────────────────
 
 function StatCard({ label, value }: { label: string; value: number }) {
+  const locale = useLocale();
   return (
     <div className="bg-white rounded-lg border p-4">
       <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-800">{value.toLocaleString()}</p>
+      <p className="text-2xl font-bold text-gray-800">{formatNumber(value, locale)}</p>
     </div>
   );
 }

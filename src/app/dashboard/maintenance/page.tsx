@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -41,6 +42,7 @@ const STATUS_TRANSITIONS: Record<string, { next: string; label: string }[]> = {
 };
 
 export default function MaintenancePage() {
+  const locale = useLocale();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -233,7 +235,7 @@ export default function MaintenancePage() {
                   <div key={i.id} className="text-xs">
                     <span className="font-mono text-indigo-700">{i.type}</span>{" "}
                     <span className="text-gray-500">by {i.decision.agent.name}</span>{" "}
-                    <span className="text-gray-400">· {new Date(i.createdAt).toLocaleString()}</span>{" "}
+                    <span className="text-gray-400">· {formatDateTime(i.createdAt, locale)}</span>{" "}
                     <span className="text-gray-400">({(i.decision.confidence * 100).toFixed(0)}%)</span>
                     <p className="text-gray-700 italic mt-0.5">{i.decision.reasoning}</p>
                   </div>

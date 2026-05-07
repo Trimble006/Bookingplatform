@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { getLocale } from "next-intl/server";
+import { formatDate } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -13,6 +15,7 @@ export default async function PendingSubscriptionsPage() {
   const session = (await getServerSession(authOptions)) as
     | { user: { role?: string; actingAs?: unknown } }
     | null;
+  const locale = await getLocale();
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN" || session.user.actingAs) {
     redirect("/dashboard");
@@ -80,11 +83,11 @@ export default async function PendingSubscriptionsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {r.subscriptionAttestedAt ? new Date(r.subscriptionAttestedAt).toLocaleDateString("en-GB") : "—"}
+                      {r.subscriptionAttestedAt ? formatDate(r.subscriptionAttestedAt, locale) : "—"}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {lastPayment
-                        ? `${lastPayment.currency} ${(lastPayment.amount / 100).toFixed(2)} (${lastPayment.status}) on ${new Date(lastPayment.createdAt).toLocaleDateString("en-GB")}`
+                        ? `${lastPayment.currency} ${(lastPayment.amount / 100).toFixed(2)} (${lastPayment.status}) on ${formatDate(lastPayment.createdAt, locale)}`
                         : <span className="text-amber-700">none on record</span>}
                     </td>
                   </tr>

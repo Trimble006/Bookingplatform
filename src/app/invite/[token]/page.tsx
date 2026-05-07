@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
@@ -18,6 +20,7 @@ type Invitation = {
 export default function AcceptInvitePage() {
   const params = useParams<{ token: string }>();
   const router = useRouter();
+  const locale = useLocale();
   const [invite, setInvite] = useState<Invitation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -205,7 +208,7 @@ export default function AcceptInvitePage() {
           </button>
 
           <p className="text-xs text-gray-500 text-center">
-            Invitation expires {new Date(invite.expiresAt).toLocaleDateString("en-GB")}.
+            Invitation expires {formatDate(invite.expiresAt, locale)}.
           </p>
         </form>
       </div>

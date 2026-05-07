@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 import HelpHint from "@/components/help/HelpHint";
 
 type User = {
@@ -22,6 +24,7 @@ type Tenant = { id: string; name: string; slug: string };
 
 export default function UsersPage() {
   const { data: session } = useSession();
+  const locale = useLocale();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -142,7 +145,7 @@ export default function UsersPage() {
                 <dt className="text-gray-500">Status</dt>
                 <dd>{detail.suspended ? <span className="text-red-600 font-medium">Suspended</span> : <span className="text-green-600 font-medium">Active</span>}</dd>
                 <dt className="text-gray-500">Joined</dt>
-                <dd>{new Date(detail.createdAt).toLocaleDateString()}</dd>
+                <dd>{formatDate(detail.createdAt, locale)}</dd>
                 <dt className="text-gray-500">Bookings</dt>
                 <dd>{detail._count.bookings}</dd>
                 <dt className="text-gray-500">Tasks submitted</dt>

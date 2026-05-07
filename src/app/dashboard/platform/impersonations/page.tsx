@@ -1,5 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { formatDateTime } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -7,6 +9,7 @@ export default async function ImpersonationHistoryPage() {
   const session = (await getServerSession(authOptions)) as
     | { user: { id: string; role: string } }
     | null;
+  const locale = await getLocale();
 
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN") redirect("/dashboard");
@@ -58,10 +61,10 @@ export default async function ImpersonationHistoryPage() {
                   <div className="text-xs text-gray-500">/{r.tenant.slug}</div>
                 </td>
                 <td className="p-3">{r.assumedRole}</td>
-                <td className="p-3">{new Date(r.startedAt).toLocaleString()}</td>
+                <td className="p-3">{formatDateTime(r.startedAt, locale)}</td>
                 <td className="p-3">
                   {r.endedAt ? (
-                    new Date(r.endedAt).toLocaleString()
+                    formatDateTime(r.endedAt, locale)
                   ) : (
                     <span className="rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">active</span>
                   )}

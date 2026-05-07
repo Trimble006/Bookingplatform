@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 
 type TenantPayment = {
   id: string;
@@ -21,6 +23,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function PlatformPaymentsPage() {
+  const locale = useLocale();
   const [payments, setPayments] = useState<TenantPayment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +87,7 @@ export default function PlatformPaymentsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{p.invoiceRef ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString("en-GB")}</td>
+                <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt, locale)}</td>
               </tr>
             ))}
             {payments.length === 0 && (

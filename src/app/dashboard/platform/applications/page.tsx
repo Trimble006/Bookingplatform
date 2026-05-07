@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 import Link from "next/link";
 
 type ApplicationStatus =
@@ -41,6 +43,7 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
 };
 
 export default function ApplicationsPage() {
+  const locale = useLocale();
   const [apps, setApps] = useState<Application[]>([]);
   const [filter, setFilter] = useState<"ALL" | ApplicationStatus>("ALL");
   const [loading, setLoading] = useState(true);
@@ -126,7 +129,7 @@ export default function ApplicationsPage() {
                     </span>
                   </td>
                   <td className="p-3 text-gray-500 text-xs">
-                    {new Date(a.createdAt).toLocaleDateString("en-GB")}
+                    {formatDate(a.createdAt, locale)}
                   </td>
                   <td className="p-3 text-right">
                     <Link

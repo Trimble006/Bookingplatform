@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 import HelpHint from "@/components/help/HelpHint";
 
 type Notification = {
@@ -17,6 +18,7 @@ export default function NotificationsPage() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [successMsg, setSuccessMsg] = useState("");
   const t = useTranslations("common");
+  const locale = useLocale();
 
   function load() {
     fetch("/api/notifications").then((r) => r.json()).then((d) => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
@@ -58,7 +60,7 @@ export default function NotificationsPage() {
         >
           <div className="flex justify-between">
             <h3 className="font-semibold text-sm">{n.title}</h3>
-            <span className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</span>
+            <span className="text-xs text-gray-400">{formatDateTime(n.createdAt, locale)}</span>
           </div>
           <p className="text-sm text-gray-600 mt-1">{n.body}</p>
         </div>

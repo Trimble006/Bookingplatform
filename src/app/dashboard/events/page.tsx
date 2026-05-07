@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatCurrency } from "@/lib/format";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -98,6 +99,7 @@ function emptyForm() {
 }
 
 export default function EventsPage() {
+  const locale = useLocale();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -251,7 +253,7 @@ export default function EventsPage() {
   }
 
   function formatFee(pence: number, curr: string) {
-    return new Intl.NumberFormat("en-GB", { style: "currency", currency: curr }).format(pence / 100);
+    return formatCurrency(pence, locale, curr);
   }
 
   const filtered = filter === "ALL" ? events : events.filter((e) => e.status === filter);

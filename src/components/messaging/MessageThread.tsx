@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { useLocale } from "next-intl";
+import { formatTime } from "@/lib/format";
 
 type Message = {
   id: string;
@@ -31,6 +33,7 @@ export default function MessageThread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
+  const locale = useLocale();
 
   useEffect(() => {
     if (messages.length > prevLenRef.current) {
@@ -61,7 +64,7 @@ export default function MessageThread({
             <div className="text-xs text-gray-500 mb-1">
               {msg.user.name ?? msg.user.email}
               {msg.pinned && <span className="ml-1 text-yellow-600">📌</span>}
-              <span className="ml-2">{new Date(msg.createdAt).toLocaleTimeString()}</span>
+              <span className="ml-2">{formatTime(msg.createdAt, locale)}</span>
             </div>
             <div
               className={`rounded-lg px-3 py-2 max-w-[75%] ${
