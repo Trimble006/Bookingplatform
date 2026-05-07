@@ -22,7 +22,6 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
-- `#i18n` — multiple language support via `next-intl`. Phase 1 (infra) + Phase 2 partial (6 namespaces, 8 pages wired) shipped on `feature/i18n`. Remaining: deeper string extraction for ~30 more components, date formatting (Phase 3), public pages (Phase 5), QA (Phase 6). Session: `bp: #i18n`. Branch: `feature/i18n`.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).
@@ -32,6 +31,7 @@ scratch.
 
 ## Just parked
 
+- `#i18n` — foundation + Phase 3 formatting merged to main. Remaining: deeper string extraction (~30 components), public-page locale resolution (Phase 5), QA. Plan: `parked-plans/i18n.md`.
 - `#agent-self-supersede` — Step 3c-iv of agent-v2 plan: detector should mark its own stale PENDING proposals as SUPERSEDED on subsequent runs. Plan: `parked-plans/agent-v2-followups.md`. **Pull in before inbox sees production traffic.**
 - `#triager-proposals` — Step 3c-v of agent-v2 plan: migrate triager to emit `MAINTENANCE_TASK_ASSIGN` proposals. Plan: `parked-plans/agent-v2-followups.md`.
 - `#permission-groups` — federation + permission groups full design done. Plan: `parked-plans/permission-groups.md`. Branch: `feature/permission-groups`.
@@ -42,8 +42,8 @@ scratch.
 
 ## Recently landed
 
+- 2026-05-07 — `#i18n` foundation + locale-aware formatting merged to main. Branch: `feature/i18n` (merged). `DECISIONS.md`.
 - 2026-05-05 — `#agents-v2` propose-not-publish loop closed end-to-end: committer pattern, detector migration, inbox UI + review API, seed script. Follow-ups (`#agent-self-supersede`, `#triager-proposals`) parked at `parked-plans/agent-v2-followups.md`. `DECISIONS.md`.
 - 2026-05-05 — TAR wizard improvements (unlock cascade + readiness warnings) merged to main. Branches deleted.
 - 2026-05-05 — Federation & Permissions full design plan. `DECISIONS.md`.
 - 2026-05-04 — Onboarding KYC Chapter 2 (country + org type + FY end). `DECISIONS.md`.
-- 2026-05-04 — Charity Accounts MVP shipped (P0+P1+P2). `DECISIONS.md`.
