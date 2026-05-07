@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
+import { useTranslations } from "next-intl";
 import ChannelList from "@/components/messaging/ChannelList";
 import MessageThread from "@/components/messaging/MessageThread";
 import MessageInput from "@/components/messaging/MessageInput";
@@ -43,6 +44,7 @@ export default function MessagingPage() {
   const [featureDisabled, setFeatureDisabled] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const { trackFeature } = useTrack();
+  const t = useTranslations("messaging");
 
   useEffect(() => { trackFeature("messaging.opened", "Channel"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -230,8 +232,8 @@ export default function MessagingPage() {
   if (featureDisabled) {
     return (
       <div className="text-center py-12">
-        <h1 className="text-2xl font-bold mb-2">Messaging</h1>
-        <p className="text-gray-500">Messaging is not enabled for your club. Contact your administrator.</p>
+        <h1 className="text-2xl font-bold mb-2">{t("title")}</h1>
+        <p className="text-gray-500">{t("disabled")}</p>
       </div>
     );
   }
@@ -303,7 +305,7 @@ export default function MessagingPage() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400">
-            Select a channel to start messaging
+            {t("selectChannel")}
           </div>
         )}
       </div>

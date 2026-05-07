@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import { useTrack } from "@/components/TrackingProvider";
 
@@ -38,6 +40,7 @@ type Run = {
 };
 
 export default function AgentDashboardPage() {
+  const locale = useLocale();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [activeSlug, setActiveSlug] = useState<string>("");
   const [decisions, setDecisions] = useState<Decision[]>([]);
@@ -186,7 +189,7 @@ export default function AgentDashboardPage() {
                   r.status === "RUNNING" ? "text-blue-700" :
                   r.status === "RATE_LIMITED" ? "text-orange-700" : "text-red-700"
                 }`}>{r.status}</span>
-                <span className="text-gray-500">{new Date(r.startedAt).toLocaleString()}</span>
+                <span className="text-gray-500">{formatDateTime(r.startedAt, locale)}</span>
                 {r.durationMs !== null && <span className="text-gray-400">({(r.durationMs / 1000).toFixed(1)}s)</span>}
                 {r.summary && <span className="text-gray-700">{summaryToSentence(r.agent.slug, r.summary)}</span>}
                 {r.error && <span className="text-red-600 truncate" title={r.error}>{r.error}</span>}
@@ -293,6 +296,7 @@ function DecisionCard({
   onFeedback: (id: string, body: Record<string, unknown>) => void;
 }) {
   const [note, setNote] = useState(decision.feedback?.note ?? "");
+  const locale = useLocale();
   const fb = decision.feedback;
   const isComplaintAction = decision.agent.slug === "detector";
   const isTriageAction = decision.agent.slug === "triager";
@@ -304,7 +308,7 @@ function DecisionCard({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-mono">{decision.action}</span>
             <span className="text-xs text-gray-500">confidence {(decision.confidence * 100).toFixed(0)}%</span>
-            <span className="text-xs text-gray-400">· {new Date(decision.createdAt).toLocaleString()}</span>
+            <span className="text-xs text-gray-400">· {formatDateTime(decision.createdAt, locale)}</span>
           </div>
           <p className="text-sm text-gray-800">{decision.reasoning}</p>
           {decision.task && (

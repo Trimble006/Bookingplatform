@@ -67,6 +67,7 @@ export const authOptions: NextAuthOptions = {
           token.role = ctx.role;
         }
         token.activeTenantId = ctx.tenantId;
+        token.locale = ctx.locale;
       }
       // Tenant switcher: client calls session.update({ activeTenantId: "..." })
       // to switch which membership is the active one.
@@ -77,6 +78,7 @@ export const authOptions: NextAuthOptions = {
           token.tenantId = ctx.tenantId;
           token.role = ctx.role;
           token.activeTenantId = ctx.tenantId;
+          token.locale = ctx.locale;
         }
       }
       // Allow client/server to update the actingAs claim via session.update().
@@ -100,6 +102,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).tenantId = token.tenantId;
         (session.user as any).activeTenantId = token.activeTenantId ?? token.tenantId ?? null;
         (session.user as any).actingAs = token.role === "PLATFORM_ADMIN" ? (token.actingAs ?? null) : null;
+        (session.user as any).locale = token.locale ?? "en";
       }
       return session;
     },

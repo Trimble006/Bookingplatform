@@ -18,6 +18,10 @@ _(none currently active — see `IN_FLIGHT.md`)_
 
 ## Next
 
+- `#i18n` (L) — `next-intl` integration, tenant-locale-driven translations
+  (dashboard + public club pages), Welsh (cy) first. Phase 1 (infra) shipped;
+  string extraction (Phase 2–3) + Welsh translations (Phase 4) + public pages
+  (Phase 5) + QA (Phase 6) remain. Plan: `parked-plans/i18n.md`.
 - `#billing` (L) — platform subscription model (`PlatformPlan`,
   `TenantBillingProfile`, invoice generation) + financial dashboards
   (platform finance, agent costs, tenant billing portal). Stub payment
@@ -71,8 +75,10 @@ _(none currently active — see `IN_FLIGHT.md`)_
 
 ## Deferred
 
-- `#i18n` (L) — `next-intl` integration, locale routing, first non-English
-  locale. (Phase 9.)
+- `#i18n` (L) — `next-intl` integration, tenant-locale-driven translations
+  (dashboard + public club pages), Welsh (cy) first. No URL prefix routing —
+  locale follows club setting. Phase 1 (infra) shipped; Phases 2–6 remain.
+  Promoted from Deferred → Next 2026-05-06.
 - `#federations` — subsumed by `#permission-groups` phases C4–C6. No
   standalone work until permission groups land.
 - `#observability` (M) — error tracking (Sentry), health endpoint,

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 
 type Channel = "EMAIL" | "SMS" | "SOCIAL_POST";
 type Status = "STUBBED" | "SENT_MANUAL" | "SENT" | "FAILED";
@@ -41,6 +43,7 @@ const STATUS_STYLES: Record<Status, string> = {
 };
 
 export default function OutboundInspectorPage() {
+  const locale = useLocale();
   const [messages, setMessages] = useState<Message[]>([]);
   const [filter, setFilter] = useState<"ALL" | Channel>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -120,7 +123,7 @@ export default function OutboundInspectorPage() {
                       {m.status.toLowerCase()}
                     </span>
                     <span className="ml-auto text-xs text-gray-400">
-                      {new Date(m.createdAt).toLocaleString("en-GB")}
+                      {formatDateTime(m.createdAt, locale)}
                     </span>
                   </div>
                   <div className="mt-1 font-medium text-gray-800 truncate">

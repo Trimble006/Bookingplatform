@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "bookings": "Bookings",
+    "notifications": "Notifications",
+    "maintenance": "Maintenance",
+    "content": "Content",
+    "streaming": "Streaming",
+    "admin": "Admin",
+    "events": "Events",
+    "messaging": "Messaging",
+    "settings": "Settings",
+    "help": "Help",
+    "signOut": "Sign Out",
+    "dashboard": "Dashboard"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "loading": "Loading…",
+    "submit": "Submit",
+    "search": "Search",
+    "retry": "Retry",
+    "markAllRead": "Mark all read"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "cancelled": "Cancelled",
+    "confirmed": "Confirmed"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "networkError": "Network error. Please check your connection.",
+    "notFound": "Not found.",
+    "unauthorized": "You are not authorised to perform this action."
+  },
+  "empty": {
+    "noResults": "No results found.",
+    "noNotifications": "No notifications.",
+    "noBookings": "No bookings."
+  },
+  "impersonation": {
+    "actingAs": "{name} — acting as {role} of {tenant}",
+    "exit": "Exit impersonation",
+    "exiting": "Exiting…",
+    "exitFailed": "Could not end impersonation.",
+    "networkError": "Network error ending impersonation.",
+    "staleSession": "A previous impersonation session has ended. Pick a club to start a new one."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "allRead": "All notifications marked as read."
+  },
+  "platformDashboard": {
+    "title": "Platform Dashboard",
+    "welcome": "Welcome, {name}. Pick a club to act on its behalf. Your real identity is preserved in every audit log entry."
+  }
+}

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
+import { useTranslations, useLocale } from "next-intl";
+import { formatCurrency } from "@/lib/format";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -97,6 +99,7 @@ function emptyForm() {
 }
 
 export default function EventsPage() {
+  const locale = useLocale();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -115,6 +118,7 @@ export default function EventsPage() {
   const effectiveRole = acting ? acting.role : role;
   const isAdmin = effectiveRole === "TENANT_ADMIN";
   const { trackFeature } = useTrack();
+  const t = useTranslations("events");
 
   useEffect(() => { trackFeature("events.dashboard_opened", "Event"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -249,14 +253,14 @@ export default function EventsPage() {
   }
 
   function formatFee(pence: number, curr: string) {
-    return new Intl.NumberFormat("en-GB", { style: "currency", currency: curr }).format(pence / 100);
+    return formatCurrency(pence, locale, curr);
   }
 
   const filtered = filter === "ALL" ? events : events.filter((e) => e.status === filter);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Events</h1>
+      <h1 className="text-2xl font-bold mb-4">{t("title")}</h1>
       {successMsg && <div className="mb-4 rounded bg-green-100 text-green-800 px-4 py-2">{successMsg}</div>}
 
       {isPlatformAdmin && (

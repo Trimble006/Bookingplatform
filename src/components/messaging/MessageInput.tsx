@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 
 export default function MessageInput({
   onSend,
@@ -12,6 +14,7 @@ export default function MessageInput({
   mutedUntil?: string | null;
 }) {
   const [text, setText] = useState("");
+  const locale = useLocale();
 
   const isMuted = mutedUntil && new Date(mutedUntil) > new Date();
 
@@ -27,7 +30,7 @@ export default function MessageInput({
     <form onSubmit={handleSubmit} className="flex gap-2 p-3 border-t">
       {isMuted ? (
         <div className="flex-1 text-center text-sm text-gray-500 py-2">
-          You are muted until {new Date(mutedUntil!).toLocaleString()}
+          You are muted until {formatDateTime(mutedUntil!, locale)}
         </div>
       ) : (
         <>

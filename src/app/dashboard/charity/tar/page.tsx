@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLocale } from "next-intl";
+import { formatDate as formatDateLocale, formatCurrency } from "@/lib/format";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -48,13 +50,14 @@ function formatDate(iso: string): string {
   return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
 }
 
-function penniesToPounds(pence: number): string {
-  return `£${(pence / 100).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`;
+function penniesToPounds(pence: number, locale: string): string {
+  return formatCurrency(pence, locale, "GBP");
 }
 
 // ── Component ────────────────────────────────────────────────
 
 export default function TARWizardPage() {
+  const locale = useLocale();
   const [years, setYears] = useState<Year[]>([]);
   const [selectedYearId, setSelectedYearId] = useState<string>("");
   const [tarData, setTarData] = useState<TARData | null>(null);
@@ -316,7 +319,7 @@ export default function TARWizardPage() {
         <div className="rounded border border-green-200 bg-green-50 p-3 mb-4 text-green-900 text-sm">
           This TAR was finalised on{" "}
           {tarData?.tar.finalisedAt
-            ? new Date(tarData.tar.finalisedAt).toLocaleDateString()
+            ? formatDateLocale(tarData.tar.finalisedAt, locale)
             : "unknown"}
           . It is now read-only.
         </div>
@@ -529,6 +532,7 @@ function ContextSidebar({
   dataKeys: string[];
   context: ContextData;
 }) {
+  const locale = useLocale();
   return (
     <div className="space-y-3 text-sm">
       {dataKeys.includes("charitySettings") && context.charitySettings && (
@@ -562,19 +566,19 @@ function ContextSidebar({
               <>
                 <KV
                   label="Total receipts"
-                  value={penniesToPounds(f.receiptsAndPayments.totalReceipts)}
+                  value={penniesToPounds(f.receiptsAndPayments.totalReceipts, locale)}
                 />
                 <KV
                   label="Total payments"
-                  value={penniesToPounds(f.receiptsAndPayments.totalPayments)}
+                  value={penniesToPounds(f.receiptsAndPayments.totalPayments, locale)}
                 />
                 <KV
                   label="Net movement"
-                  value={penniesToPounds(f.receiptsAndPayments.netMovement)}
+                  value={penniesToPounds(f.receiptsAndPayments.netMovement, locale)}
                 />
                 <KV
                   label="Net assets"
-                  value={penniesToPounds(f.assetsAndLiabilities.netAssets)}
+                  value={penniesToPounds(f.assetsAndLiabilities.netAssets, locale)}
                 />
               </>
             );

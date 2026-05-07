@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import { useTrack } from "@/components/TrackingProvider";
 
@@ -197,6 +199,7 @@ function ProposalCard({
   onSubmitReject: () => void;
 }) {
   const p = proposal;
+  const locale = useLocale();
   const isPending = p.status === "PENDING";
   const payload = (p.payloadParsed ?? {}) as Record<string, unknown>;
   const title = String(payload.title ?? "(no title)");
@@ -216,7 +219,7 @@ function ProposalCard({
             <span>•</span>
             <span>by {p.agent.name}</span>
             <span>•</span>
-            <span>{new Date(p.createdAt).toLocaleString()}</span>
+            <span>{formatDateTime(p.createdAt, locale)}</span>
             <StatusBadge status={p.status} />
           </div>
           <div className="font-semibold text-gray-900">{title}</div>
@@ -244,7 +247,7 @@ function ProposalCard({
           {p.status === "APPROVED" && p.committedEntityId && (
             <div className="text-xs text-green-700 mt-2">
               Applied to {p.committedEntityType} <code>{p.committedEntityId.slice(0, 8)}…</code>
-              {p.committedAt && <> at {new Date(p.committedAt).toLocaleString()}</>}
+              {p.committedAt && <> at {formatDateTime(p.committedAt, locale)}</>}
             </div>
           )}
         </div>

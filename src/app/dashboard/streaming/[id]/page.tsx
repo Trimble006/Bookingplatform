@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
+import { useLocale } from "next-intl";
+import { formatDateTime, formatDate } from "@/lib/format";
 import { useTrack } from "@/components/TrackingProvider";
 
 type StreamDetail = {
@@ -35,6 +37,7 @@ type StreamMetrics = {
 
 export default function StreamControlPage() {
   const { id } = useParams<{ id: string }>();
+  const locale = useLocale();
   const { trackFeature } = useTrack();
   const [stream, setStream] = useState<StreamDetail | null>(null);
   const [tokens, setTokens] = useState<StreamToken[]>([]);
@@ -192,7 +195,7 @@ export default function StreamControlPage() {
           </div>
         )}
         {stream.status === "ENDED" && (
-          <p className="text-gray-500">Stream ended {stream.endedAt && new Date(stream.endedAt).toLocaleString()}</p>
+          <p className="text-gray-500">Stream ended {stream.endedAt && formatDateTime(stream.endedAt, locale)}</p>
         )}
       </section>
 
@@ -238,7 +241,7 @@ export default function StreamControlPage() {
                 <div>
                   <code className="text-xs">{t.token.slice(0, 12)}...</code>
                   <span className="ml-2 text-gray-500">
-                    Expires: {new Date(t.expiresAt).toLocaleDateString()}
+                    Expires: {formatDate(t.expiresAt, locale)}
                     {t.maxUses && ` • ${t.useCount}/${t.maxUses} uses`}
                   </span>
                 </div>

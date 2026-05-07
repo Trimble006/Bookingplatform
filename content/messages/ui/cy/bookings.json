@@ -1,0 +1,37 @@
+{
+  "title": "Archebion",
+  "availability": "Argaeledd",
+  "allBookings": "Pob Archeb",
+  "myBookings": "Fy Archebion",
+  "noBookings": "Dim archebion eto.",
+  "selectTenant": "Dewiswch denant uchod i weld argaeledd ac archebion.",
+  "statusUpdated": "Archeb wedi'i {status} yn llwyddiannus.",
+  "modal": {
+    "bookRink": "Archebu {rink}",
+    "timeSlot": "Slot Amser",
+    "selectTime": "— Dewiswch amser —",
+    "playerName": "Enw Chwaraewr (dewisol)",
+    "playerNamePlaceholder": "Eich enw",
+    "bookFor": "Archebu ar gyfer",
+    "myself": "Fy hun",
+    "adminOverride": "Diystyru Gweinyddol",
+    "overridePlaceholder": "Rheswm dros ddiystyru (gofynnol)",
+    "booking": "Yn archebu…",
+    "requestBooking": "Gofyn am Archeb",
+    "bookedFor": "Archeb wedi'i gofyn ar gyfer {target} yn llwyddiannus!"
+  },
+  "actions": {
+    "approve": "Cymeradwyo",
+    "reject": "Gwrthod",
+    "sendToPayment": "Anfon i Dalu",
+    "confirm": "Cadarnhau",
+    "cancel": "Canslo",
+    "pay": "Talu £{amount}"
+  },
+  "labels": {
+    "bookedBy": "Archebwyd gan {name}",
+    "override": "Diystyru",
+    "tenant": "Tenant:",
+    "selectClub": "— Dewiswch glwb —"
+  }
+}

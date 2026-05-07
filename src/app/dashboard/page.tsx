@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { getTranslations } from "next-intl/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import TenantPicker from "@/components/platform/TenantPicker";
@@ -63,17 +64,18 @@ export default async function DashboardPage() {
     orderBy: { name: "asc" },
   });
 
+  const t = await getTranslations("common");
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Platform Dashboard</h1>
+        <h1 className="text-2xl font-bold">{t("platformDashboard.title")}</h1>
         <p className="mt-2 text-gray-600">
-          Welcome, {session.user.name ?? session.user.email}. Pick a club to act on its behalf.
-          Your real identity is preserved in every audit log entry.
+          {t("platformDashboard.welcome", { name: session.user.name ?? session.user.email })}
         </p>
         {staleImpersonation && (
           <p className="mt-2 rounded bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
-            A previous impersonation session has ended. Pick a club to start a new one.
+            {t("impersonation.staleSession")}
           </p>
         )}
       </div>

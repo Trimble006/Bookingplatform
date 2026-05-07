@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 /**
  * Persistent banner shown sitewide when a PLATFORM_ADMIN is acting as a tenant.
@@ -11,6 +12,7 @@ export default function ImpersonationBanner() {
   const { data: session, update } = useSession();
   const [exiting, setExiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("common.impersonation");
 
   const acting = (session?.user as any)?.actingAs as
     | { tenantId: string; tenantName: string; tenantSlug: string; role: string; impersonationId: string; startedAt: string }
@@ -27,7 +29,7 @@ export default function ImpersonationBanner() {
     try {
       const res = await fetch("/api/platform/impersonation", { method: "DELETE" });
       if (!res.ok) {
-        setError("Could not end impersonation.");
+        setError(t("exitFailed"));
         setExiting(false);
         return;
       }
@@ -39,7 +41,7 @@ export default function ImpersonationBanner() {
       // components like this banner.
       window.location.href = "/dashboard";
     } catch {
-      setError("Network error ending impersonation.");
+      setError(t("networkError"));
       setExiting(false);
     }
   }
@@ -62,7 +64,7 @@ export default function ImpersonationBanner() {
             disabled={exiting}
             className="rounded bg-amber-900 text-amber-50 px-3 py-1 hover:bg-amber-800 disabled:opacity-50"
           >
-            {exiting ? "Exiting…" : "Exit impersonation"}
+            {exiting ? t("exiting") : t("exit")}
           </button>
         </div>
       </div>

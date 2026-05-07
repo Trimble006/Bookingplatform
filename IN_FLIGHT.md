@@ -22,6 +22,7 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
+- `#i18n` — multiple language support via `next-intl`. Phase 1 (infra) + Phase 2 partial (6 namespaces, 8 pages wired) shipped on `feature/i18n`. Remaining: deeper string extraction for ~30 more components, date formatting (Phase 3), public pages (Phase 5), QA (Phase 6). Session: `bp: #i18n`. Branch: `feature/i18n`.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).

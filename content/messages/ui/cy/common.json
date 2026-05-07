@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "bookings": "Archebion",
+    "notifications": "Hysbysiadau",
+    "maintenance": "Cynnal a Chadw",
+    "content": "Cynnwys",
+    "streaming": "Ffrydio",
+    "admin": "Gweinyddu",
+    "events": "Digwyddiadau",
+    "messaging": "Negeseuon",
+    "settings": "Gosodiadau",
+    "help": "Cymorth",
+    "signOut": "Allgofnodi",
+    "dashboard": "Dangosfwrdd"
+  },
+  "actions": {
+    "save": "Cadw",
+    "cancel": "Canslo",
+    "delete": "Dileu",
+    "edit": "Golygu",
+    "create": "Creu",
+    "confirm": "Cadarnhau",
+    "back": "Nôl",
+    "next": "Nesaf",
+    "close": "Cau",
+    "loading": "Yn llwytho…",
+    "submit": "Cyflwyno",
+    "search": "Chwilio",
+    "retry": "Ailgynnig",
+    "markAllRead": "Marcio pob un fel wedi'i ddarllen"
+  },
+  "status": {
+    "active": "Gweithredol",
+    "inactive": "Anweithredol",
+    "pending": "Yn aros",
+    "approved": "Cymeradwywyd",
+    "rejected": "Gwrthodwyd",
+    "cancelled": "Wedi canslo",
+    "confirmed": "Cadarnhawyd"
+  },
+  "errors": {
+    "generic": "Aeth rhywbeth o'i le. Rhowch gynnig arall arni.",
+    "networkError": "Gwall rhwydwaith. Gwiriwch eich cysylltiad.",
+    "notFound": "Heb ei ganfod.",
+    "unauthorized": "Nid oes gennych awdurdod i wneud hyn."
+  },
+  "empty": {
+    "noResults": "Dim canlyniadau.",
+    "noNotifications": "Dim hysbysiadau.",
+    "noBookings": "Dim archebion."
+  },
+  "impersonation": {
+    "actingAs": "{name} — yn gweithredu fel {role} o {tenant}",
+    "exit": "Gadael dynwarediad",
+    "exiting": "Yn gadael…",
+    "exitFailed": "Methu â gorffen y dynwarediad.",
+    "networkError": "Gwall rhwydwaith wrth orffen y dynwarediad.",
+    "staleSession": "Mae sesiwn dynwarediad blaenorol wedi dod i ben. Dewiswch glwb i ddechrau un newydd."
+  },
+  "notifications": {
+    "title": "Hysbysiadau",
+    "allRead": "Pob hysbysiad wedi'i farcio fel wedi'i ddarllen."
+  },
+  "platformDashboard": {
+    "title": "Dangosfwrdd y Platfform",
+    "welcome": "Croeso, {name}. Dewiswch glwb i weithredu ar ei ran. Mae eich hunaniaeth go iawn wedi'i chadw ym mhob cofnod archwilio."
+  }
+}

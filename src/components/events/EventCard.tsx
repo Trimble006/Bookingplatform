@@ -1,3 +1,5 @@
+import { formatCurrency, formatDateCustom } from "@/lib/format";
+
 type EventData = {
   id: string;
   title: string;
@@ -51,16 +53,15 @@ const PLAYER_COUNT_LABELS: Record<string, string> = {
   FOURS: "Fours",
 };
 
-function formatFee(pence: number, currency: string) {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(pence / 100);
+function formatFee(pence: number, currency: string, locale: string) {
+  return formatCurrency(pence, locale, currency);
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+function formatEventDate(iso: string, locale: string) {
+  return formatDateCustom(iso + "T00:00:00", locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function EventCard({ event }: { event: EventData }) {
+export default function EventCard({ event, locale = "en" }: { event: EventData; locale?: string }) {
   return (
     <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
       {event.imageUrl && (
@@ -85,7 +86,7 @@ export default function EventCard({ event }: { event: EventData }) {
       <h3 className="font-semibold text-lg mb-1">{event.title}</h3>
 
       <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
-        <span>📅 {formatDate(event.date)}</span>
+        <span>📅 {formatEventDate(event.date, locale)}</span>
         <span>🕐 {event.startTime}{event.endTime ? ` – ${event.endTime}` : ""}</span>
       </div>
 
@@ -94,7 +95,7 @@ export default function EventCard({ event }: { event: EventData }) {
       <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
         {event.location && <span>📍 {event.location}</span>}
         {event.capacity != null && <span>👥 Capacity: {event.capacity}</span>}
-        {event.entryFee != null && <span>💷 {formatFee(event.entryFee, event.currency)}</span>}
+        {event.entryFee != null && <span>💷 {formatFee(event.entryFee, event.currency, locale)}</span>}
       </div>
     </div>
   );

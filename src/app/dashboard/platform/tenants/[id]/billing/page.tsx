@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useLocale } from "next-intl";
+import { formatDate } from "@/lib/format";
 import Link from "next/link";
 
 interface BillingProfile {
@@ -44,6 +46,7 @@ const statusBadge: Record<string, string> = {
 
 export default function TenantBillingPage() {
   const { id } = useParams<{ id: string }>();
+  const locale = useLocale();
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -100,8 +103,8 @@ export default function TenantBillingPage() {
           <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div><dt className="text-gray-500">Monthly</dt><dd>£{(profile.plan.priceMonthlyPence / 100).toFixed(2)}</dd></div>
             <div><dt className="text-gray-500">Method</dt><dd>{profile.paymentMethod}</dd></div>
-            <div><dt className="text-gray-500">Period End</dt><dd>{new Date(profile.currentPeriodEnd).toLocaleDateString()}</dd></div>
-            {profile.trialEndsAt && <div><dt className="text-gray-500">Trial Ends</dt><dd>{new Date(profile.trialEndsAt).toLocaleDateString()}</dd></div>}
+            <div><dt className="text-gray-500">Period End</dt><dd>{formatDate(profile.currentPeriodEnd, locale)}</dd></div>
+            {profile.trialEndsAt && <div><dt className="text-gray-500">Trial Ends</dt><dd>{formatDate(profile.trialEndsAt, locale)}</dd></div>}
           </dl>
           {profile.billingContactEmail && (
             <p className="text-xs text-gray-500">Contact: {profile.billingContactName} ({profile.billingContactEmail})</p>
@@ -154,9 +157,9 @@ export default function TenantBillingPage() {
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${paymentBadge(p.status)}`}>{p.status}</span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {p.periodStart ? `${new Date(p.periodStart).toLocaleDateString()} – ${new Date(p.periodEnd!).toLocaleDateString()}` : "—"}
+                    {p.periodStart ? `${formatDate(p.periodStart, locale)} – ${formatDate(p.periodEnd!, locale)}` : "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt, locale)}</td>
                 </tr>
               ))}
               {(data?.payments ?? []).length === 0 && (

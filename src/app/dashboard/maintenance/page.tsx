@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTrack } from "@/components/TrackingProvider";
+import { useTranslations, useLocale } from "next-intl";
+import { formatDateTime } from "@/lib/format";
 
 type Tenant = { id: string; name: string; slug: string };
 
@@ -40,6 +42,7 @@ const STATUS_TRANSITIONS: Record<string, { next: string; label: string }[]> = {
 };
 
 export default function MaintenancePage() {
+  const locale = useLocale();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -52,6 +55,7 @@ export default function MaintenancePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const { data: session } = useSession();
   const { trackFeature } = useTrack();
+  const t = useTranslations("maintenance");
 
   useEffect(() => { trackFeature("maintenance.dashboard_opened", "MaintenanceTask"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -100,8 +104,8 @@ export default function MaintenancePage() {
     e.preventDefault();
     setSuccessMsg("");
     setErrorMsg("");
-    if (!form.title.trim()) { setErrorMsg("Title is required"); return; }
-    if (!form.description.trim()) { setErrorMsg("Description is required"); return; }
+    if (!form.title.trim()) { setErrorMsg(t("submitForm.titleRequired")); return; }
+    if (!form.description.trim()) { setErrorMsg(t("submitForm.descriptionRequired")); return; }
     const res = await fetch("/api/maintenance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -109,11 +113,11 @@ export default function MaintenancePage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setErrorMsg(data.error ?? "Failed to submit task");
+      setErrorMsg(data.error ?? t("submitForm.submitFailed"));
       return;
     }
     setForm({ title: "", description: "", category: "GENERAL", priority: "MEDIUM" });
-    setSuccessMsg("Task submitted successfully!");
+    setSuccessMsg(t("submitForm.submitted"));
     trackFeature("maintenance.task_submitted", "MaintenanceTask");
     loadTasks(selectedTenant || undefined);
   }
@@ -127,10 +131,10 @@ export default function MaintenancePage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setErrorMsg(data.error ?? "Failed to update task status");
+      setErrorMsg(data.error ?? t("status.updateFailed"));
       return;
     }
-    setSuccessMsg(`Task status updated to ${status.replace("_", " ").toLowerCase()}.`);
+    setSuccessMsg(t("status.updated", { status: status.replace("_", " ").toLowerCase() }));
     loadTasks(selectedTenant || undefined);
   }
 
@@ -146,17 +150,17 @@ export default function MaintenancePage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setErrorMsg(data.error ?? "Failed to add note");
+      setErrorMsg(data.error ?? t("notes.addFailed"));
       return;
     }
     setNoteTexts((prev) => ({ ...prev, [taskId]: "" }));
-    setSuccessMsg("Note added.");
+    setSuccessMsg(t("notes.added"));
     loadTasks(selectedTenant || undefined);
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Maintenance</h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       {errorMsg && <p className="text-red-600 text-sm rounded bg-red-50 border border-red-200 px-4 py-2">{errorMsg}</p>}
       {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
@@ -178,12 +182,12 @@ export default function MaintenancePage() {
       )}
 
       {isPlatformAdmin && !selectedTenant ? (
-        <p className="text-gray-400">Select a tenant above to view maintenance tasks.</p>
+        <p className="text-gray-400">{t("selectTenant")}</p>
       ) : (
       <>
       {/* Submit form */}
       <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow space-y-3">
-        <h2 className="font-semibold">Submit a Task</h2>
+        <h2 className="font-semibold">{t("submitForm.heading")}</h2>
         <input placeholder="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrorMsg(""); }} className="w-full rounded border p-2" />
         <textarea placeholder="Description" value={form.description} onChange={(e) => { setForm({ ...form, description: e.target.value }); setErrorMsg(""); }} className="w-full rounded border p-2" />
         <div className="flex gap-3">
@@ -194,7 +198,7 @@ export default function MaintenancePage() {
             {["LOW","MEDIUM","HIGH","URGENT"].map((p) => <option key={p}>{p}</option>)}
           </select>
         </div>
-        <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Submit</button>
+        <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">{t("submitForm.submit")}</button>
       </form>
 
       {/* Task list */}
@@ -231,7 +235,7 @@ export default function MaintenancePage() {
                   <div key={i.id} className="text-xs">
                     <span className="font-mono text-indigo-700">{i.type}</span>{" "}
                     <span className="text-gray-500">by {i.decision.agent.name}</span>{" "}
-                    <span className="text-gray-400">· {new Date(i.createdAt).toLocaleString()}</span>{" "}
+                    <span className="text-gray-400">· {formatDateTime(i.createdAt, locale)}</span>{" "}
                     <span className="text-gray-400">({(i.decision.confidence * 100).toFixed(0)}%)</span>
                     <p className="text-gray-700 italic mt-0.5">{i.decision.reasoning}</p>
                   </div>
@@ -276,7 +280,7 @@ export default function MaintenancePage() {
             </form>
           </div>
         ))}
-        {tasks.length === 0 && <p className="text-gray-400">No tasks yet.</p>}
+        {tasks.length === 0 && <p className="text-gray-400">{t("labels.noTasks")}</p>}
       </div>
       </>
       )}
