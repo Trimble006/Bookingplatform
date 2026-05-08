@@ -122,6 +122,15 @@ model Tenant {
   charityTransactions     CharityTransaction[]
   charityAssetLiabilities CharityAssetLiability[]
   charityTARs             CharityTAR[]
+
+  // Permission groups (C1)
+  permissionGroups PermissionGroup[]
+
+  // Federations (C4; schema reserved in C1)
+  federationMemberships FederationMembership[]
+  createdFederations    Federation[]           @relation("FederationCreatedBy")
+  sentFederationInvites FederationInvite[]     @relation("FederationInvitesSent")
+  receivedFederationInvites FederationInvite[] @relation("FederationInvitesReceived")
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -1426,6 +1435,8 @@ model Membership {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
+  groupMemberships GroupMember[]
+
   @@unique([userId, tenantId])
   @@index([tenantId, status])
   @@index([userId, status])
@@ -1785,4 +1796,205 @@ model CharityTAR {
 
   @@unique([tenantId, financialYearId])
   @@index([tenantId, status])
+}
+
+// ─── Permission Groups (C1) ─────────────────────────────────
+//
+// Club-defined named groups with platform-defined permission grants.
+// Replaces rigid role tiers with flexible committee-style access control.
+// Existing roles remain as scaffold; TENANT_ADMIN = implicit all-permissions.
+// See DECISIONS.md 2026-05-05 and parked-plans/permission-groups.md.
+
+enum Permission {
+  // Bookings
+  bookings_view
+  bookings_create
+  bookings_manage
+  bookings_admin_override
+
+  // Maintenance
+  maintenance_view
+  maintenance_create
+  maintenance_assign
+  maintenance_close
+
+  // Events
+  events_view
+  events_create
+  events_manage
+
+  // Messaging
+  messaging_view
+  messaging_send
+  messaging_manage_channels
+
+  // Content (CMS / public pages)
+  content_view
+  content_edit
+  content_publish
+
+  // Greens
+  greens_view
+  greens_manage
+
+  // Streaming
+  streaming_view
+  streaming_manage
+
+  // Charity accounts
+  charity_view
+  charity_edit
+  charity_finalise_tar
+  charity_manage_funds
+
+  // Analytics
+  analytics_view
+
+  // Audit
+  audit_view
+
+  // Help
+  help_view
+  help_manage_overrides
+
+  // Users / Members
+  users_view
+  users_invite
+  users_manage
+
+  // Settings
+  settings_view
+  settings_edit
+
+  // Billing
+  billing_view
+  billing_manage
+
+  // Agents
+  agents_view
+  agents_configure
+  agents_review_proposals
+
+  // Notifications
+  notifications_view
+  notifications_manage
+
+  // Federation (reserved for C5; define now to avoid migration churn)
+  federation_book_at_partners
+  federation_manage
+}
+
+model PermissionGroup {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isBuiltIn   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  grants  PermissionGrant[]
+  members GroupMember[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model PermissionGrant {
+  id         String     @id @default(cuid())
+  groupId    String
+  group      PermissionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission Permission
+
+  @@unique([groupId, permission])
+  @@index([groupId])
+}
+
+model GroupMember {
+  id           String          @id @default(cuid())
+  groupId      String
+  group        PermissionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership      @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  addedAt      DateTime        @default(now())
+
+  @@unique([groupId, membershipId])
+  @@index([membershipId])
+  @@index([groupId])
+}
+
+// ─── Federations (C4 schema reserved in C1) ─────────────────
+//
+// Flat peer-to-peer club federation. TENANT_ADMIN creates; other clubs
+// join via token-based invite. Player mobility (cross-club booking) in C5.
+// See DECISIONS.md 2026-05-05 and parked-plans/permission-groups.md.
+
+enum FederationStatus {
+  ACTIVE
+  SUSPENDED
+  DISSOLVED
+}
+
+enum FederationBillingMode {
+  FREE_ACCESS
+  REDUCED_RATE
+  HOST_CLUB_RATE
+}
+
+enum FederationInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+model Federation {
+  id                String           @id @default(cuid())
+  name              String           @unique
+  description       String?
+  status            FederationStatus @default(ACTIVE)
+  maxClubs          Int              @default(10)
+  createdByTenantId String
+  createdByTenant   Tenant           @relation("FederationCreatedBy", fields: [createdByTenantId], references: [id])
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  memberships FederationMembership[]
+  invites     FederationInvite[]
+
+  @@index([status])
+}
+
+model FederationMembership {
+  id           String               @id @default(cuid())
+  federationId String
+  federation   Federation           @relation(fields: [federationId], references: [id], onDelete: Cascade)
+  tenantId     String
+  tenant       Tenant               @relation(fields: [tenantId], references: [id])
+  billingMode  FederationBillingMode @default(HOST_CLUB_RATE)
+  joinedAt     DateTime             @default(now())
+  leftAt       DateTime?
+
+  @@unique([federationId, tenantId])
+  @@index([tenantId])
+}
+
+model FederationInvite {
+  id              String                 @id @default(cuid())
+  federationId    String
+  federation      Federation             @relation(fields: [federationId], references: [id], onDelete: Cascade)
+  inviterTenantId String
+  inviterTenant   Tenant                 @relation("FederationInvitesSent", fields: [inviterTenantId], references: [id])
+  inviteeTenantId String
+  inviteeTenant   Tenant                 @relation("FederationInvitesReceived", fields: [inviteeTenantId], references: [id])
+  status          FederationInviteStatus @default(PENDING)
+  token           String                 @unique @default(cuid())
+  expiresAt       DateTime
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([federationId, status])
+  @@index([inviteeTenantId, status])
 }
