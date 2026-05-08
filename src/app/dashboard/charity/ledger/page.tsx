@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 type Year = {
   id: string;
@@ -91,6 +92,7 @@ function defaultYearDates(
 }
 
 export default function CharityLedgerPage() {
+  const t = useTranslations("charity");
   const [loading, setLoading] = useState(true);
   const [years, setYears] = useState<Year[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -274,7 +276,7 @@ export default function CharityLedgerPage() {
   }
 
   async function deleteTxn(id: string) {
-    if (!confirm("Delete this transaction?")) return;
+    if (!confirm(t("ledger.deleteTransaction"))) return;
     const res = await fetch(`/api/charity/transactions/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -300,7 +302,7 @@ export default function CharityLedgerPage() {
     setYears(years.map((y) => (y.id === updated.id ? updated : y)));
   }
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p>{t("overview.loading")}</p>;
 
   const receipts = txns.filter((t) => t.category.kind === "RECEIPT");
   const payments = txns.filter((t) => t.category.kind === "PAYMENT");
@@ -311,10 +313,10 @@ export default function CharityLedgerPage() {
     <div className="max-w-6xl">
       <div className="mb-4 text-sm">
         <Link href="/dashboard/charity" className="text-green-700 hover:underline">
-          ← Charity Accounts
+          {t("ledger.backToCharity")}
         </Link>
       </div>
-      <h1 className="text-2xl font-bold mb-4">Ledger</h1>
+      <h1 className="text-2xl font-bold mb-4">{t("ledger.title")}</h1>
 
       {error && (
         <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 mb-4">
@@ -325,13 +327,13 @@ export default function CharityLedgerPage() {
       {/* Year selector */}
       <div className="bg-white border border-slate-200 rounded p-4 mb-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-sm font-medium">Financial year:</label>
+          <label className="text-sm font-medium">{t("ledger.financialYear")}</label>
           <select
             value={selectedYearId}
             onChange={(e) => setSelectedYearId(e.target.value)}
             className="border border-slate-300 rounded px-3 py-2 text-sm"
           >
-            {years.length === 0 && <option value="">— no years yet —</option>}
+            {years.length === 0 && <option value="">{t("ledger.noYears")}</option>}
             {years.map((y) => (
               <option key={y.id} value={y.id}>
                 {y.startDate} → {y.endDate} {y.status === "LOCKED" ? "🔒" : ""}
@@ -342,14 +344,14 @@ export default function CharityLedgerPage() {
             onClick={() => setShowNewYear(!showNewYear)}
             className="text-sm px-3 py-1.5 border border-slate-300 rounded hover:bg-slate-50"
           >
-            + New year
+            {t("ledger.newYear")}
           </button>
           {selectedYear && (
             <button
               onClick={() => setYearLock(!yearLocked)}
               className="text-sm px-3 py-1.5 border border-slate-300 rounded hover:bg-slate-50 ml-auto"
             >
-              {yearLocked ? "Unlock year" : "🔒 Lock year"}
+              {yearLocked ? t("ledger.unlockYear") : t("ledger.lockYear")}
             </button>
           )}
         </div>
@@ -357,7 +359,7 @@ export default function CharityLedgerPage() {
         {showNewYear && (
           <form onSubmit={createYear} className="mt-3 flex items-end gap-2 flex-wrap">
             <div>
-              <label className="block text-xs">Start date</label>
+              <label className="block text-xs">{t("ledger.startDate")}</label>
               <input
                 type="date"
                 required
@@ -367,7 +369,7 @@ export default function CharityLedgerPage() {
               />
             </div>
             <div>
-              <label className="block text-xs">End date</label>
+              <label className="block text-xs">{t("ledger.endDate")}</label>
               <input
                 type="date"
                 required
@@ -377,14 +379,14 @@ export default function CharityLedgerPage() {
               />
             </div>
             <button type="submit" className="px-3 py-1.5 bg-green-700 text-white text-sm rounded">
-              Create
+              {t("ledger.create")}
             </button>
           </form>
         )}
       </div>
 
       {!selectedYear && (
-        <p className="text-slate-600">Create a financial year to start recording transactions.</p>
+        <p className="text-slate-600">{t("ledger.createYearPrompt")}</p>
       )}
 
       {selectedYear && (
@@ -392,19 +394,19 @@ export default function CharityLedgerPage() {
           {/* Add transaction */}
           <div className="bg-white border border-slate-200 rounded p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Add transaction</h2>
+              <h2 className="font-semibold">{t("ledger.addTransaction")}</h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowNewFund(!showNewFund)}
                   className="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50"
                 >
-                  + Fund
+                  {t("ledger.newFund")}
                 </button>
                 <button
                   onClick={() => setShowNewCategory(!showNewCategory)}
                   className="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50"
                 >
-                  + Category
+                  {t("ledger.newCategory")}
                 </button>
               </div>
             </div>
@@ -412,7 +414,7 @@ export default function CharityLedgerPage() {
             {showNewFund && (
               <form onSubmit={createFund} className="mb-3 p-3 bg-slate-50 rounded flex items-end gap-2 flex-wrap">
                 <div>
-                  <label className="block text-xs">Fund name</label>
+                  <label className="block text-xs">{t("ledger.fundName")}</label>
                   <input
                     required
                     value={fundForm.name}
@@ -421,19 +423,19 @@ export default function CharityLedgerPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs">Kind</label>
+                  <label className="block text-xs">{t("ledger.fundKind")}</label>
                   <select
                     value={fundForm.kind}
                     onChange={(e) => setFundForm({ ...fundForm, kind: e.target.value as Fund["kind"] })}
                     className="border border-slate-300 rounded px-2 py-1 text-sm"
                   >
-                    <option value="UNRESTRICTED">Unrestricted</option>
-                    <option value="RESTRICTED">Restricted</option>
-                    <option value="DESIGNATED">Designated</option>
+                    <option value="UNRESTRICTED">{t("ledger.unrestricted")}</option>
+                    <option value="RESTRICTED">{t("ledger.restricted")}</option>
+                    <option value="DESIGNATED">{t("ledger.designated")}</option>
                   </select>
                 </div>
                 <button type="submit" className="px-3 py-1.5 bg-green-700 text-white text-sm rounded">
-                  Add fund
+                  {t("ledger.addFund")}
                 </button>
               </form>
             )}
@@ -441,7 +443,7 @@ export default function CharityLedgerPage() {
             {showNewCategory && (
               <form onSubmit={createCategory} className="mb-3 p-3 bg-slate-50 rounded flex items-end gap-2 flex-wrap">
                 <div>
-                  <label className="block text-xs">Code</label>
+                  <label className="block text-xs">{t("ledger.code")}</label>
                   <input
                     required
                     value={catForm.code}
@@ -451,7 +453,7 @@ export default function CharityLedgerPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs">Label</label>
+                  <label className="block text-xs">{t("ledger.label")}</label>
                   <input
                     required
                     value={catForm.label}
@@ -466,12 +468,12 @@ export default function CharityLedgerPage() {
                     onChange={(e) => setCatForm({ ...catForm, kind: e.target.value as Category["kind"] })}
                     className="border border-slate-300 rounded px-2 py-1 text-sm"
                   >
-                    <option value="RECEIPT">Receipt</option>
-                    <option value="PAYMENT">Payment</option>
+                    <option value="RECEIPT">{t("ledger.receipt")}</option>
+                    <option value="PAYMENT">{t("ledger.payment")}</option>
                   </select>
                 </div>
                 <button type="submit" className="px-3 py-1.5 bg-green-700 text-white text-sm rounded">
-                  Add category
+                  {t("ledger.addCategory")}
                 </button>
               </form>
             )}
@@ -492,13 +494,13 @@ export default function CharityLedgerPage() {
                 onChange={(e) => setTxnForm({ ...txnForm, categoryId: e.target.value })}
                 className="border border-slate-300 rounded px-2 py-1.5 text-sm sm:col-span-2"
               >
-                <option value="">— category —</option>
-                <optgroup label="Receipts">
+                <option value="">{t("ledger.categoryPlaceholder")}</option>
+                <optgroup label={t("ledger.receiptsGroup")}>
                   {categories.filter((c) => c.kind === "RECEIPT").map((c) => (
                     <option key={c.id} value={c.id}>{c.code} — {c.label}</option>
                   ))}
                 </optgroup>
-                <optgroup label="Payments">
+                <optgroup label={t("ledger.paymentsGroup")}>
                   {categories.filter((c) => c.kind === "PAYMENT").map((c) => (
                     <option key={c.id} value={c.id}>{c.code} — {c.label}</option>
                   ))}

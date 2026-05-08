@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { formatDate } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +16,7 @@ export default async function PendingSubscriptionsPage() {
     | { user: { role?: string; actingAs?: unknown } }
     | null;
   const locale = await getLocale();
+  const t = await getTranslations("admin");
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN" || session.user.actingAs) {
     redirect("/dashboard");
@@ -42,28 +43,27 @@ export default async function PendingSubscriptionsPage() {
     <div className="space-y-6 max-w-4xl">
       <div>
         <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
-          &larr; Dashboard
+          {t("platform.subscriptions.backToDashboard")}
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800 mt-2">Pending subscriptions</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mt-2">{t("platform.subscriptions.title")}</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Tenants who have self-attested they&rsquo;ll pay during onboarding.
-          Real billing isn&rsquo;t wired up yet &mdash; chase these up out-of-band.
+          {t("platform.subscriptions.subtitle")}
         </p>
       </div>
 
       {rows.length === 0 ? (
         <div className="bg-white rounded-xl shadow p-6 text-sm text-gray-500">
-          No tenants are currently waiting on a payment.
+          {t("platform.subscriptions.noData")}
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="text-left px-4 py-3">Tenant</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Attested</th>
-                <th className="text-left px-4 py-3">Last payment</th>
+                <th className="text-left px-4 py-3">{t("platform.subscriptions.tenantCol")}</th>
+                <th className="text-left px-4 py-3">{t("platform.subscriptions.statusCol")}</th>
+                <th className="text-left px-4 py-3">{t("platform.subscriptions.attestedCol")}</th>
+                <th className="text-left px-4 py-3">{t("platform.subscriptions.lastPaymentCol")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -88,7 +88,7 @@ export default async function PendingSubscriptionsPage() {
                     <td className="px-4 py-3 text-gray-600">
                       {lastPayment
                         ? `${lastPayment.currency} ${(lastPayment.amount / 100).toFixed(2)} (${lastPayment.status}) on ${formatDate(lastPayment.createdAt, locale)}`
-                        : <span className="text-amber-700">none on record</span>}
+                        : <span className="text-amber-700">{t("platform.subscriptions.noneOnRecord")}</span>}
                     </td>
                   </tr>
                 );

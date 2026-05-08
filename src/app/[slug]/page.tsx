@@ -14,6 +14,7 @@ import ClubNavBar from "@/components/ClubNavBar";
 import UpcomingBookings from "@/components/home/UpcomingBookings";
 import NotificationPreview from "@/components/home/NotificationPreview";
 import QuickBookButton from "@/components/home/QuickBookButton";
+import { getTranslations } from "next-intl/server";
 
 const SECTION_COMPONENTS: Record<string, React.ComponentType<{ title: string; content: string }>> = {
   HERO: HeroSection,
@@ -27,6 +28,7 @@ type Params = { params: Promise<{ slug: string }> };
 
 export default async function PublicClubPage({ params }: Params) {
   const { slug } = await params;
+  const t = await getTranslations("common");
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
@@ -50,9 +52,7 @@ export default async function PublicClubPage({ params }: Params) {
             <div className="text-5xl">🛠️</div>
             <h1 className="text-2xl font-bold" style={{ color: tenant.brandColor }}>{tenant.name}</h1>
             <p className="text-gray-600">
-              We&rsquo;re still setting things up. {tenant.name}{" "}
-              isn&rsquo;t open to members just yet — please check back once
-              the club admin finishes onboarding.
+              {t("club.comingSoon", { name: tenant.name })}
             </p>
           </div>
         </main>
@@ -162,7 +162,7 @@ export default async function PublicClubPage({ params }: Params) {
       {/* Public events */}
       {events.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 py-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Upcoming Events</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">{t("club.upcomingEvents")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {events.map((ev) => (
               <EventCard key={ev.id} event={ev} />
@@ -178,7 +178,7 @@ export default async function PublicClubPage({ params }: Params) {
             href={`/${slug}/availability`}
             className="inline-block rounded-lg bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700"
           >
-            Check Availability
+            {t("club.checkAvailability")}
           </Link>
         </section>
       )}
@@ -186,20 +186,20 @@ export default async function PublicClubPage({ params }: Params) {
       {/* Join CTA — only for unauthenticated visitors */}
       {!isAuthenticated && (
         <section className="py-12 px-4 text-center bg-gray-50">
-        <h2 className="text-2xl font-bold text-gray-800 mb-3">Join {tenant.name}</h2>
-        <p className="text-gray-600 mb-6">Become a member to book rinks, enter events, and more.</p>
+        <h2 className="text-2xl font-bold text-gray-800 mb-3">{t("club.joinTitle", { name: tenant.name })}</h2>
+        <p className="text-gray-600 mb-6">{t("club.joinSubtitle")}</p>
         <div className="flex justify-center gap-4">
           <Link
             href={`/auth/register?club=${encodeURIComponent(slug)}`}
             className="rounded-lg bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700"
           >
-            Register
+            {t("home.register")}
           </Link>
           <Link
             href={`/auth/login?callbackUrl=${encodeURIComponent("/" + slug)}`}
             className="rounded-lg border border-green-600 px-6 py-3 text-green-700 font-medium hover:bg-green-50"
           >
-            Sign In
+            {t("home.signIn")}
           </Link>
         </div>
       </section>

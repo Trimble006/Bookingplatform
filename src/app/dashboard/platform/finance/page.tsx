@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 import { RevenueChart } from "@/components/billing/RevenueChart";
 import { PlanDistribution } from "@/components/billing/PlanDistribution";
@@ -36,6 +36,7 @@ interface Invoice {
 
 export default function PlatformFinancePage() {
   const locale = useLocale();
+  const t = useTranslations("admin");
   const [revenue, setRevenue] = useState<RevenueReport | null>(null);
   const [churn, setChurn] = useState<ChurnReport | null>(null);
   const [recentPayments, setRecentPayments] = useState<Invoice[]>([]);
@@ -56,20 +57,20 @@ export default function PlatformFinancePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-gray-500">Loading financial data…</p>;
-  if (!revenue || !churn) return <p className="text-red-500">Failed to load reports.</p>;
+  if (loading) return <p className="text-gray-500">{t("platform.finance.loading")}</p>;
+  if (!revenue || !churn) return <p className="text-red-500">{t("platform.finance.failed")}</p>;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Platform Finance</h1>
+      <h1 className="text-2xl font-bold">{t("platform.finance.title")}</h1>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <KPI label="MRR" value={`£${(revenue.mrr / 100).toFixed(0)}`} />
-        <KPI label="ARR" value={`£${(revenue.arr / 100).toFixed(0)}`} />
-        <KPI label="Active Tenants" value={String(revenue.activeTenants)} />
-        <KPI label="ARPT" value={`£${(revenue.arpt / 100).toFixed(0)}`} />
-        <KPI label="Outstanding" value={`£${(revenue.outstanding / 100).toFixed(0)}`} />
+        <KPI label={t("platform.finance.mrr")} value={`£${(revenue.mrr / 100).toFixed(0)}`} />
+        <KPI label={t("platform.finance.arr")} value={`£${(revenue.arr / 100).toFixed(0)}`} />
+        <KPI label={t("platform.finance.activeTenants")} value={String(revenue.activeTenants)} />
+        <KPI label={t("platform.finance.arpt")} value={`£${(revenue.arpt / 100).toFixed(0)}`} />
+        <KPI label={t("platform.finance.outstanding")} value={`£${(revenue.outstanding / 100).toFixed(0)}`} />
       </div>
 
       {/* Charts Row */}
@@ -82,14 +83,14 @@ export default function PlatformFinancePage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <ChurnChart data={churn.byMonth} />
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">Churn Summary</h3>
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">{t("platform.finance.churnSummary")}</h3>
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="text-gray-500">Total Churned</dt>
+              <dt className="text-gray-500">{t("platform.finance.totalChurned")}</dt>
               <dd className="text-xl font-semibold">{churn.totalChurned}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Churn Rate</dt>
+              <dt className="text-gray-500">{t("platform.finance.churnRate")}</dt>
               <dd className="text-xl font-semibold">{churn.churnRate}%</dd>
             </div>
           </dl>
@@ -105,14 +106,14 @@ export default function PlatformFinancePage() {
 
       {/* Outstanding Invoices */}
       <div className="rounded-xl bg-white shadow">
-        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">Outstanding Invoices</h3>
+        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">{t("platform.finance.outstandingInvoices")}</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-3">Ref</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">{t("platform.finance.ref")}</th>
+                <th className="px-4 py-3">{t("platform.finance.amount")}</th>
+                <th className="px-4 py-3">{t("platform.finance.date")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -124,7 +125,7 @@ export default function PlatformFinancePage() {
                 </tr>
               ))}
               {recentPayments.filter((p) => p.status === "PENDING").length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-3 text-center text-gray-400">No outstanding invoices</td></tr>
+                <tr><td colSpan={3} className="px-4 py-3 text-center text-gray-400">{t("platform.finance.noOutstanding")}</td></tr>
               )}
             </tbody>
           </table>
@@ -133,15 +134,15 @@ export default function PlatformFinancePage() {
 
       {/* Recent Payments */}
       <div className="rounded-xl bg-white shadow">
-        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">Recent Payments</h3>
+        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">{t("platform.finance.recentPayments")}</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-3">Ref</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">{t("platform.finance.ref")}</th>
+                <th className="px-4 py-3">{t("platform.finance.amount")}</th>
+                <th className="px-4 py-3">{t("platform.finance.status")}</th>
+                <th className="px-4 py-3">{t("platform.finance.date")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">

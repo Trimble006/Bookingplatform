@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { formatDateTime } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +10,7 @@ export default async function PlatformAuditPage() {
     | { user: { id: string; role: string } }
     | null;
   const locale = await getLocale();
+  const t = await getTranslations("admin");
 
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN") redirect("/dashboard");
@@ -37,28 +38,27 @@ export default async function PlatformAuditPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Platform Audit Log</h1>
+      <h1 className="text-2xl font-bold">{t("platform.audit.title")}</h1>
       <p className="text-sm text-gray-600">
-        Most recent 200 events across all tenants. Use a tenant&apos;s own audit
-        log for full history.
+        {t("platform.audit.subtitle")}
       </p>
 
       <div className="overflow-x-auto rounded-xl bg-white shadow">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-left">
             <tr>
-              <th className="p-3 border-b">When</th>
-              <th className="p-3 border-b">Actor</th>
-              <th className="p-3 border-b">Action</th>
-              <th className="p-3 border-b">Entity</th>
-              <th className="p-3 border-b">Tenant</th>
+              <th className="p-3 border-b">{t("platform.audit.when")}</th>
+              <th className="p-3 border-b">{t("platform.audit.actor")}</th>
+              <th className="p-3 border-b">{t("platform.audit.action")}</th>
+              <th className="p-3 border-b">{t("platform.audit.entity")}</th>
+              <th className="p-3 border-b">{t("platform.audit.tenant")}</th>
             </tr>
           </thead>
           <tbody>
             {events.length === 0 && (
               <tr>
                 <td colSpan={5} className="p-4 text-center text-gray-500">
-                  No events recorded.
+                  {t("platform.audit.noEvents")}
                 </td>
               </tr>
             )}
@@ -78,7 +78,7 @@ export default async function PlatformAuditPage() {
                     </div>
                     {e.actingAsRole && actingTenant && (
                       <div className="text-xs text-amber-700">
-                        acting as {e.actingAsRole} of {actingTenant.name}
+                        {t("audit.actingAs", { role: e.actingAsRole, tenant: actingTenant.name })}
                       </div>
                     )}
                   </td>

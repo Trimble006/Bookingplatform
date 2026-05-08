@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 
 type TenantPayment = {
@@ -24,6 +24,7 @@ const statusStyles: Record<string, string> = {
 
 export default function PlatformPaymentsPage() {
   const locale = useLocale();
+  const t = useTranslations("admin");
   const [payments, setPayments] = useState<TenantPayment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,27 +41,27 @@ export default function PlatformPaymentsPage() {
   const failedCount = payments.filter((p) => p.status === "FAILED").length;
   const uniqueTenants = new Set(payments.map((p) => p.tenantId)).size;
 
-  if (loading) return <p className="text-gray-500">Loading payments…</p>;
+  if (loading) return <p className="text-gray-500">{t("platform.payments.loading")}</p>;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Platform Payments</h1>
+      <h1 className="text-2xl font-bold">{t("platform.payments.title")}</h1>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">Total Tenants</p>
+          <p className="text-xs text-gray-500">{t("platform.payments.totalTenants")}</p>
           <p className="text-2xl font-semibold">{uniqueTenants}</p>
         </div>
         <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">Total Revenue</p>
+          <p className="text-xs text-gray-500">{t("platform.payments.totalRevenue")}</p>
           <p className="text-2xl font-semibold">£{(totalRevenue / 100).toFixed(2)}</p>
         </div>
         <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">Pending</p>
+          <p className="text-xs text-gray-500">{t("platform.payments.pending")}</p>
           <p className="text-2xl font-semibold">{pendingCount}</p>
         </div>
         <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">Failed</p>
+          <p className="text-xs text-gray-500">{t("platform.payments.failed")}</p>
           <p className="text-2xl font-semibold">{failedCount}</p>
         </div>
       </div>
@@ -69,11 +70,11 @@ export default function PlatformPaymentsPage() {
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
             <tr>
-              <th className="px-4 py-3">Tenant</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Invoice Ref</th>
-              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">{t("platform.payments.tenant")}</th>
+              <th className="px-4 py-3">{t("platform.payments.amount")}</th>
+              <th className="px-4 py-3">{t("platform.payments.status")}</th>
+              <th className="px-4 py-3">{t("platform.payments.invoiceRef")}</th>
+              <th className="px-4 py-3">{t("platform.payments.date")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -92,7 +93,7 @@ export default function PlatformPaymentsPage() {
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No payments found.</td>
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">{t("platform.payments.noPayments")}</td>
               </tr>
             )}
           </tbody>

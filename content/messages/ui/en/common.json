@@ -167,5 +167,10 @@
     "starting": "Starting impersonation…",
     "helpDrive": "Help drive the wizard for {name}",
     "actAs": "Act as TENANT_ADMIN of {name}"
+  },
+  "contact": {
+    "address": "Address:",
+    "email": "Email:",
+    "phone": "Phone:"
   }
 }

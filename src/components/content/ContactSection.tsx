@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 type ContactContent = {
   email?: string;
   phone?: string;
@@ -6,6 +10,7 @@ type ContactContent = {
 };
 
 export default function ContactSection({ title, content }: { title: string; content: string }) {
+  const t = useTranslations("common");
   let data: ContactContent = {};
   try { data = JSON.parse(content); } catch {}
 
@@ -15,19 +20,19 @@ export default function ContactSection({ title, content }: { title: string; cont
       <div className="max-w-xl mx-auto space-y-3 text-gray-700">
         {data.address && (
           <div className="flex gap-2">
-            <span className="font-medium">Address:</span>
+            <span className="font-medium">{t("contact.address")}</span>
             <span>{data.address}</span>
           </div>
         )}
         {data.email && (
           <div className="flex gap-2">
-            <span className="font-medium">Email:</span>
+            <span className="font-medium">{t("contact.email")}</span>
             <a href={`mailto:${data.email}`} className="text-green-600 hover:underline">{data.email}</a>
           </div>
         )}
         {data.phone && (
           <div className="flex gap-2">
-            <span className="font-medium">Phone:</span>
+            <span className="font-medium">{t("contact.phone")}</span>
             <a href={`tel:${data.phone}`} className="text-green-600 hover:underline">{data.phone}</a>
           </div>
         )}

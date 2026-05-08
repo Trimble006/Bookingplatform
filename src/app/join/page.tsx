@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 const COUNTRIES = [
   "United Kingdom",
@@ -15,6 +16,7 @@ const COUNTRIES = [
 ];
 
 export default function JoinPage() {
+  const t = useTranslations("common");
   const [form, setForm] = useState({
     clubName: "",
     contactName: "",
@@ -37,7 +39,7 @@ export default function JoinPage() {
     e.preventDefault();
     setError("");
     if (!form.terms) {
-      setError("Please agree to the terms before submitting.");
+      setError(t("join.termsRequired"));
       return;
     }
     setSubmitting(true);
@@ -68,17 +70,15 @@ export default function JoinPage() {
       <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="max-w-lg w-full bg-white rounded-2xl shadow p-8 text-center space-y-4">
           <div className="text-5xl">📬</div>
-          <h1 className="text-2xl font-bold text-gray-800">Application received</h1>
+          <h1 className="text-2xl font-bold text-gray-800">{t("join.receivedTitle")}</h1>
           <p className="text-gray-600">
-            Thanks for your interest in BookingPlatform. We've sent a
-            confirmation to <strong>{form.contactEmail}</strong> and our team
-            will be in touch within a few working days.
+            {t("join.receivedMessage", { email: form.contactEmail })}
           </p>
           <Link
             href="/"
             className="inline-block px-5 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700"
           >
-            Back to homepage
+            {t("join.backToHomepageButton")}
           </Link>
         </div>
       </main>
@@ -90,13 +90,13 @@ export default function JoinPage() {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Back to homepage
+            {t("join.backToHomepage")}
           </Link>
           <h1 className="text-3xl font-bold text-gray-800 mt-2">
-            Add your club to BookingPlatform
+            {t("join.title")}
           </h1>
           <p className="text-gray-600 mt-2">
-            Tell us a wee bit about your club and we'll get you set up.
+            {t("join.subtitle")}
           </p>
         </div>
 
@@ -104,19 +104,19 @@ export default function JoinPage() {
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl shadow p-6 space-y-5"
         >
-          <Field label="Club name" required>
+          <Field label={t("join.clubName")} required>
             <input
               type="text"
               value={form.clubName}
               onChange={(e) => update("clubName", e.target.value)}
               required
               className="w-full rounded-lg border p-3"
-              placeholder="e.g. Anyburgh Bowling Club"
+              placeholder={t("join.clubNamePlaceholder")}
             />
           </Field>
 
           <div className="grid sm:grid-cols-2 gap-5">
-            <Field label="Your name" required>
+            <Field label={t("join.yourName")} required>
               <input
                 type="text"
                 value={form.contactName}
@@ -125,7 +125,7 @@ export default function JoinPage() {
                 className="w-full rounded-lg border p-3"
               />
             </Field>
-            <Field label="Email" required>
+            <Field label={t("join.email")} required>
               <input
                 type="email"
                 value={form.contactEmail}
@@ -137,7 +137,7 @@ export default function JoinPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-5">
-            <Field label="Phone (optional)">
+            <Field label={t("join.phone")}>
               <input
                 type="tel"
                 value={form.contactPhone}
@@ -145,14 +145,14 @@ export default function JoinPage() {
                 className="w-full rounded-lg border p-3"
               />
             </Field>
-            <Field label="Country" required>
+            <Field label={t("join.country")} required>
               <select
                 value={form.country}
                 onChange={(e) => update("country", e.target.value)}
                 required
                 className="w-full rounded-lg border p-3 bg-white"
               >
-                <option value="">Choose a country…</option>
+                <option value="">{t("join.countryPlaceholder")}</option>
                 {COUNTRIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -162,23 +162,23 @@ export default function JoinPage() {
             </Field>
           </div>
 
-          <Field label="Region or county (optional)">
+          <Field label={t("join.region")}>
             <input
               type="text"
               value={form.region}
               onChange={(e) => update("region", e.target.value)}
               className="w-full rounded-lg border p-3"
-              placeholder="e.g. East Lothian, Auckland, NSW"
+              placeholder={t("join.regionPlaceholder")}
             />
           </Field>
 
-          <Field label="Anything else we should know? (optional)">
+<Field label={t("join.notes")}>
             <textarea
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={4}
               className="w-full rounded-lg border p-3"
-              placeholder="Number of greens, current website, anything that'll help us help you…"
+              placeholder={t("join.notesPlaceholder")}
             />
           </Field>
 
@@ -190,8 +190,7 @@ export default function JoinPage() {
               className="mt-1"
             />
             <span>
-              I confirm I'm authorised to apply on behalf of this club and agree
-              to be contacted by the BookingPlatform team about this application.
+              {t("join.termsLabel")}
             </span>
           </label>
 
@@ -206,7 +205,7 @@ export default function JoinPage() {
             disabled={submitting}
             className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:bg-gray-400"
           >
-            {submitting ? "Sending…" : "Send application"}
+            {submitting ? t("join.submitting") : t("join.submit")}
           </button>
         </form>
       </div>
