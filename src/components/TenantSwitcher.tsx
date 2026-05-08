@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 
 type Membership = {
   tenantId: string;
@@ -19,6 +20,7 @@ export default function TenantSwitcher() {
   const { data: session, update } = useSession();
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [busy, setBusy] = useState(false);
+  const t = useTranslations("common");
 
   useEffect(() => {
     if (!session?.user) return;
@@ -50,7 +52,7 @@ export default function TenantSwitcher() {
 
   return (
     <div className="flex items-center gap-2">
-      <label className="text-xs text-gray-500">Acting at:</label>
+      <label className="text-xs text-gray-500">{t("tenantSwitcher.label")}</label>
       <select
         className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
         value={activeTenantId ?? ""}

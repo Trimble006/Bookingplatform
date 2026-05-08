@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell } from "./shared";
 import type { ChapterProps } from "./shared";
 
@@ -23,6 +24,7 @@ const TOGGLES: { key: string; label: string; desc: string; dependsOn?: string }[
 type Flag = { key: string; enabled: boolean };
 
 export default function Chapter7Features({ tenantId, onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -79,11 +81,11 @@ export default function Chapter7Features({ tenantId, onAdvance }: ChapterProps) 
     setBusy(false);
   };
 
-  if (!loaded) return <div className="text-gray-500">Loading…</div>;
+  if (!loaded) return <div className="text-gray-500">{t("loading")}</div>;
 
   return (
     <ChapterShell
-      title="What you want enabled"
+      title={t("chapters.features")}
       intro="Turn on the parts of the platform you want to use. You can flip these any time later."
       onSubmit={submit}
       busy={busy}

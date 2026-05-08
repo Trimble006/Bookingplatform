@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime, formatDate } from "@/lib/format";
 import { useTrack } from "@/components/TrackingProvider";
 
@@ -38,6 +38,7 @@ type StreamMetrics = {
 export default function StreamControlPage() {
   const { id } = useParams<{ id: string }>();
   const locale = useLocale();
+  const t = useTranslations("streaming");
   const { trackFeature } = useTrack();
   const [stream, setStream] = useState<StreamDetail | null>(null);
   const [tokens, setTokens] = useState<StreamToken[]>([]);
@@ -97,12 +98,12 @@ export default function StreamControlPage() {
       setActionError("");
       fetchStream();
     } catch (err) {
-      setActionError("Could not access camera/microphone. Please grant permissions.");
+      setActionError(t("detail.cameraError"));
     }
   }
 
   async function stopBroadcast() {
-    if (!confirm("Stop broadcasting?")) return;
+    if (!confirm(t("detail.stopConfirm"))) return;
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
     mediaStreamRef.current = null;
     setBroadcasting(false);
@@ -145,17 +146,17 @@ export default function StreamControlPage() {
       ? `${window.location.origin}/api/streaming/${id}/watch?token=${token}`
       : `${window.location.origin}/api/streaming/${id}/watch`;
     navigator.clipboard.writeText(url);
-    alert("Watch URL copied!");
+    alert(t("detail.watchUrlCopied"));
   }
 
-  if (!stream) return <div className="p-6">Loading...</div>;
+  if (!stream) return <div className="p-6">{t("loading")}</div>;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       {actionError && (
         <div className="rounded bg-red-100 text-red-800 px-4 py-2 flex items-center justify-between" role="alert">
           <span>{actionError}</span>
-          <button onClick={() => setActionError("")} className="text-red-700 hover:text-red-900 text-sm">Dismiss</button>
+          <button onClick={() => setActionError("")} className="text-red-700 hover:text-red-900 text-sm">{t("detail.dismiss")}</button>
         </div>
       )}
       <div className="flex items-center justify-between">
@@ -172,7 +173,7 @@ export default function StreamControlPage() {
 
       {/* Broadcast Controls */}
       <section className="border rounded p-4">
-        <h2 className="font-semibold mb-3">Broadcast</h2>
+        <h2 className="font-semibold mb-3">{t("detail.broadcast")}</h2>
         <video
           ref={videoRef}
           autoPlay
@@ -183,42 +184,42 @@ export default function StreamControlPage() {
         />
         {stream.status === "IDLE" && !broadcasting && (
           <button onClick={startBroadcast} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-            Start Broadcasting
+            {t("detail.startBroadcasting")}
           </button>
         )}
         {broadcasting && stream.status === "LIVE" && (
           <div className="flex items-center gap-4">
-            <span className="text-red-500 font-medium">● LIVE — {stream.viewerCount} watching</span>
+            <span className="text-red-500 font-medium">{t("detail.liveWatching", { count: stream.viewerCount })}</span>
             <button onClick={stopBroadcast} className="bg-gray-700 text-white px-4 py-2 rounded">
-              Stop
+              {t("stop")}
             </button>
           </div>
         )}
         {stream.status === "ENDED" && (
-          <p className="text-gray-500">Stream ended {stream.endedAt && formatDateTime(stream.endedAt, locale)}</p>
+          <p className="text-gray-500">{t("detail.streamEnded", { dateTime: stream.endedAt ? formatDateTime(stream.endedAt, locale) : "" })}</p>
         )}
       </section>
 
       {/* Metrics */}
       {metrics && (
         <section className="border rounded p-4">
-          <h2 className="font-semibold mb-3">Metrics</h2>
+          <h2 className="font-semibold mb-3">{t("detail.metricsTitle")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold">{metrics.currentViewers}</p>
-              <p className="text-xs text-gray-500">Current Viewers</p>
+              <p className="text-xs text-gray-500">{t("detail.currentViewers")}</p>
             </div>
             <div>
               <p className="text-2xl font-bold">{metrics.totalViewers}</p>
-              <p className="text-xs text-gray-500">Total Viewers</p>
+              <p className="text-xs text-gray-500">{t("detail.totalViewers")}</p>
             </div>
             <div>
               <p className="text-2xl font-bold">{metrics.uniqueViewers}</p>
-              <p className="text-xs text-gray-500">Unique Viewers</p>
+              <p className="text-xs text-gray-500">{t("detail.uniqueViewers")}</p>
             </div>
             <div>
               <p className="text-2xl font-bold">{Math.round(metrics.avgDurationSeconds / 60)}m</p>
-              <p className="text-xs text-gray-500">Avg Watch Time</p>
+              <p className="text-xs text-gray-500">{t("detail.avgWatchTime")}</p>
             </div>
           </div>
         </section>
@@ -227,30 +228,30 @@ export default function StreamControlPage() {
       {/* Share Tokens */}
       <section className="border rounded p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">Share Tokens</h2>
+          <h2 className="font-semibold">{t("detail.shareTokens")}</h2>
           <button onClick={generateToken} className="text-blue-600 text-sm hover:underline">
-            + Generate Token
+            {t("detail.generateToken")}
           </button>
         </div>
         {tokens.length === 0 ? (
-          <p className="text-sm text-gray-500">No tokens generated yet.</p>
+          <p className="text-sm text-gray-500">{t("detail.noTokens")}</p>
         ) : (
           <div className="space-y-2">
-            {tokens.map((t) => (
-              <div key={t.id} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+            {tokens.map((tok) => (
+              <div key={tok.id} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
                 <div>
-                  <code className="text-xs">{t.token.slice(0, 12)}...</code>
+                  <code className="text-xs">{tok.token.slice(0, 12)}...</code>
                   <span className="ml-2 text-gray-500">
-                    Expires: {formatDate(t.expiresAt, locale)}
-                    {t.maxUses && ` • ${t.useCount}/${t.maxUses} uses`}
+                    {t("detail.expires", { date: formatDate(tok.expiresAt, locale) })}
+                    {tok.maxUses && ` • ${t("detail.uses", { used: tok.useCount, max: tok.maxUses })}`}
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => copyWatchUrl(t.token)} className="text-blue-600 hover:underline">
-                    Copy URL
+                  <button onClick={() => copyWatchUrl(tok.token)} className="text-blue-600 hover:underline">
+                    {t("detail.copyUrl")}
                   </button>
-                  <button onClick={() => revokeToken(t.id)} className="text-red-500 hover:underline">
-                    Revoke
+                  <button onClick={() => revokeToken(tok.id)} className="text-red-500 hover:underline">
+                    {t("detail.revoke")}
                   </button>
                 </div>
               </div>
@@ -261,10 +262,10 @@ export default function StreamControlPage() {
 
       {/* Stream Info */}
       <section className="border rounded p-4 text-sm text-gray-600">
-        <h2 className="font-semibold text-gray-800 mb-2">Stream Details</h2>
-        <p><strong>Stream Key:</strong> <code>{stream.streamKey}</code></p>
-        <p><strong>Visibility:</strong> {stream.visibility}</p>
-        <p><strong>RTMP URL:</strong> <code>rtmp://localhost:1935/live/{stream.streamKey}</code></p>
+        <h2 className="font-semibold text-gray-800 mb-2">{t("detail.streamDetails")}</h2>
+        <p><strong>{t("detail.streamKey")}</strong> <code>{stream.streamKey}</code></p>
+        <p><strong>{t("detail.visibility")}</strong> {stream.visibility}</p>
+        <p><strong>{t("detail.rtmpUrl")}</strong> <code>rtmp://localhost:1935/live/{stream.streamKey}</code></p>
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
@@ -15,6 +16,7 @@ const PROMPTS = [
 ];
 
 export default function Chapter6Knowledge({ onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -45,7 +47,7 @@ export default function Chapter6Knowledge({ onAdvance }: ChapterProps) {
 
   return (
     <ChapterShell
-      title="What the agents should know"
+      title={t("chapters.knowledge")}
       intro="Anything you tell us here helps the maintenance and triage agents make smarter calls. Skip any that don't apply."
       onSubmit={submit}
       busy={busy}

@@ -1,4 +1,7 @@
+"use client";
+
 import { formatCurrency, formatDateCustom } from "@/lib/format";
+import { useTranslations } from "next-intl";
 
 type EventData = {
   id: string;
@@ -62,6 +65,7 @@ function formatEventDate(iso: string, locale: string) {
 }
 
 export default function EventCard({ event, locale = "en" }: { event: EventData; locale?: string }) {
+  const t = useTranslations("events");
   return (
     <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
       {event.imageUrl && (
@@ -94,7 +98,7 @@ export default function EventCard({ event, locale = "en" }: { event: EventData; 
 
       <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
         {event.location && <span>📍 {event.location}</span>}
-        {event.capacity != null && <span>👥 Capacity: {event.capacity}</span>}
+        {event.capacity != null && <span>👥 {t("card.capacity", { count: event.capacity })}</span>}
         {event.entryFee != null && <span>💷 {formatFee(event.entryFee, event.currency, locale)}</span>}
       </div>
     </div>

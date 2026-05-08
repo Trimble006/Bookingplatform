@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 type Entry = {
@@ -22,6 +23,7 @@ type Agent = { slug: string; name: string };
 const SCOPES: Entry["scope"][] = ["GLOBAL", "REGIONAL", "TENANT"];
 
 export default function KnowledgePage() {
+  const t = useTranslations("agents");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [scopeFilter, setScopeFilter] = useState<string>("");
@@ -75,7 +77,7 @@ export default function KnowledgePage() {
     });
     const data = await res.json();
     if (!res.ok) { setErrorMsg(data.error ?? "Failed to create"); return; }
-    setSuccessMsg("Knowledge entry created.");
+    setSuccessMsg(t("knowledge.created"));
     setShowNew(false);
     setDraft({ scope: "TENANT", region: "", agentSlug: "", category: "", title: "", content: "", priority: 0 });
     reload();
@@ -96,45 +98,43 @@ export default function KnowledgePage() {
   }
 
   async function deleteEntry(e: Entry) {
-    if (!confirm(`Delete "${e.title}"?`)) return;
+    if (!confirm(t("knowledge.deleteConfirm", { title: e.title }))) return;
     const res = await fetch(`/api/agent/knowledge/${e.id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorMsg(data.error ?? "Failed to delete");
       return;
     }
-    setSuccessMsg("Entry deleted.");
+    setSuccessMsg(t("knowledge.deleted"));
     reload();
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Knowledge Base</h1>
-        <Link href="/dashboard/agents" className="text-sm rounded border px-3 py-1.5 hover:bg-gray-50">← Back to Agents</Link>
+        <h1 className="text-2xl font-bold">{t("knowledge.title")}</h1>
+        <Link href="/dashboard/agents" className="text-sm rounded border px-3 py-1.5 hover:bg-gray-50">{t("knowledge.backToAgents")}</Link>
       </div>
 
       {errorMsg && <p className="text-red-600 text-sm rounded bg-red-50 border border-red-200 px-4 py-2">{errorMsg}</p>}
       {successMsg && <p className="text-green-700 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
       <p className="text-sm text-gray-600">
-        Knowledge entries ground the agents&apos; reasoning. Scope determines visibility:
-        <strong> GLOBAL</strong> applies everywhere, <strong>REGIONAL</strong> matches your region bucket,
-        <strong> TENANT</strong> is your club only. More specific scopes win when titles overlap.
+        {t("knowledge.intro")}
       </p>
 
       <div className="flex gap-3 items-end">
         <div>
-          <label className="block text-xs text-gray-600">Scope</label>
+          <label className="block text-xs text-gray-600">{t("knowledge.scopeLabel")}</label>
           <select value={scopeFilter} onChange={e => setScopeFilter(e.target.value)} className="rounded border p-2 text-sm">
-            <option value="">All</option>
+            <option value="">{t("knowledge.allScopes")}</option>
             {SCOPES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-600">Agent</label>
+          <label className="block text-xs text-gray-600">{t("knowledge.agentLabel")}</label>
           <select value={agentFilter} onChange={e => setAgentFilter(e.target.value)} className="rounded border p-2 text-sm">
-            <option value="">Any (incl. shared)</option>
+            <option value="">{t("knowledge.anyAgent")}</option>
             {agents.map(a => <option key={a.slug} value={a.slug}>{a.name}</option>)}
           </select>
         </div>
@@ -142,16 +142,16 @@ export default function KnowledgePage() {
           onClick={() => setShowNew(s => !s)}
           className="ml-auto rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
         >
-          {showNew ? "Cancel" : "+ New entry"}
+          {showNew ? t("knowledge.cancel") : t("knowledge.newEntry")}
         </button>
       </div>
 
       {showNew && (
         <div className="rounded-xl border bg-white p-4 space-y-3">
-          <h2 className="font-semibold">New knowledge entry</h2>
+          <h2 className="font-semibold">{t("knowledge.newEntryTitle")}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-600">Scope</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.scopeLabel")}</label>
               <select
                 value={draft.scope}
                 onChange={e => setDraft({ ...draft, scope: e.target.value as Entry["scope"] })}
@@ -161,37 +161,37 @@ export default function KnowledgePage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-600">Agent (optional)</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.agentOptional")}</label>
               <select
                 value={draft.agentSlug}
                 onChange={e => setDraft({ ...draft, agentSlug: e.target.value })}
                 className="w-full rounded border p-2 text-sm"
               >
-                <option value="">All agents</option>
+                <option value="">{t("knowledge.allAgents")}</option>
                 {agents.map(a => <option key={a.slug} value={a.slug}>{a.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-600">Category</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.categoryLabel")}</label>
               <input
                 value={draft.category}
                 onChange={e => setDraft({ ...draft, category: e.target.value })}
-                placeholder="e.g. green_care, safety, regional"
+                placeholder={t("knowledge.categoryPlaceholder")}
                 className="w-full rounded border p-2 text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600">Region (REGIONAL only)</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.regionLabel")}</label>
               <input
                 value={draft.region}
                 onChange={e => setDraft({ ...draft, region: e.target.value })}
-                placeholder="e.g. LAT_54_LNG_-4"
+                placeholder={t("knowledge.regionPlaceholder")}
                 className="w-full rounded border p-2 text-sm"
                 disabled={draft.scope !== "REGIONAL"}
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-gray-600">Title</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.titleLabel")}</label>
               <input
                 value={draft.title}
                 onChange={e => setDraft({ ...draft, title: e.target.value })}
@@ -199,7 +199,7 @@ export default function KnowledgePage() {
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-gray-600">Content</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.contentLabel")}</label>
               <textarea
                 value={draft.content}
                 onChange={e => setDraft({ ...draft, content: e.target.value })}
@@ -208,7 +208,7 @@ export default function KnowledgePage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600">Priority</label>
+              <label className="block text-xs text-gray-600">{t("knowledge.priorityLabel")}</label>
               <input
                 type="number"
                 value={draft.priority}
@@ -219,7 +219,7 @@ export default function KnowledgePage() {
           </div>
           <div>
             <button onClick={createEntry} className="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">
-              Create
+              {t("knowledge.create")}
             </button>
           </div>
         </div>
@@ -244,16 +244,16 @@ export default function KnowledgePage() {
             <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{e.content}</p>
             <div className="flex gap-2 mt-2 text-xs">
               <button onClick={() => toggleActive(e)} className="rounded border px-2 py-0.5 hover:bg-gray-50">
-                {e.active ? "Deactivate" : "Activate"}
+                {e.active ? t("knowledge.deactivate") : t("knowledge.activate")}
               </button>
               <button onClick={() => deleteEntry(e)} className="rounded border border-red-300 text-red-600 px-2 py-0.5 hover:bg-red-50">
-                Delete
+                {t("knowledge.delete")}
               </button>
               <span className="text-gray-400 ml-auto">priority {e.priority}</span>
             </div>
           </div>
         ))}
-        {entries.length === 0 && <p className="text-sm text-gray-400">No knowledge entries match these filters.</p>}
+        {entries.length === 0 && <p className="text-sm text-gray-400">{t("knowledge.noEntries")}</p>}
       </div>
     </div>
   );

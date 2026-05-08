@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
+import { getTranslations } from "next-intl/server";
 
 type Sess = {
   user: {
@@ -25,11 +26,13 @@ export default async function SettingsPage() {
   }
   if (!effectiveTenantId) redirect("/dashboard");
 
+  const t = await getTranslations("settings");
+
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold">Club Settings</h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
       <p className="text-gray-600 text-sm">
-        Edit core club configuration. Day-to-day items like greens, content and users have their own pages in the sidebar.
+        {t("intro")}
       </p>
       <ul className="divide-y rounded-xl border bg-white">
         <li>
@@ -38,12 +41,12 @@ export default async function SettingsPage() {
             className="flex items-center justify-between px-4 py-4 hover:bg-gray-50"
           >
             <div>
-              <p className="font-medium text-gray-900">Town / city</p>
+              <p className="font-medium text-gray-900">{t("locality.label")}</p>
               <p className="text-sm text-gray-500">
-                Shown alongside your club name so members can tell clubs apart.
+                {t("locality.description")}
               </p>
             </div>
-            <span className="text-emerald-700 text-sm">Edit →</span>
+            <span className="text-emerald-700 text-sm">{t("edit")}</span>
           </Link>
         </li>
         <li>
@@ -52,12 +55,12 @@ export default async function SettingsPage() {
             className="flex items-center justify-between px-4 py-4 hover:bg-gray-50"
           >
             <div>
-              <p className="font-medium text-gray-900">Venue location</p>
+              <p className="font-medium text-gray-900">{t("location.label")}</p>
               <p className="text-sm text-gray-500">
-                Latitude and longitude — used for weather forecasts and map display.
+                {t("location.description")}
               </p>
             </div>
-            <span className="text-emerald-700 text-sm">Edit →</span>
+            <span className="text-emerald-700 text-sm">{t("edit")}</span>
           </Link>
         </li>
       </ul>

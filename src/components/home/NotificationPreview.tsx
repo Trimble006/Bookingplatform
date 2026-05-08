@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface Notification {
   id: string;
@@ -14,6 +15,7 @@ interface Notification {
 export default function NotificationPreview() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = useTranslations("common");
 
   useEffect(() => {
     fetch("/api/notifications?unread=true")
@@ -41,7 +43,7 @@ export default function NotificationPreview() {
     <div className="rounded-lg border bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-800">
-          Notifications
+          {t("notifications.title")}
           {notifications.length > 0 && (
             <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold w-5 h-5">
               {notifications.length}
@@ -53,7 +55,7 @@ export default function NotificationPreview() {
         </Link>
       </div>
       {notifications.length === 0 ? (
-        <p className="text-sm text-gray-500">All caught up!</p>
+        <p className="text-sm text-gray-500">{t("empty.noNotifications")}</p>
       ) : (
         <ul className="space-y-2">
           {notifications.map((n) => (

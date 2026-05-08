@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateCustom } from "@/lib/format";
 
 interface Booking {
@@ -24,6 +24,7 @@ export default function UpcomingBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const locale = useLocale();
+  const t = useTranslations("common");
 
   useEffect(() => {
     fetch("/api/bookings")
@@ -55,13 +56,13 @@ export default function UpcomingBookings() {
   return (
     <div className="rounded-lg border bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-800">Upcoming Bookings</h3>
+        <h3 className="font-semibold text-gray-800">{t("upcomingBookings.title")}</h3>
         <Link href="/dashboard/bookings" className="text-sm text-green-600 hover:underline">
-          View all &rarr;
+          {t("upcomingBookings.viewAll")}
         </Link>
       </div>
       {bookings.length === 0 ? (
-        <p className="text-sm text-gray-500">No upcoming bookings.</p>
+        <p className="text-sm text-gray-500">{t("upcomingBookings.noUpcoming")}</p>
       ) : (
         <ul className="space-y-3">
           {bookings.map((b) => (

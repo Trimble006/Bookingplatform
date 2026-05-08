@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useTrack } from "@/components/TrackingProvider";
 
 type StreamSession = {
@@ -22,6 +23,7 @@ type Rink = { id: string; name: string; greenId: string };
 type Green = { id: string; name: string; rinks: Rink[] };
 
 export default function StreamingPage() {
+  const t = useTranslations("streaming");
   const { trackFeature } = useTrack();
   const [streams, setStreams] = useState<StreamSession[]>([]);
   const [greens, setGreens] = useState<Green[]>([]);
@@ -58,7 +60,7 @@ export default function StreamingPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Failed to create stream");
+      setError(data.error || t("failedCreate"));
       return;
     }
     setShowCreate(false);
@@ -71,18 +73,18 @@ export default function StreamingPage() {
     if (res.ok) fetchStreams();
     else {
       const data = await res.json();
-      alert(data.error || "Failed to start stream");
+      alert(data.error || t("failedStart"));
     }
   }
 
   async function stopStream(id: string) {
-    if (!confirm("Are you sure you want to stop this stream?")) return;
+    if (!confirm(t("stopConfirm"))) return;
     const res = await fetch(`/api/streaming/${id}/stop`, { method: "POST" });
     if (res.ok) fetchStreams();
   }
 
   async function deleteStream(id: string) {
-    if (!confirm("Delete this stream session?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     const res = await fetch(`/api/streaming/${id}`, { method: "DELETE" });
     if (res.ok) fetchStreams();
   }
@@ -97,27 +99,27 @@ export default function StreamingPage() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6">{t("loading")}</div>;
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Live Streaming</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <button
           onClick={() => setShowCreate(!showCreate)}
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
-          {showCreate ? "Cancel" : "New Stream"}
+          {showCreate ? t("cancel") : t("newStream")}
         </button>
       </div>
 
       {showCreate && (
         <form onSubmit={createStream} className="border p-4 rounded mb-6 space-y-3">
-          <h2 className="font-semibold">Create Stream Session</h2>
+          <h2 className="font-semibold">{t("createTitle")}</h2>
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <input
             type="text"
-            placeholder="Stream title"
+            placeholder={t("streamTitlePlaceholder")}
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="w-full border rounded px-3 py-2"
@@ -129,7 +131,7 @@ export default function StreamingPage() {
             className="w-full border rounded px-3 py-2"
             required
           >
-            <option value="">Select rink...</option>
+            <option value="">{t("selectRinkPlaceholder")}</option>
             {greens.map((g) =>
               g.rinks.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -143,17 +145,17 @@ export default function StreamingPage() {
             onChange={(e) => setForm({ ...form, visibility: e.target.value })}
             className="w-full border rounded px-3 py-2"
           >
-            <option value="MEMBERS_ONLY">Members Only</option>
-            <option value="PUBLIC">Public</option>
+            <option value="MEMBERS_ONLY">{t("visibilityMembersOnly")}</option>
+            <option value="PUBLIC">{t("visibilityPublic")}</option>
           </select>
           <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            Create
+            {t("create")}
           </button>
         </form>
       )}
 
       {streams.length === 0 ? (
-        <p className="text-gray-500">No stream sessions yet.</p>
+        <p className="text-gray-500">{t("noStreams")}</p>
       ) : (
         <div className="space-y-3">
           {streams.map((stream) => (
@@ -165,7 +167,7 @@ export default function StreamingPage() {
                     {stream.status}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {stream.visibility === "PUBLIC" ? "🌐 Public" : "🔒 Members"}
+                    {stream.visibility === "PUBLIC" ? t("publicBadge") : t("membersBadge")}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">
@@ -174,7 +176,7 @@ export default function StreamingPage() {
                 </p>
                 {stream.status === "LIVE" && (
                   <p className="text-sm text-red-600">
-                    👁 {stream._count.viewers} watching
+                    {t("watchingCount", { count: stream._count.viewers })}
                   </p>
                 )}
               </div>
@@ -182,33 +184,33 @@ export default function StreamingPage() {
                 {stream.status === "IDLE" && (
                   <>
                     <a href={`/dashboard/streaming/${stream.id}`} className="text-blue-600 text-sm hover:underline">
-                      Manage
+                      {t("manage")}
                     </a>
                     <button onClick={() => startStream(stream.id)} className="bg-red-500 text-white text-sm px-3 py-1 rounded">
-                      Go Live
+                      {t("goLive")}
                     </button>
                     <button onClick={() => deleteStream(stream.id)} className="text-red-400 text-sm hover:underline">
-                      Delete
+                      {t("delete")}
                     </button>
                   </>
                 )}
                 {stream.status === "LIVE" && (
                   <>
                     <a href={`/dashboard/streaming/${stream.id}`} className="text-blue-600 text-sm hover:underline">
-                      Control
+                      {t("control")}
                     </a>
                     <button onClick={() => stopStream(stream.id)} className="bg-gray-700 text-white text-sm px-3 py-1 rounded">
-                      Stop
+                      {t("stop")}
                     </button>
                   </>
                 )}
                 {(stream.status === "ENDED" || stream.status === "ARCHIVED") && (
                   <>
                     <a href={`/dashboard/streaming/${stream.id}`} className="text-blue-600 text-sm hover:underline">
-                      Metrics
+                      {t("metrics")}
                     </a>
                     <button onClick={() => deleteStream(stream.id)} className="text-red-400 text-sm hover:underline">
-                      Delete
+                      {t("delete")}
                     </button>
                   </>
                 )}

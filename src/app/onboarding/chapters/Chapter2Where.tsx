@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
 export default function Chapter2Where({ tenantId, onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [locality, setLocality] = useState("");
@@ -54,11 +56,11 @@ export default function Chapter2Where({ tenantId, onAdvance }: ChapterProps) {
     await onAdvance();
   };
 
-  if (!loaded) return <div className="text-gray-500">Loading…</div>;
+  if (!loaded) return <div className="text-gray-500">{t("loading")}</div>;
 
   return (
     <ChapterShell
-      title="Where you are"
+      title={t("chapters.where")}
       intro="Used for weather forecasts, sunrise/sunset, and showing your club on a map."
       onSubmit={submit}
       busy={busy}

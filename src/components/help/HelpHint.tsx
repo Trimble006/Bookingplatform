@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useTrack } from "@/components/TrackingProvider";
 
 /**
@@ -18,15 +19,17 @@ interface Props {
   label?: string;
 }
 
-export default function HelpHint({ slug, label = "Help" }: Props) {
+export default function HelpHint({ slug, label }: Props) {
   const { trackAction } = useTrack();
+  const t = useTranslations("help");
+  const resolvedLabel = label ?? t("hint.label");
   return (
     <Link
       href={`/dashboard/help/article/${slug}`}
       onClick={() => trackAction("help.hint.click", "help-hint", slug)}
       className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-700 text-xs font-bold hover:bg-green-200"
-      title={label}
-      aria-label={`${label}: ${slug}`}
+      title={resolvedLabel}
+      aria-label={`${resolvedLabel}: ${slug}`}
     >
       ?
     </Link>

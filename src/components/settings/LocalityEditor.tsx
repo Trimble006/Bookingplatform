@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 type Props = { tenantId: string };
 
@@ -8,6 +9,7 @@ const inputCls =
   "w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
 export default function LocalityEditor({ tenantId }: Props) {
+  const t = useTranslations("settings");
   const [locality, setLocality] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -39,9 +41,9 @@ export default function LocalityEditor({ tenantId }: Props) {
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Failed to save.");
+      setError(data.error ?? t("locality.saveFailed"));
     } else {
-      setSavedMsg("Saved.");
+      setSavedMsg(t("locality.saved"));
     }
   };
 
@@ -50,12 +52,12 @@ export default function LocalityEditor({ tenantId }: Props) {
   return (
     <form onSubmit={submit} className="space-y-4 rounded-xl border bg-white p-6 shadow-sm">
       <label className="block">
-        <span className="text-sm font-medium text-gray-700">Town / city</span>
+        <span className="text-sm font-medium text-gray-700">{t("locality.label")}</span>
         <input
           className={inputCls}
           value={locality}
           onChange={(e) => { setLocality(e.target.value); setSavedMsg(null); }}
-          placeholder="e.g. Edinburgh"
+          placeholder={t("locality.placeholder")}
           maxLength={60}
         />
       </label>

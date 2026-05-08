@@ -55,5 +55,8 @@
     "ALL": "All",
     "DRAFT": "Draft",
     "PUBLISHED": "Published"
+  },
+  "card": {
+    "capacity": "Capacity: {count}"
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import HelpHint from "@/components/help/HelpHint";
 
 type Tenant = { id: string; name: string; slug: string };
@@ -15,6 +16,7 @@ type Green = {
 
 export default function GreensPage() {
   const { data: session } = useSession();
+  const t = useTranslations("settings");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [greens, setGreens] = useState<Green[]>([]);
@@ -89,7 +91,7 @@ export default function GreensPage() {
     setNewGreenAllWeather(false);
     setNewGreenSeasonStart("04-01");
     setNewGreenSeasonEnd("09-30");
-    flash("Green created!");
+    flash(t("greens.greenCreated"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -108,7 +110,7 @@ export default function GreensPage() {
       return;
     }
     setEditingGreen(null);
-    flash("Green renamed.");
+    flash(t("greens.greenRenamed"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -125,7 +127,7 @@ export default function GreensPage() {
       flash(d.error ?? "Failed to update green", true);
       return;
     }
-    flash(g.allWeather ? "Seasonal mode enabled." : "All-weather mode enabled.");
+    flash(g.allWeather ? t("greens.seasonalModeEnabled") : t("greens.allWeatherModeEnabled"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -142,7 +144,7 @@ export default function GreensPage() {
       flash(d.error ?? "Failed to update season dates", true);
       return;
     }
-    flash("Season dates updated.");
+    flash(t("greens.seasonDatesUpdated"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -182,7 +184,7 @@ export default function GreensPage() {
 
   // ── Delete green ──
   async function handleDeleteGreen(greenId: string, greenName: string) {
-    if (!confirm(`Delete "${greenName}" and all its rinks? This cannot be undone.`)) return;
+    if (!confirm(t("greens.deleteConfirm", { name: greenName }))) return;
     const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
     const res = await fetch(`/api/admin/greens/${greenId}${qs}`, { method: "DELETE" });
     if (!res.ok) {
@@ -190,7 +192,7 @@ export default function GreensPage() {
       flash(d.error ?? "Failed to delete green", true);
       return;
     }
-    flash("Green deleted.");
+    flash(t("greens.greenDeleted"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -211,7 +213,7 @@ export default function GreensPage() {
       return;
     }
     setNewRinkNames((prev) => ({ ...prev, [greenId]: "" }));
-    flash("Rink added.");
+    flash(t("greens.rinkAdded"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -230,7 +232,7 @@ export default function GreensPage() {
       return;
     }
     setEditingRink(null);
-    flash("Rink renamed.");
+    flash(t("greens.rinkRenamed"));
     loadGreens(selectedTenant || undefined);
   }
 
@@ -244,26 +246,26 @@ export default function GreensPage() {
       flash(d.error ?? "Failed to delete rink", true);
       return;
     }
-    flash("Rink deleted.");
+    flash(t("greens.rinkDeleted"));
     loadGreens(selectedTenant || undefined);
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">Greens &amp; Rinks <HelpHint slug="configure-greens" /></h1>
+      <h1 className="text-2xl font-bold flex items-center gap-2">{t("greens.title")} <HelpHint slug="configure-greens" /></h1>
 
       {errorMsg && <p className="text-red-600 text-sm rounded bg-red-50 border border-red-200 px-4 py-2">{errorMsg}</p>}
       {successMsg && <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
       {isPlatformAdmin && (
         <div>
-          <label className="text-sm font-medium text-gray-700 mr-2">Tenant:</label>
+          <label className="text-sm font-medium text-gray-700 mr-2">{t("greens.tenantLabel")}</label>
           <select
             value={selectedTenant}
             onChange={(e) => setSelectedTenant(e.target.value)}
             className="rounded border p-2 text-sm"
           >
-            <option value="">— Select a club —</option>
+            <option value="">{t("greens.selectClub")}</option>
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>{t.name} (/{t.slug})</option>
             ))}
@@ -272,34 +274,34 @@ export default function GreensPage() {
       )}
 
       {isPlatformAdmin && !selectedTenant ? (
-        <p className="text-gray-400">Select a tenant above to manage greens.</p>
+        <p className="text-gray-400">{t("greens.selectTenantPrompt")}</p>
       ) : (
         <>
           {/* Add green form */}
           <form onSubmit={handleCreateGreen} className="rounded-xl bg-white p-6 shadow space-y-3">
-            <h2 className="font-semibold">Add a Green</h2>
+            <h2 className="font-semibold">{t("greens.addGreenTitle")}</h2>
             <div className="flex gap-3">
               <input
-                placeholder="Green name"
+                placeholder={t("greens.greenNamePlaceholder")}
                 value={newGreenName}
                 onChange={(e) => setNewGreenName(e.target.value)}
                 className="flex-1 rounded border p-2"
                 required
               />
-              <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Add Green</button>
+              <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">{t("greens.addGreenButton")}</button>
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={newGreenAllWeather} onChange={(e) => setNewGreenAllWeather(e.target.checked)} />
-              All-weather (open year-round)
+              {t("greens.allWeatherLabel")}
             </label>
             {!newGreenAllWeather && (
               <div className="flex gap-3 items-center text-sm">
-                <label>Season:
-                  <input type="text" placeholder="MM-DD" value={newGreenSeasonStart} onChange={(e) => setNewGreenSeasonStart(e.target.value)}
+                <label>{t("greens.seasonLabel")}
+                  <input type="text" placeholder={t("greens.seasonPlaceholder")} value={newGreenSeasonStart} onChange={(e) => setNewGreenSeasonStart(e.target.value)}
                     className="ml-1 w-20 rounded border p-1 text-sm" maxLength={5} />
                 </label>
-                <span>to</span>
-                <input type="text" placeholder="MM-DD" value={newGreenSeasonEnd} onChange={(e) => setNewGreenSeasonEnd(e.target.value)}
+                <span>{t("greens.seasonTo")}</span>
+                <input type="text" placeholder={t("greens.seasonPlaceholder")} value={newGreenSeasonEnd} onChange={(e) => setNewGreenSeasonEnd(e.target.value)}
                   className="w-20 rounded border p-1 text-sm" maxLength={5} />
               </div>
             )}
@@ -328,25 +330,25 @@ export default function GreensPage() {
                   )}
                   <div className="flex gap-2">
                     {g.allWeather ? (
-                      <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded">All weather</span>
+                      <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded">{t("greens.allWeatherBadge")}</span>
                     ) : g.seasonStartMMDD && g.seasonEndMMDD ? (
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
                         Season: {g.seasonStartMMDD} – {g.seasonEndMMDD}
                       </span>
                     ) : null}
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                      {g.rinks.length} rink{g.rinks.length !== 1 ? "s" : ""}
+                      {t("greens.rinkCount", { count: g.rinks.length })}
                     </span>
                     {editingGreen !== g.id && (
                       <>
                         <button
                           onClick={() => { setEditingGreen(g.id); setEditGreenName(g.name); }}
                           className="rounded bg-gray-200 px-3 py-1 text-xs hover:bg-gray-300"
-                        >Rename</button>
+                        >{t("greens.rename")}</button>
                         <button
                           onClick={() => handleDeleteGreen(g.id, g.name)}
                           className="rounded bg-red-100 text-red-700 px-3 py-1 text-xs hover:bg-red-200"
-                        >Delete</button>
+                        >{t("greens.delete")}</button>
                       </>
                     )}
                   </div>
@@ -357,20 +359,20 @@ export default function GreensPage() {
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-1.5">
                       <input type="checkbox" checked={g.allWeather} onChange={() => handleToggleAllWeather(g)} />
-                      All-weather (open year-round)
+                      {t("greens.allWeatherLabel")}
                     </label>
                   </div>
                   {!g.allWeather && (
                     <div className="flex gap-2 items-center">
-                      <span className="text-gray-500">Default season:</span>
-                      <input type="text" placeholder="MM-DD" defaultValue={g.seasonStartMMDD ?? ""} maxLength={5}
+                      <span className="text-gray-500">{t("greens.defaultSeason")}</span>
+                      <input type="text" placeholder={t("greens.seasonPlaceholder")} defaultValue={g.seasonStartMMDD ?? ""} maxLength={5}
                         className="w-20 rounded border p-1 text-sm"
                         onBlur={(e) => {
                           const v = e.target.value.trim();
                           if (v && v !== g.seasonStartMMDD) handleUpdateSeasonDates(g.id, v, g.seasonEndMMDD ?? "");
                         }} />
-                      <span>to</span>
-                      <input type="text" placeholder="MM-DD" defaultValue={g.seasonEndMMDD ?? ""} maxLength={5}
+                      <span>{t("greens.seasonTo")}</span>
+                      <input type="text" placeholder={t("greens.seasonPlaceholder")} defaultValue={g.seasonEndMMDD ?? ""} maxLength={5}
                         className="w-20 rounded border p-1 text-sm"
                         onBlur={(e) => {
                           const v = e.target.value.trim();
@@ -381,13 +383,13 @@ export default function GreensPage() {
                   {/* Season overrides */}
                   {g.seasons.length > 0 && (
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-gray-500">Season overrides:</span>
+                      <span className="text-xs font-medium text-gray-500">{t("greens.seasonOverrides")}</span>
                       {g.seasons.map((s) => (
                         <div key={s.id} className="flex items-center gap-2 text-xs">
                           <span className="font-medium">{s.year}:</span>
                           <span>{s.startDate} – {s.endDate}</span>
                           {s.note && <span className="text-gray-400">({s.note})</span>}
-                          <button onClick={() => handleDeleteSeason(g.id, s.year)} className="text-red-500 hover:underline">Remove</button>
+                          <button onClick={() => handleDeleteSeason(g.id, s.year)} className="text-red-500 hover:underline">{t("greens.removeOverride")}</button>
                         </div>
                       ))}
                     </div>
@@ -413,7 +415,7 @@ export default function GreensPage() {
                     </div>
                   ) : (
                     <button onClick={() => { setSeasonFormGreen(g.id); setSeasonYear(new Date().getFullYear() + 1); }}
-                      className="text-xs text-green-700 hover:underline">+ Add season override</button>
+                      className="text-xs text-green-700 hover:underline">{t("greens.addSeasonOverride")}</button>
                   )}
                 </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 type Props = {
   tenantId: string;
@@ -35,6 +36,7 @@ export default function LocationEditor({
   title,
   intro,
 }: Props) {
+  const t = useTranslations("settings");
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -56,7 +58,7 @@ export default function LocationEditor({
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setGeoError("Your browser does not support location lookup.");
+      setGeoError(t("location.geoUnsupported"));
       return;
     }
     setGeoError(null);
@@ -65,7 +67,7 @@ export default function LocationEditor({
         setLatitude(pos.coords.latitude.toFixed(6));
         setLongitude(pos.coords.longitude.toFixed(6));
       },
-      () => setGeoError("Could not get your location. Enter manually below."),
+      () => setGeoError(t("location.geoFailed")),
     );
   };
 
@@ -84,10 +86,10 @@ export default function LocationEditor({
     setBusy(false);
     if (res.ok) {
       setGeoError(null); // Clear geo error on successful manual save.
-      setSavedMsg("Location saved.");
+      setSavedMsg(t("location.saved"));
       if (onSaved) await onSaved();
     } else {
-      setSavedMsg("Save failed. Check the values and try again.");
+      setSavedMsg(t("location.saveFailed"));
     }
   };
 
@@ -102,13 +104,13 @@ export default function LocationEditor({
         onClick={useMyLocation}
         className="px-4 py-2 rounded-md border border-emerald-600 text-emerald-700 hover:bg-emerald-50"
       >
-        Use my current location
+        {t("location.useMyLocation")}
       </button>
       {geoError && <p className="text-sm text-red-600">{geoError}</p>}
       <div className="grid grid-cols-2 gap-4">
         <label className="block text-sm">
-          <span className="block font-medium text-gray-700">Latitude</span>
-          <span className="block text-xs text-gray-500 mb-1">Between -90 and 90</span>
+          <span className="block font-medium text-gray-700">{t("location.latitudeLabel")}</span>
+          <span className="block text-xs text-gray-500 mb-1">{t("location.latitudeHint")}</span>
           <input
             className={inputCls}
             value={latitude}
@@ -116,13 +118,13 @@ export default function LocationEditor({
               setLatitude(e.target.value);
               setSavedMsg(null);
             }}
-            placeholder="55.953"
+            placeholder={t("location.latitudePlaceholder")}
             inputMode="decimal"
           />
         </label>
         <label className="block text-sm">
-          <span className="block font-medium text-gray-700">Longitude</span>
-          <span className="block text-xs text-gray-500 mb-1">Between -180 and 180</span>
+          <span className="block font-medium text-gray-700">{t("location.longitudeLabel")}</span>
+          <span className="block text-xs text-gray-500 mb-1">{t("location.longitudeHint")}</span>
           <input
             className={inputCls}
             value={longitude}
@@ -130,18 +132,18 @@ export default function LocationEditor({
               setLongitude(e.target.value);
               setSavedMsg(null);
             }}
-            placeholder="-3.188"
+            placeholder={t("location.longitudePlaceholder")}
             inputMode="decimal"
           />
         </label>
       </div>
       {latitude && longitude && (
         <p className="text-xs text-gray-500">
-          Coordinates set: {latitude}, {longitude}.
+          {t("location.coordinatesSet", { latitude, longitude })}
         </p>
       )}
       {savedMsg && (
-        <p className={`text-sm ${savedMsg.startsWith("Save failed") ? "text-red-600" : "text-emerald-700"}`}>
+        <p className={`text-sm ${savedMsg === t("location.saveFailed") ? "text-red-600" : "text-emerald-700"}`}>
           {savedMsg}
         </p>
       )}
@@ -159,7 +161,7 @@ export default function LocationEditor({
             onClick={() => onSkip()}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            Skip for now
+            {t("location.skipForNow")}
           </button>
         )}
       </div>

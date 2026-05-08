@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 import HelpHint from "@/components/help/HelpHint";
 
@@ -25,6 +25,7 @@ type Tenant = { id: string; name: string; slug: string };
 export default function UsersPage() {
   const { data: session } = useSession();
   const locale = useLocale();
+  const t = useTranslations("admin");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -79,7 +80,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">User Management <HelpHint slug="invite-members" /></h1>
+      <h1 className="text-2xl font-bold flex items-center gap-2">{t("users.title")} <HelpHint slug="invite-members" /></h1>
 
       {successMsg && (
         <p className="text-green-600 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>
@@ -87,13 +88,13 @@ export default function UsersPage() {
 
       {isPlatformAdmin && (
         <div>
-          <label className="text-sm font-medium text-gray-700 mr-2">Tenant:</label>
+          <label className="text-sm font-medium text-gray-700 mr-2">{t("users.tenantLabel")}</label>
           <select
             value={selectedTenant}
             onChange={(e) => { setSelectedTenant(e.target.value); setDetail(null); }}
             className="rounded border p-2 text-sm"
           >
-            <option value="">— Select a club —</option>
+            <option value="">{t("users.selectClub")}</option>
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>{t.name} (/{t.slug})</option>
             ))}
@@ -102,12 +103,12 @@ export default function UsersPage() {
       )}
 
       {isPlatformAdmin && !selectedTenant ? (
-        <p className="text-gray-400">Select a tenant above to manage users.</p>
+        <p className="text-gray-400">{t("users.selectTenantPrompt")}</p>
       ) : (
         <div className="flex gap-6">
           {/* User list */}
           <div className="flex-1 space-y-2">
-            <p className="text-sm text-gray-500">{users.length} user{users.length !== 1 ? "s" : ""}</p>
+            <p className="text-sm text-gray-500">{t("users.userCount", { count: users.length })}</p>
             {users.map((u) => (
               <div
                 key={u.id}
@@ -116,8 +117,8 @@ export default function UsersPage() {
               >
                 <div>
                   <p className="font-medium">
-                    {u.name || <span className="text-gray-400 italic">No name</span>}
-                    {u.suspended && <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Suspended</span>}
+                    {u.name || <span className="text-gray-400 italic">{t("users.noName")}</span>}
+                    {u.suspended && <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">{t("users.suspended")}</span>}
                   </p>
                   <p className="text-sm text-gray-500">{u.email}</p>
                   <p className="text-xs text-gray-400">{u.role} · {u._count.bookings} bookings · {u._count.submittedTasks} tasks</p>
@@ -126,35 +127,35 @@ export default function UsersPage() {
                   onClick={(e) => { e.stopPropagation(); toggleSuspend(u); }}
                   className={`text-xs px-3 py-1 rounded ${u.suspended ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"}`}
                 >
-                  {u.suspended ? "Activate" : "Suspend"}
+                  {u.suspended ? t("users.activate") : t("users.suspend")}
                 </button>
               </div>
             ))}
-            {users.length === 0 && <p className="text-gray-400">No users found.</p>}
+            {users.length === 0 && <p className="text-gray-400">{t("users.noUsers")}</p>}
           </div>
 
           {/* Detail panel */}
           {detail && (
             <div className="w-80 shrink-0 rounded-xl border bg-white p-6 shadow space-y-4 self-start sticky top-6">
-              <h2 className="font-semibold text-lg">{detail.name || "Unnamed User"}</h2>
+              <h2 className="font-semibold text-lg">{detail.name || t("users.detail.unnamed")}</h2>
               <dl className="text-sm space-y-2">
-                <dt className="text-gray-500">Email</dt>
+                <dt className="text-gray-500">{t("users.detail.email")}</dt>
                 <dd>{detail.email}</dd>
-                <dt className="text-gray-500">Role</dt>
+                <dt className="text-gray-500">{t("users.detail.role")}</dt>
                 <dd>{detail.role}</dd>
-                <dt className="text-gray-500">Status</dt>
-                <dd>{detail.suspended ? <span className="text-red-600 font-medium">Suspended</span> : <span className="text-green-600 font-medium">Active</span>}</dd>
-                <dt className="text-gray-500">Joined</dt>
+                <dt className="text-gray-500">{t("users.detail.status")}</dt>
+                <dd>{detail.suspended ? <span className="text-red-600 font-medium">{t("users.detail.suspended")}</span> : <span className="text-green-600 font-medium">{t("users.detail.active")}</span>}</dd>
+                <dt className="text-gray-500">{t("users.detail.joined")}</dt>
                 <dd>{formatDate(detail.createdAt, locale)}</dd>
-                <dt className="text-gray-500">Bookings</dt>
+                <dt className="text-gray-500">{t("users.detail.bookings")}</dt>
                 <dd>{detail._count.bookings}</dd>
-                <dt className="text-gray-500">Tasks submitted</dt>
+                <dt className="text-gray-500">{t("users.detail.tasksSubmitted")}</dt>
                 <dd>{detail._count.submittedTasks}</dd>
               </dl>
 
               {detail.bookings.length > 0 && (
                 <div>
-                  <h3 className="font-medium text-sm text-gray-700 mb-1">Recent Bookings</h3>
+                  <h3 className="font-medium text-sm text-gray-700 mb-1">{t("users.detail.recentBookings")}</h3>
                   <ul className="space-y-1">
                     {detail.bookings.map((b) => (
                       <li key={b.id} className="text-xs flex justify-between">
@@ -174,7 +175,7 @@ export default function UsersPage() {
                 onClick={() => toggleSuspend(detail)}
                 className={`w-full text-sm py-2 rounded ${detail.suspended ? "bg-green-600 text-white hover:bg-green-700" : "bg-red-600 text-white hover:bg-red-700"}`}
               >
-                {detail.suspended ? "Activate User" : "Suspend User"}
+                {detail.suspended ? t("users.detail.activateUser") : t("users.detail.suspendUser")}
               </button>
             </div>
           )}

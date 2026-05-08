@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
@@ -11,6 +12,7 @@ type Membership = {
 type Invitation = { id: string; email: string; role: string; kind: string; expiresAt: string };
 
 export default function Chapter5People({ onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [email, setEmail] = useState("");
@@ -58,7 +60,7 @@ export default function Chapter5People({ onAdvance }: ChapterProps) {
 
   return (
     <ChapterShell
-      title="Your people"
+      title={t("chapters.people")}
       intro="Add anyone else who helps run the club. They'll get an invitation email (stubbed for now — view in the platform inspector)."
       onSubmit={(e) => { e.preventDefault(); onAdvance(); }}
       submitLabel="Done — continue"

@@ -1,0 +1,20 @@
+{
+  "loading": "Loading…",
+  "previewBanner": "Preview only — not yet published.",
+  "previewBannerHint": "Members can't see your club until you press Go live in the final chapter.",
+  "header": "Setting up your club",
+  "saveAndExit": "Save & exit",
+  "chapters.about": "About your club",
+  "chapters.organisation": "Your organisation",
+  "chapters.where": "Where you are",
+  "chapters.hours": "When you're open",
+  "chapters.greens": "Your greens",
+  "chapters.people": "Your people",
+  "chapters.knowledge": "What the agents should know",
+  "chapters.features": "What you want enabled",
+  "chapters.subscription": "Subscription",
+  "chapters.review": "Review & Go live",
+  "shared.saveAndContinue": "Save and continue",
+  "shared.saving": "Saving…",
+  "shared.skipForNow": "Skip for now"
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 type Agent = { slug: string; name: string; description?: string };
@@ -11,6 +12,7 @@ type AgentConfig = {
 };
 
 export default function AgentConfigPage() {
+  const t = useTranslations("agents");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [configs, setConfigs] = useState<Record<string, AgentConfig>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -79,16 +81,15 @@ export default function AgentConfigPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Agent Configuration</h1>
-        <Link href="/dashboard/agents" className="text-sm rounded border px-3 py-1.5 hover:bg-gray-50">← Back to Agents</Link>
+        <h1 className="text-2xl font-bold">{t("config.title")}</h1>
+        <Link href="/dashboard/agents" className="text-sm rounded border px-3 py-1.5 hover:bg-gray-50">{t("config.backToAgents")}</Link>
       </div>
 
       {errorMsg && <p className="text-red-600 text-sm rounded bg-red-50 border border-red-200 px-4 py-2">{errorMsg}</p>}
       {successMsg && <p className="text-green-700 text-sm rounded bg-green-50 border border-green-200 px-4 py-2">{successMsg}</p>}
 
       <p className="text-sm text-gray-600">
-        Each agent reads its own config keys. Unknown keys are ignored. Defaults apply when a key is absent.
-        See the help articles for the full schema.
+        {t("config.intro")}
       </p>
 
       <div className="space-y-4">
@@ -102,7 +103,7 @@ export default function AgentConfigPage() {
                   {a.description && <p className="text-xs text-gray-500">{a.description}</p>}
                 </div>
                 <label className="flex items-center gap-2 text-sm">
-                  <span>{cfg?.enabled ? "Enabled" : "Disabled"}</span>
+                  <span>{cfg?.enabled ? t("config.enabled") : t("config.disabled")}</span>
                   <input
                     type="checkbox"
                     checked={cfg?.enabled ?? false}
@@ -112,7 +113,7 @@ export default function AgentConfigPage() {
                 </label>
               </div>
               <div>
-                <label className="text-xs text-gray-600 font-medium">Config (JSON)</label>
+                <label className="text-xs text-gray-600 font-medium">{t("config.configJsonLabel")}</label>
                 <textarea
                   value={drafts[a.slug] ?? ""}
                   onChange={e => setDrafts(prev => ({ ...prev, [a.slug]: e.target.value }))}
@@ -125,13 +126,13 @@ export default function AgentConfigPage() {
                   onClick={() => saveConfig(a.slug)}
                   className="rounded bg-green-600 px-4 py-1.5 text-sm text-white hover:bg-green-700"
                 >
-                  Save config
+                  {t("config.saveConfig")}
                 </button>
               </div>
             </div>
           );
         })}
-        {agents.length === 0 && <p className="text-sm text-gray-400">No agents registered.</p>}
+        {agents.length === 0 && <p className="text-sm text-gray-400">{t("config.noAgents")}</p>}
       </div>
     </div>
   );

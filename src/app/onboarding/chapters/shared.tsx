@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import type { Progress } from "../page";
 
 export type ChapterProps = {
@@ -13,7 +16,7 @@ export function ChapterShell({
   intro,
   children,
   onSubmit,
-  submitLabel = "Save and continue",
+  submitLabel,
   busy = false,
   canSkip = false,
   onSkip,
@@ -27,6 +30,8 @@ export function ChapterShell({
   canSkip?: boolean;
   onSkip?: () => void;
 }) {
+  const t = useTranslations("onboarding");
+  const resolvedLabel = submitLabel ?? t("shared.saveAndContinue");
   return (
     <form
       onSubmit={onSubmit ?? ((e) => e.preventDefault())}
@@ -44,7 +49,7 @@ export function ChapterShell({
             disabled={busy}
             className="px-5 py-2 rounded-md bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-50"
           >
-            {busy ? "Saving…" : submitLabel}
+            {busy ? t("shared.saving") : resolvedLabel}
           </button>
           {canSkip && onSkip && (
             <button
@@ -52,7 +57,7 @@ export function ChapterShell({
               onClick={onSkip}
               className="px-5 py-2 rounded-md text-gray-600 hover:text-gray-900"
             >
-              Skip for now
+              {t("shared.skipForNow")}
             </button>
           )}
         </div>

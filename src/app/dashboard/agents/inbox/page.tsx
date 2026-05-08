@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import { useTrack } from "@/components/TrackingProvider";
@@ -30,6 +30,7 @@ interface Proposal {
 type FilterKey = "PENDING" | "RECENT";
 
 export default function AgentInboxPage() {
+  const t = useTranslations("agents");
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("PENDING");
@@ -106,17 +107,14 @@ export default function AgentInboxPage() {
   return (
     <div className="max-w-5xl mx-auto py-6 px-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">🤖 Agent Inbox</h1>
+        <h1 className="text-2xl font-semibold">{t("inbox.title")}</h1>
         <Link href="/dashboard/agents" className="text-sm text-green-700 hover:underline">
-          ← Agent dashboard
+          {t("inbox.backToDashboard")}
         </Link>
       </div>
 
       <p className="text-sm text-gray-600 mb-4">
-        Proposals from automated agents waiting on your review. Approving applies
-        the proposal to the underlying record (e.g. creates a maintenance task or
-        merges into an existing one). Rejecting trains the agent — please leave
-        a reason.
+        {t("inbox.intro")}
       </p>
 
       <div className="flex gap-2 mb-4 border-b">
@@ -128,14 +126,14 @@ export default function AgentInboxPage() {
               filter === f ? "border-green-700 text-green-800 font-semibold" : "border-transparent text-gray-600"
             }`}
           >
-            {f === "PENDING" ? `Pending (${counts.pending})` : `Recent (all statuses)`}
+            {f === "PENDING" ? t("inbox.pendingTab", { count: counts.pending }) : t("inbox.recentTab")}
           </button>
         ))}
         <button
           onClick={reload}
           className="ml-auto px-3 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
         >
-          Refresh
+          {t("inbox.refresh")}
         </button>
       </div>
 
@@ -145,14 +143,14 @@ export default function AgentInboxPage() {
         </div>
       )}
 
-      {loading && <div className="text-sm text-gray-500">Loading…</div>}
+      {loading && <div className="text-sm text-gray-500">{t("inbox.loading")}</div>}
 
       {!loading && proposals.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           <div className="text-3xl mb-2">📭</div>
-          <div>No {filter === "PENDING" ? "pending" : ""} proposals.</div>
+          <div>{filter === "PENDING" ? t("inbox.emptyPending") : t("inbox.emptyAll")}</div>
           {filter === "PENDING" && (
-            <div className="text-xs mt-1">Agents will surface their suggestions here for review.</div>
+            <div className="text-xs mt-1">{t("inbox.emptyHint")}</div>
           )}
         </div>
       )}
@@ -198,11 +196,12 @@ function ProposalCard({
   onCancelReject: () => void;
   onSubmitReject: () => void;
 }) {
+  const t = useTranslations("agents");
   const p = proposal;
   const locale = useLocale();
   const isPending = p.status === "PENDING";
   const payload = (p.payloadParsed ?? {}) as Record<string, unknown>;
-  const title = String(payload.title ?? "(no title)");
+  const title = String(payload.title ?? t("inbox.noTitle"));
   const description = String(payload.description ?? "");
   const category = payload.category ? String(payload.category) : null;
   const priority = payload.priority ? String(payload.priority) : null;
@@ -229,12 +228,12 @@ function ProposalCard({
             {category && <span className="px-2 py-0.5 bg-gray-100 rounded">{category}</span>}
             {priority && <span className={`px-2 py-0.5 rounded ${priorityClass(priority)}`}>{priority}</span>}
             {participantCount !== null && (
-              <span>{participantCount} {participantCount === 1 ? "voice" : "voices"}</span>
+              <span>{t("inbox.voiceCount", { count: participantCount })}</span>
             )}
             {toneLabel && (
               <span>tone: {toneLabel}{toneSeverity !== null ? ` (${toneSeverity.toFixed(2)})` : ""}</span>
             )}
-            <span>confidence: {(p.confidence * 100).toFixed(0)}%</span>
+            <span>{t("inbox.confidence", { percent: (p.confidence * 100).toFixed(0) })}</span>
           </div>
 
           {p.reasoning && (
@@ -242,11 +241,11 @@ function ProposalCard({
           )}
 
           {p.status === "REJECTED" && p.rejectReason && (
-            <div className="text-xs text-red-700 mt-2">Rejected: {p.rejectReason}</div>
+            <div className="text-xs text-red-700 mt-2">{t("inbox.rejectedReason", { reason: p.rejectReason })}</div>
           )}
           {p.status === "APPROVED" && p.committedEntityId && (
             <div className="text-xs text-green-700 mt-2">
-              Applied to {p.committedEntityType} <code>{p.committedEntityId.slice(0, 8)}…</code>
+              {t("inbox.appliedTo", { entityType: p.committedEntityType ?? "" })} <code>{p.committedEntityId.slice(0, 8)}…</code>
               {p.committedAt && <> at {formatDateTime(p.committedAt, locale)}</>}
             </div>
           )}
@@ -259,14 +258,14 @@ function ProposalCard({
               disabled={busy}
               className="px-3 py-1 text-sm bg-green-700 text-white rounded hover:bg-green-800 disabled:opacity-50"
             >
-              {busy ? "…" : "Approve"}
+              {busy ? "…" : t("inbox.approve")}
             </button>
             <button
               onClick={onOpenReject}
               disabled={busy}
               className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50"
             >
-              Reject
+              {t("inbox.reject")}
             </button>
           </div>
         )}
@@ -275,12 +274,12 @@ function ProposalCard({
       {isRejectOpen && (
         <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
           <label className="block text-xs font-semibold text-amber-900 mb-1">
-            Reason (helps the agent learn — please be specific)
+            {t("inbox.rejectReasonLabel")}
           </label>
           <textarea
             value={rejectReason}
             onChange={(e) => onRejectReasonChange(e.target.value)}
-            placeholder="e.g. Not actually a complaint, was a joke / Already handled offline / Too speculative"
+            placeholder={t("inbox.rejectReasonPlaceholder")}
             className="w-full text-sm border border-amber-300 rounded p-2"
             rows={2}
           />
@@ -290,14 +289,14 @@ function ProposalCard({
               disabled={busy}
               className="px-3 py-1 text-sm bg-amber-700 text-white rounded hover:bg-amber-800 disabled:opacity-50"
             >
-              {busy ? "…" : "Confirm reject"}
+              {busy ? "…" : t("inbox.confirmReject")}
             </button>
             <button
               onClick={onCancelReject}
               disabled={busy}
               className="px-3 py-1 text-sm border border-amber-300 text-amber-800 rounded hover:bg-amber-100 disabled:opacity-50"
             >
-              Cancel
+              {t("inbox.cancelReject")}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import LocationEditor from "@/components/settings/LocationEditor";
@@ -26,19 +27,20 @@ export default async function SettingsLocationPage() {
   }
   if (!effectiveTenantId) redirect("/dashboard");
 
+  const t = await getTranslations("settings");
+
   return (
     <div className="space-y-4 max-w-2xl">
       <nav className="text-sm text-gray-500">
         <Link href="/dashboard/settings" className="hover:text-gray-700">
-          Settings
+          {t("location.breadcrumb")}
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-gray-700">Venue location</span>
+        <span className="text-gray-700">{t("location.title")}</span>
       </nav>
-      <h1 className="text-2xl font-bold">Venue location</h1>
+      <h1 className="text-2xl font-bold">{t("location.title")}</h1>
       <p className="text-gray-600 text-sm">
-        Used for weather forecasts on the booking page and to show your club on a map. Click
-        “Use my current location” from a device at the green for best accuracy.
+        {t("location.intro")}
       </p>
       <LocationEditor tenantId={effectiveTenantId} />
     </div>

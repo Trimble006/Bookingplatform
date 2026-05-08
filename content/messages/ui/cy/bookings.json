@@ -1,37 +1,50 @@
 {
-  "title": "Archebion",
-  "availability": "Argaeledd",
-  "allBookings": "Pob Archeb",
-  "myBookings": "Fy Archebion",
-  "noBookings": "Dim archebion eto.",
-  "selectTenant": "Dewiswch denant uchod i weld argaeledd ac archebion.",
-  "statusUpdated": "Archeb wedi'i {status} yn llwyddiannus.",
+  "title": "[cy] Bookings",
+  "availability": "[cy] Availability",
+  "allBookings": "[cy] All Bookings",
+  "myBookings": "[cy] My Bookings",
+  "noBookings": "[cy] No bookings yet.",
+  "selectTenant": "[cy] Select a tenant above to view availability and bookings.",
+  "statusUpdated": "[cy] Booking {status} successfully.",
   "modal": {
-    "bookRink": "Archebu {rink}",
-    "timeSlot": "Slot Amser",
-    "selectTime": "— Dewiswch amser —",
-    "playerName": "Enw Chwaraewr (dewisol)",
-    "playerNamePlaceholder": "Eich enw",
-    "bookFor": "Archebu ar gyfer",
-    "myself": "Fy hun",
-    "adminOverride": "Diystyru Gweinyddol",
-    "overridePlaceholder": "Rheswm dros ddiystyru (gofynnol)",
-    "booking": "Yn archebu…",
-    "requestBooking": "Gofyn am Archeb",
-    "bookedFor": "Archeb wedi'i gofyn ar gyfer {target} yn llwyddiannus!"
+    "bookRink": "[cy] Book {rink}",
+    "timeSlot": "[cy] Time Slot",
+    "selectTime": "[cy] — Select a time —",
+    "playerName": "[cy] Player Name (optional)",
+    "playerNamePlaceholder": "[cy] Your name",
+    "bookFor": "[cy] Book for",
+    "myself": "[cy] Myself",
+    "adminOverride": "[cy] Admin Override",
+    "overridePlaceholder": "[cy] Reason for override (required)",
+    "booking": "[cy] Booking…",
+    "requestBooking": "[cy] Request Booking",
+    "bookedFor": "[cy] Booking requested for {target} successfully!"
   },
   "actions": {
-    "approve": "Cymeradwyo",
-    "reject": "Gwrthod",
-    "sendToPayment": "Anfon i Dalu",
-    "confirm": "Cadarnhau",
-    "cancel": "Canslo",
-    "pay": "Talu £{amount}"
+    "approve": "[cy] Approve",
+    "reject": "[cy] Reject",
+    "sendToPayment": "[cy] Send to Payment",
+    "confirm": "[cy] Confirm",
+    "cancel": "[cy] Cancel",
+    "pay": "[cy] Pay £{amount}"
   },
   "labels": {
-    "bookedBy": "Archebwyd gan {name}",
-    "override": "Diystyru",
-    "tenant": "Tenant:",
-    "selectClub": "— Dewiswch glwb —"
+    "bookedBy": "[cy] Booked by {name}",
+    "override": "[cy] Override",
+    "tenant": "[cy] Tenant:",
+    "selectClub": "[cy] — Select a club —"
+  },
+  "grid": {
+    "time": "[cy] Time",
+    "booked": "[cy] Booked",
+    "open": "[cy] Open",
+    "closedForSeason": "[cy] Closed for season",
+    "nextSeason": "[cy] Next season: {start} – {end}",
+    "allWeather": "[cy] All weather",
+    "season": "[cy] Season: {start} – {end}",
+    "noGreens": "[cy] No greens configured for this club."
+  },
+  "weather": {
+    "hourlyForecast": "[cy] Hourly forecast"
   }
 }

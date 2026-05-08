@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 import Link from "next/link";
 
@@ -51,6 +51,7 @@ const statusBadge: Record<string, string> = {
 
 export default function TenantBillingPage() {
   const locale = useLocale();
+  const t = useTranslations("billing");
   const [profile, setProfile] = useState<BillingProfile | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [totalInvoices, setTotalInvoices] = useState(0);
@@ -96,29 +97,29 @@ export default function TenantBillingPage() {
       }),
     });
     if (res.ok) {
-      setMsg("Saved");
+      setMsg(t("contact.saved"));
       const updated = await res.json();
       setProfile((prev) => prev ? { ...prev, ...updated } : prev);
     } else {
-      setMsg("Save failed");
+      setMsg(t("contact.saveFailed"));
     }
     setSaving(false);
   }
 
-  if (loading) return <p className="text-gray-500">Loading billing…</p>;
+  if (loading) return <p className="text-gray-500">{t("loading")}</p>;
 
   if (!profile) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Billing</h1>
-        <p className="text-gray-500">No billing profile found. Contact platform admin.</p>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <p className="text-gray-500">{t("noProfile")}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Billing</h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       {/* Plan Card */}
       <div className="rounded-xl bg-white p-6 shadow">
@@ -130,44 +131,44 @@ export default function TenantBillingPage() {
                 {profile.billingStatus}
               </span>
             </div>
-            <p className="mt-1 text-2xl font-bold">£{(profile.plan.priceMonthlyPence / 100).toFixed(2)}<span className="text-sm font-normal text-gray-500">/month</span></p>
+            <p className="mt-1 text-2xl font-bold">£{(profile.plan.priceMonthlyPence / 100).toFixed(2)}<span className="text-sm font-normal text-gray-500">{t("plan.perMonth")}</span></p>
           </div>
           <Link href="/dashboard/billing/plans" className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">
-            Compare Plans
+            {t("plan.comparePlans")}
           </Link>
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <div><dt className="text-gray-500">Max Members</dt><dd className="font-medium">{profile.plan.maxMembers}</dd></div>
-          <div><dt className="text-gray-500">Max Greens</dt><dd className="font-medium">{profile.plan.maxGreens}</dd></div>
-          <div><dt className="text-gray-500">Streaming</dt><dd className="font-medium">{profile.plan.includedStreamingTier}</dd></div>
-          <div><dt className="text-gray-500">Payment</dt><dd className="font-medium">{profile.paymentMethod}</dd></div>
+          <div><dt className="text-gray-500">{t("plan.maxMembers")}</dt><dd className="font-medium">{profile.plan.maxMembers}</dd></div>
+          <div><dt className="text-gray-500">{t("plan.maxGreens")}</dt><dd className="font-medium">{profile.plan.maxGreens}</dd></div>
+          <div><dt className="text-gray-500">{t("plan.streaming")}</dt><dd className="font-medium">{profile.plan.includedStreamingTier}</dd></div>
+          <div><dt className="text-gray-500">{t("plan.payment")}</dt><dd className="font-medium">{profile.paymentMethod}</dd></div>
         </dl>
         <div className="mt-4 flex gap-6 text-sm text-gray-500">
-          <span>Next billing: <strong className="text-gray-900">{formatDate(profile.currentPeriodEnd, locale)}</strong></span>
-          {profile.trialEndsAt && <span>Trial ends: <strong className="text-gray-900">{formatDate(profile.trialEndsAt, locale)}</strong></span>}
+          <span>{t("plan.nextBilling")} <strong className="text-gray-900">{formatDate(profile.currentPeriodEnd, locale)}</strong></span>
+          {profile.trialEndsAt && <span>{t("plan.trialEnds")} <strong className="text-gray-900">{formatDate(profile.trialEndsAt, locale)}</strong></span>}
         </div>
       </div>
 
       {/* Billing Contact Form */}
       <form onSubmit={saveProfile} className="rounded-xl bg-white p-6 shadow space-y-4">
-        <h3 className="font-semibold">Billing Contact</h3>
+        <h3 className="font-semibold">{t("contact.title")}</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Contact Name</label>
+            <label className="block text-xs text-gray-500 mb-1">{t("contact.contactName")}</label>
             <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Contact Email</label>
+            <label className="block text-xs text-gray-500 mb-1">{t("contact.contactEmail")}</label>
             <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">VAT Number</label>
+            <label className="block text-xs text-gray-500 mb-1">{t("contact.vatNumber")}</label>
             <input type="text" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" />
           </div>
         </div>
         <div className="flex items-center gap-3">
           <button type="submit" disabled={saving} className="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50">
-            Save
+            {t("contact.save")}
           </button>
           {msg && <span className="text-sm text-gray-600">{msg}</span>}
         </div>
@@ -176,17 +177,17 @@ export default function TenantBillingPage() {
       {/* Invoice History */}
       <div className="rounded-xl bg-white shadow">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold text-gray-700">Invoices ({totalInvoices})</h3>
+          <h3 className="text-sm font-semibold text-gray-700">{t("invoices.title")} ({totalInvoices})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-3">Ref</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Period</th>
-                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">{t("invoices.ref")}</th>
+                <th className="px-4 py-3">{t("invoices.amount")}</th>
+                <th className="px-4 py-3">{t("invoices.status")}</th>
+                <th className="px-4 py-3">{t("invoices.period")}</th>
+                <th className="px-4 py-3">{t("invoices.date")}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -203,12 +204,12 @@ export default function TenantBillingPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-500">{formatDate(inv.createdAt, locale)}</td>
                   <td className="px-4 py-3">
-                    <a href={`/api/billing/invoices/${inv.id}?format=csv`} download className="text-xs text-blue-600 hover:underline">CSV</a>
+                    <a href={`/api/billing/invoices/${inv.id}?format=csv`} download className="text-xs text-blue-600 hover:underline">{t("invoices.csv")}</a>
                   </td>
                 </tr>
               ))}
               {invoices.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-3 text-center text-gray-400">No invoices yet</td></tr>
+                <tr><td colSpan={6} className="px-4 py-3 text-center text-gray-400">{t("invoices.noInvoices")}</td></tr>
               )}
             </tbody>
           </table>
