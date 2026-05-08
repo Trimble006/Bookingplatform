@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
 export default function Chapter3Hours({ tenantId, onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [openingTime, setOpeningTime] = useState("08:00");
   const [closingTime, setClosingTime] = useState("20:00");
   const [seasonStart, setSeasonStart] = useState("");
@@ -43,11 +45,11 @@ export default function Chapter3Hours({ tenantId, onAdvance }: ChapterProps) {
     await onAdvance();
   };
 
-  if (!loaded) return <div className="text-gray-500">Loading…</div>;
+  if (!loaded) return <div className="text-gray-500">{t("loading")}</div>;
 
   return (
     <ChapterShell
-      title="When you're open"
+      title={t("chapters.hours")}
       intro="The hours members can book within, and the default playing season. You can override the season per-green in the next step."
       onSubmit={submit}
       busy={busy}

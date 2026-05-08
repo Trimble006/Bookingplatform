@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
@@ -98,6 +99,7 @@ const MONTHS = [
  * See plan: /memories/session/plan.md (Onboarding KYC).
  */
 export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [country, setCountry] = useState<Country>("GB");
   const [orgType, setOrgType] = useState<OrgType | "">("");
   const [yearEndMonth, setYearEndMonth] = useState(3); // March is most common UK club FY end
@@ -144,7 +146,7 @@ export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterPro
     await onAdvance();
   };
 
-  if (!loaded) return <div className="text-gray-500">Loading…</div>;
+  if (!loaded) return <div className="text-gray-500">{t("loading")}</div>;
 
   const selected = ORG_TYPES.find((o) => o.value === orgType);
   const charityStyle =
@@ -164,7 +166,7 @@ export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterPro
 
   return (
     <ChapterShell
-      title="Your organisation"
+      title={t("chapters.organisation")}
       intro="A few KYC questions so we can tailor the platform — accounts features, advice, and reporting periods all flow from here."
       onSubmit={submit}
       busy={busy}

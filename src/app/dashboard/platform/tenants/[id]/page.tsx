@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate, formatDateTime } from "@/lib/format";
 import Link from "next/link";
 
@@ -52,6 +52,7 @@ export default function TenantDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("admin");
   const { update } = useSession();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [error, setError] = useState("");
@@ -66,7 +67,7 @@ export default function TenantDetailsPage() {
         return r.json();
       })
       .then((d) => setTenant(d))
-      .catch(() => setError("Tenant not found"));
+      .catch(() => setError(t("platform.tenantDetail.tenantNotFound")));
   }
 
   useEffect(() => {
@@ -129,14 +130,14 @@ export default function TenantDetailsPage() {
   if (error && !tenant) {
     return (
       <div className="space-y-4">
-        <Link href="/dashboard/platform" className="text-sm text-green-700 hover:underline">&larr; Back to tenants</Link>
+        <Link href="/dashboard/platform" className="text-sm text-green-700 hover:underline">{t("platform.tenantDetail.backToTenants")}</Link>
         <p className="text-red-600">{error}</p>
       </div>
     );
   }
 
   if (!tenant) {
-    return <p className="text-gray-500">Loading…</p>;
+    return <p className="text-gray-500">{t("platform.tenantDetail.loading")}</p>;
   }
 
   const status = tenant.status ?? (tenant.active ? "ACTIVE" : "SUSPENDED");
@@ -144,7 +145,7 @@ export default function TenantDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/dashboard/platform" className="text-sm text-green-700 hover:underline">&larr; Back to tenants</Link>
+      <Link href="/dashboard/platform" className="text-sm text-green-700 hover:underline">{t("platform.tenantDetail.backToTenants")}</Link>
 
       <div className="flex items-center gap-3">
         <div className="h-4 w-4 rounded-full" style={{ backgroundColor: tenant.brandColor }} />
@@ -152,7 +153,7 @@ export default function TenantDetailsPage() {
         <span className="text-sm text-gray-400">/{tenant.slug}</span>
         <span className={`ml-2 text-xs px-2 py-0.5 rounded ${STATUS_BADGE[status]}`}>{status}</span>
         <Link href={`/dashboard/platform/tenants/${id}/billing`} className="ml-auto rounded bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-          View Billing
+          {t("platform.tenantDetail.viewBilling")}
         </Link>
       </div>
 
@@ -163,16 +164,15 @@ export default function TenantDetailsPage() {
       <div className="rounded-xl bg-white p-6 shadow space-y-4">
         <div className="flex justify-between items-start gap-3">
           <div>
-            <h2 className="font-semibold">Tenant content</h2>
+            <h2 className="font-semibold">{t("platform.tenantDetail.tenantContent")}</h2>
             <p className="text-xs text-gray-500 mt-1">
-              Branding, hours, season, and feature flags are tenant-plane settings. To change them, start
-              an impersonation and you&rsquo;ll be acting as a tenant admin for this club.
+              {t("platform.tenantDetail.tenantContentDescription")}
             </p>
           </div>
         </div>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <dt className="text-gray-500">Public URL</dt>
+          <dt className="text-gray-500">{t("platform.tenantDetail.publicUrl")}</dt>
           <dd className="font-mono">
             {tenant.slug.startsWith("t-") ? (
               <span className="inline-block px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-600">PLACEHOLDER</span>
@@ -182,15 +182,15 @@ export default function TenantDetailsPage() {
               <span>/{tenant.slug} <span className="ml-1 text-xs text-amber-700">[CHOSEN, not yet live]</span></span>
             )}
           </dd>
-          <dt className="text-gray-500">Locale</dt><dd>{tenant.locale}</dd>
-          <dt className="text-gray-500">Season</dt><dd>{tenant.seasonStart && tenant.seasonEnd ? `${tenant.seasonStart} — ${tenant.seasonEnd}` : "Not set"}</dd>
-          <dt className="text-gray-500">Hours</dt><dd>{tenant.openingTime} – {tenant.closingTime}</dd>
-          <dt className="text-gray-500">Brand colour</dt><dd className="font-mono">{tenant.brandColor}</dd>
-          <dt className="text-gray-500">Logo URL</dt><dd className="truncate">{tenant.logoUrl ?? <span className="text-gray-400">—</span>}</dd>
-          <dt className="text-gray-500">Created</dt><dd>{formatDate(tenant.createdAt, locale)}</dd>
+          <dt className="text-gray-500">{t("platform.tenantDetail.locale")}</dt><dd>{tenant.locale}</dd>
+          <dt className="text-gray-500">{t("platform.tenantDetail.season")}</dt><dd>{tenant.seasonStart && tenant.seasonEnd ? `${tenant.seasonStart} — ${tenant.seasonEnd}` : t("platform.tenantDetail.seasonNotSet")}</dd>
+          <dt className="text-gray-500">{t("platform.tenantDetail.hours")}</dt><dd>{tenant.openingTime} – {tenant.closingTime}</dd>
+          <dt className="text-gray-500">{t("platform.tenantDetail.brandColour")}</dt><dd className="font-mono">{tenant.brandColor}</dd>
+          <dt className="text-gray-500">{t("platform.tenantDetail.logoUrl")}</dt><dd className="truncate">{tenant.logoUrl ?? <span className="text-gray-400">—</span>}</dd>
+          <dt className="text-gray-500">{t("platform.tenantDetail.created")}</dt><dd>{formatDate(tenant.createdAt, locale)}</dd>
           {tenant.goLiveAt && (
             <>
-              <dt className="text-gray-500">Went live</dt>
+              <dt className="text-gray-500">{t("platform.tenantDetail.wentLive")}</dt>
               <dd>{formatDateTime(tenant.goLiveAt, locale)}</dd>
             </>
           )}
@@ -199,14 +199,14 @@ export default function TenantDetailsPage() {
         {canImpersonate ? (
           <div className="border-t pt-4 space-y-2">
             <label htmlFor="reason" className="block text-xs font-medium text-gray-600">
-              Reason for impersonation (recorded in the audit log)
+              {t("platform.tenantDetail.reasonLabel")}
             </label>
             <input
               id="reason"
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Helping admin set opening hours"
+              placeholder={t("platform.tenantDetail.reasonPlaceholder")}
               className="w-full rounded border p-2 text-sm"
               maxLength={500}
               disabled={busy}
@@ -217,21 +217,21 @@ export default function TenantDetailsPage() {
               disabled={busy}
               className="rounded bg-green-600 px-4 py-2 text-white text-sm hover:bg-green-700 disabled:opacity-50"
             >
-              {busy ? "Starting…" : `Impersonate to edit (${tenant.name})`}
+              {busy ? t("platform.tenantDetail.starting") : t("platform.tenantDetail.impersonateButton", { name: tenant.name })}
             </button>
           </div>
         ) : (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-            Impersonation is disabled for tenants in {status} state. Reactivate the tenant first if changes are needed.
+            {t("platform.tenantDetail.impersonationDisabled", { status })}
           </p>
         )}
       </div>
 
       {/* Greens — read-only summary */}
       <div className="rounded-xl bg-white p-6 shadow space-y-3">
-        <h2 className="font-semibold">Greens ({tenant.greens.length})</h2>
+        <h2 className="font-semibold">{t("platform.tenantDetail.greens", { count: tenant.greens.length })}</h2>
         {tenant.greens.length === 0 ? (
-          <p className="text-sm text-gray-500">No greens configured.</p>
+          <p className="text-sm text-gray-500">{t("platform.tenantDetail.noGreens")}</p>
         ) : (
           <ul className="space-y-2">
             {tenant.greens.map((g) => (
@@ -246,12 +246,12 @@ export default function TenantDetailsPage() {
 
       {/* Feature flags — read-only on the platform plane */}
       <div className="rounded-xl bg-white p-6 shadow space-y-3">
-        <h2 className="font-semibold">Feature Flags</h2>
+        <h2 className="font-semibold">{t("platform.tenantDetail.featureFlags")}</h2>
         <p className="text-xs text-gray-500">
-          Read-only here. To toggle a tenant-toggleable flag, impersonate and use the tenant admin UI.
+          {t("platform.tenantDetail.featureFlagsReadonly")}
         </p>
         {tenant.featureFlags.length === 0 ? (
-          <p className="text-sm text-gray-500">No flags configured.</p>
+          <p className="text-sm text-gray-500">{t("platform.tenantDetail.noFlags")}</p>
         ) : (
           <ul className="space-y-1">
             {tenant.featureFlags.map((f) => (
@@ -269,10 +269,9 @@ export default function TenantDetailsPage() {
       {/* Platform-plane: lifecycle controls */}
       <div className="rounded-xl bg-white p-6 shadow space-y-3 border-l-4 border-purple-300">
         <div>
-          <h2 className="font-semibold">Platform lifecycle</h2>
+          <h2 className="font-semibold">{t("platform.tenantDetail.platformLifecycle")}</h2>
           <p className="text-xs text-gray-500 mt-1">
-            These controls are platform-plane: they manage the tenant&rsquo;s status from the outside.
-            They don&rsquo;t require impersonation.
+            {t("platform.tenantDetail.platformLifecycleDescription")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -283,7 +282,7 @@ export default function TenantDetailsPage() {
               disabled={busy}
               className="rounded bg-green-600 px-3 py-1.5 text-white text-sm hover:bg-green-700 disabled:opacity-50"
             >
-              Activate
+              {t("platform.tenantDetail.activate")}
             </button>
           )}
           {status === "ACTIVE" && (
@@ -293,7 +292,7 @@ export default function TenantDetailsPage() {
               disabled={busy}
               className="rounded bg-amber-600 px-3 py-1.5 text-white text-sm hover:bg-amber-700 disabled:opacity-50"
             >
-              Suspend
+              {t("platform.tenantDetail.suspendTenant")}
             </button>
           )}
           {status === "SUSPENDED" && (

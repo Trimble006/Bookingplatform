@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatNumber } from "@/lib/format";
 
 interface Stats {
@@ -22,6 +22,7 @@ const PERIODS = ["7d", "30d", "90d"] as const;
 
 export default function AnalyticsPage() {
   const { data: session } = useSession();
+  const t = useTranslations("admin");
   const [stats, setStats] = useState<Stats | null>(null);
   const [period, setPeriod] = useState<string>("7d");
   const [loading, setLoading] = useState(true);
@@ -42,7 +43,7 @@ export default function AnalyticsPage() {
   }, [period, isAdmin]);
 
   if (!isAdmin) {
-    return <p className="text-gray-500">You do not have access to analytics.</p>;
+    return <p className="text-gray-500">{t("analytics.noAccess")}</p>;
   }
 
   const pwaCount = stats?.pwa.find((p) => p.isPWA)?.count ?? 0;
@@ -52,7 +53,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Analytics</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{t("analytics.title")}</h1>
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
           {PERIODS.map((p) => (
             <button
@@ -67,22 +68,22 @@ export default function AnalyticsPage() {
       </div>
 
       {loading ? (
-        <p className="text-gray-400">Loading…</p>
+        <p className="text-gray-400">{t("analytics.loading")}</p>
       ) : !stats ? (
-        <p className="text-red-500">Failed to load analytics.</p>
+        <p className="text-red-500">{t("analytics.loadFailed")}</p>
       ) : (
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Events" value={stats.totalEvents} />
-            <StatCard label="Unique Visitors" value={stats.uniqueVisitors} />
-            <StatCard label="PWA Users" value={pwaCount} />
-            <StatCard label="Browser Users" value={browserCount} />
+            <StatCard label={t("analytics.totalEvents")} value={stats.totalEvents} />
+            <StatCard label={t("analytics.uniqueVisitors")} value={stats.uniqueVisitors} />
+            <StatCard label={t("analytics.pwaUsers")} value={pwaCount} />
+            <StatCard label={t("analytics.browserUsers")} value={browserCount} />
           </div>
 
           {/* Daily traffic chart (CSS bars) */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-700 mb-3">Daily Traffic</h2>
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">{t("analytics.dailyTraffic")}</h2>
             <div className="flex items-end gap-1 h-40 bg-gray-50 rounded-lg p-2 overflow-x-auto">
               {stats.dailyCounts.map((d) => (
                 <div key={d.day} className="flex flex-col items-center flex-1 min-w-[24px]" title={`${d.day}: ${d.count}`}>
@@ -95,19 +96,19 @@ export default function AnalyticsPage() {
                   </span>
                 </div>
               ))}
-              {stats.dailyCounts.length === 0 && <p className="text-gray-400 m-auto">No data yet</p>}
+              {stats.dailyCounts.length === 0 && <p className="text-gray-400 m-auto">{t("analytics.noData")}</p>}
             </div>
           </section>
 
           {/* Browser and Device breakdown side by side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <BreakdownTable title="Browser Breakdown" items={stats.browsers} />
-            <BreakdownTable title="Device Breakdown" items={stats.devices} />
+            <BreakdownTable title={t("analytics.browserBreakdown")} items={stats.browsers} />
+            <BreakdownTable title={t("analytics.deviceBreakdown")} items={stats.devices} />
           </div>
 
           {/* PWA vs Browser */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-700 mb-3">PWA vs Browser</h2>
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">{t("analytics.pwaVsBrowser")}</h2>
             <div className="flex gap-4">
               <BarSegment label="PWA" count={pwaCount} total={pwaCount + browserCount} color="bg-green-500" />
               <BarSegment label="Browser" count={browserCount} total={pwaCount + browserCount} color="bg-blue-500" />
@@ -116,13 +117,13 @@ export default function AnalyticsPage() {
 
           {/* Top Pages */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-700 mb-3">Top Pages</h2>
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">{t("analytics.topPages")}</h2>
             <div className="bg-white rounded-lg border">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-500">
-                    <th className="px-4 py-2">Path</th>
-                    <th className="px-4 py-2 text-right">Views</th>
+                    <th className="px-4 py-2">{t("analytics.path")}</th>
+                    <th className="px-4 py-2 text-right">{t("analytics.views")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -133,7 +134,7 @@ export default function AnalyticsPage() {
                     </tr>
                   ))}
                   {stats.topPages.length === 0 && (
-                    <tr><td colSpan={2} className="px-4 py-4 text-gray-400 text-center">No page views yet</td></tr>
+                    <tr><td colSpan={2} className="px-4 py-4 text-gray-400 text-center">{t("analytics.noPageViews")}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -142,13 +143,13 @@ export default function AnalyticsPage() {
 
           {/* Feature Usage */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-700 mb-3">Feature Usage</h2>
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">{t("analytics.featureUsage")}</h2>
             <div className="bg-white rounded-lg border">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-500">
-                    <th className="px-4 py-2">Feature</th>
-                    <th className="px-4 py-2 text-right">Count</th>
+                    <th className="px-4 py-2">{t("analytics.feature")}</th>
+                    <th className="px-4 py-2 text-right">{t("analytics.count")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -159,7 +160,7 @@ export default function AnalyticsPage() {
                     </tr>
                   ))}
                   {stats.featureUsage.length === 0 && (
-                    <tr><td colSpan={2} className="px-4 py-4 text-gray-400 text-center">No feature usage data yet</td></tr>
+                    <tr><td colSpan={2} className="px-4 py-4 text-gray-400 text-center">{t("analytics.noFeatureUsage")}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -168,13 +169,13 @@ export default function AnalyticsPage() {
 
           {/* Top Interactions */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-700 mb-3">Top Interactions</h2>
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">{t("analytics.topInteractions")}</h2>
             <div className="bg-white rounded-lg border">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-500">
-                    <th className="px-4 py-2">Action</th>
-                    <th className="px-4 py-2 text-right">Count</th>
+                    <th className="px-4 py-2">{t("analytics.action")}</th>
+                    <th className="px-4 py-2 text-right">{t("analytics.count")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -185,7 +186,7 @@ export default function AnalyticsPage() {
                     </tr>
                   ))}
                   {stats.topInteractions.length === 0 && (
-                    <tr><td colSpan={2} className="px-4 py-4 text-gray-400 text-center">No interaction data yet</td></tr>
+                    <tr><td colSpan={2} className="px-4 py-4 text-gray-400 text-center">{t("analytics.noInteractions")}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -210,6 +211,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 function BreakdownTable({ title, items }: { title: string; items: { name: string; count: number }[] }) {
+  const t = useTranslations("admin");
   const total = items.reduce((s, i) => s + i.count, 0) || 1;
   return (
     <section>
@@ -226,7 +228,7 @@ function BreakdownTable({ title, items }: { title: string; items: { name: string
             </div>
           </div>
         ))}
-        {items.length === 0 && <p className="text-gray-400 text-sm">No data yet</p>}
+        {items.length === 0 && <p className="text-gray-400 text-sm">{t("analytics.noData")}</p>}
       </div>
     </section>
   );

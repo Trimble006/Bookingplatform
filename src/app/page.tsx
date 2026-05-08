@@ -3,8 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import EventCard from "@/components/events/EventCard";
+import { getTranslations } from "next-intl/server";
 
 export default async function HomePage() {
+  const t = await getTranslations("common");
   const session = await getServerSession(authOptions) as { user: { tenantId?: string | null; role?: string } } | null;
   const isAuthenticated = !!session?.user;
 
@@ -46,15 +48,15 @@ export default async function HomePage() {
     <main className="min-h-screen">
       {/* Hero */}
       <section className="flex flex-col items-center justify-center p-8 py-16 bg-gradient-to-b from-green-50 to-white">
-        <h1 className="text-4xl font-bold tracking-tight text-green-700">Club Management Platform</h1>
-        <p className="mt-4 text-lg text-gray-600">Multi-tenant bowling club platform</p>
+        <h1 className="text-4xl font-bold tracking-tight text-green-700">{t("home.title")}</h1>
+        <p className="mt-4 text-lg text-gray-600">{t("home.subtitle")}</p>
         <div className="mt-8 flex gap-4">
           {isAuthenticated ? (
             <Link
               href="/dashboard"
               className="rounded-lg bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700"
             >
-              Go to Dashboard
+              {t("home.goToDashboard")}
             </Link>
           ) : (
             <>
@@ -62,19 +64,19 @@ export default async function HomePage() {
                 href="/auth/login"
                 className="rounded-lg bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700"
               >
-                Sign In
+                {t("home.signIn")}
               </Link>
               <Link
                 href="/auth/register"
                 className="rounded-lg border border-green-600 px-6 py-3 text-green-700 font-medium hover:bg-green-50"
               >
-                Register
+                {t("home.register")}
               </Link>
               <Link
                 href="/join"
                 className="rounded-lg border border-green-600 px-6 py-3 text-green-700 font-medium hover:bg-green-50"
               >
-                Add your club
+                {t("home.addYourClub")}
               </Link>
             </>
           )}
@@ -84,7 +86,7 @@ export default async function HomePage() {
       {/* Browse Clubs */}
       {publicClubs.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 py-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Browse Clubs</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">{t("home.browseClubs")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {publicClubs.map((club) => (
               <Link
@@ -110,9 +112,9 @@ export default async function HomePage() {
       {publicEvents.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 py-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Upcoming Events</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t("home.upcomingEvents")}</h2>
             <Link href="/events" className="text-green-600 hover:underline text-sm font-medium">
-              View all &rarr;
+              {t("home.viewAll")}
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import HeroSection from "@/components/content/HeroSection";
 import AboutSection from "@/components/content/AboutSection";
 import PhotoSection from "@/components/content/PhotoSection";
@@ -37,6 +38,7 @@ type Tenant = { id: string; name: string; slug: string };
 
 export default function ContentPreviewPage() {
   const [sections, setSections] = useState<ContentSection[]>([]);
+  const t = useTranslations("settings");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -68,33 +70,33 @@ export default function ContentPreviewPage() {
       {/* Toolbar */}
       <div className="sticky top-0 z-50 bg-white border-b shadow-sm px-6 py-3 flex items-center gap-4">
         <Link href="/dashboard/content" className="text-green-700 hover:underline font-medium text-sm">
-          ← Back to Content Manager
+          {t("content.preview.backToManager")}
         </Link>
-        <span className="text-lg font-bold">Page Preview</span>
+        <span className="text-lg font-bold">{t("content.preview.title")}</span>
 
         {isPlatformAdmin && (
           <select value={selectedTenant} onChange={(e) => setSelectedTenant(e.target.value)} className="border rounded px-2 py-1 text-sm">
-            <option value="">— My Tenant —</option>
+            <option value="">{t("content.preview.tenantLabel")}</option>
             {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         )}
 
         <label className="flex items-center gap-1 text-sm">
           <input type="checkbox" checked={showDisabled} onChange={(e) => setShowDisabled(e.target.checked)} />
-          Show disabled
+          {t("content.preview.showDisabled")}
         </label>
         <label className="flex items-center gap-1 text-sm">
           <input type="checkbox" checked={showOverlays} onChange={(e) => setShowOverlays(e.target.checked)} />
-          Status badges
+          {t("content.preview.statusBadges")}
         </label>
 
-        <span className="ml-auto text-xs text-gray-400">{visible.length} section{visible.length !== 1 ? "s" : ""}</span>
+        <span className="ml-auto text-xs text-gray-400">{t("content.preview.sectionCount", { count: visible.length })}</span>
       </div>
 
       {/* Rendered preview */}
       {visible.length === 0 ? (
         <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
-          No sections to preview. Create some in the Content Manager.
+          {t("content.preview.noSections")}
         </div>
       ) : (
         <div className="min-h-screen">

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import LocalityEditor from "@/components/settings/LocalityEditor";
@@ -26,19 +27,20 @@ export default async function SettingsLocalityPage() {
   }
   if (!effectiveTenantId) redirect("/dashboard");
 
+  const t = await getTranslations("settings");
+
   return (
     <div className="space-y-4 max-w-2xl">
       <nav className="text-sm text-gray-500">
         <Link href="/dashboard/settings" className="hover:text-gray-700">
-          Settings
+          {t("locality.breadcrumb")}
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-gray-700">Town / city</span>
+        <span className="text-gray-700">{t("locality.title")}</span>
       </nav>
-      <h1 className="text-2xl font-bold">Town / city</h1>
+      <h1 className="text-2xl font-bold">{t("locality.title")}</h1>
       <p className="text-gray-600 text-sm">
-        Shown alongside your club name so members can tell clubs apart — especially
-        useful when clubs share a common name.
+        {t("locality.intro")}
       </p>
       <LocalityEditor tenantId={effectiveTenantId} />
     </div>

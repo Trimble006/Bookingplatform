@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell } from "./shared";
 import type { ChapterProps } from "./shared";
 
@@ -30,6 +31,7 @@ type GoLiveStatus = {
  * the slug.
  */
 export default function Chapter9Review({ tenantId, onGoTo }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [goLive, setGoLive] = useState<GoLiveStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -103,7 +105,7 @@ export default function Chapter9Review({ tenantId, onGoTo }: ChapterProps) {
 
   return (
     <ChapterShell
-      title="Review & Go live"
+      title={t("chapters.review")}
       intro="Last step. Have a look at the summary below, then press Go live when you're ready. This is what flips your club from preview to public."
     >
       <dl className="grid grid-cols-2 gap-4 bg-gray-50 rounded p-4 border border-gray-200">

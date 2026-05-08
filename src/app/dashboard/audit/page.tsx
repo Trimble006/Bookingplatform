@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/lib/format";
 
 interface AuditEvent {
@@ -35,6 +35,7 @@ function formatTimestamp(ts: string, locale: string): string {
 export default function AuditPage() {
   const { data: session } = useSession();
   const locale = useLocale();
+  const t = useTranslations("admin");
   const role = (session?.user as any)?.role;
   const acting = (session?.user as any)?.actingAs ?? null;
   const effectiveRole = acting ? acting.role : role;
@@ -91,19 +92,19 @@ export default function AuditPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">{isAdmin ? "Audit Log" : "My Activity"}</h1>
+      <h1 className="text-2xl font-bold mb-4">{isAdmin ? t("audit.title") : t("audit.myActivity")}</h1>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4 items-end">
         {isPlatformAdmin && (
           <label className="flex flex-col text-sm">
-            Tenant
+            {t("audit.tenantFilter")}
             <select
               className="border rounded px-2 py-1 mt-1"
               value={selectedTenant}
               onChange={(e) => { setSelectedTenant(e.target.value); setPage(1); }}
             >
-              <option value="">All tenants</option>
+              <option value="">{t("audit.allTenants")}</option>
               {tenants.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
@@ -112,7 +113,7 @@ export default function AuditPage() {
         )}
 
         <label className="flex flex-col text-sm">
-          Domain
+          {t("audit.domainFilter")}
           <select
             className="border rounded px-2 py-1 mt-1"
             value={actionFilter}
@@ -125,39 +126,39 @@ export default function AuditPage() {
         </label>
 
         <label className="flex flex-col text-sm">
-          From
+          {t("audit.fromFilter")}
           <input type="date" className="border rounded px-2 py-1 mt-1" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} />
         </label>
 
         <label className="flex flex-col text-sm">
-          To
+          {t("audit.toFilter")}
           <input type="date" className="border rounded px-2 py-1 mt-1" value={toDate} onChange={(e) => { setToDate(e.target.value); setPage(1); }} />
         </label>
 
         <label className="flex items-center gap-1 text-sm mt-auto py-1">
           <input type="checkbox" checked={piiOnly} onChange={(e) => { setPiiOnly(e.target.checked); setPage(1); }} />
-          PII only
+          {t("audit.piiOnly")}
         </label>
       </div>
 
       {/* Results */}
       {loading ? (
-        <p className="text-gray-500">Loading…</p>
+        <p className="text-gray-500">{t("audit.loading")}</p>
       ) : events.length === 0 ? (
-        <p className="text-gray-500">No audit events found.</p>
+        <p className="text-gray-500">{t("audit.noEvents")}</p>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-100 text-left">
-                  <th className="p-2 border-b">Time</th>
-                  {isAdmin && <th className="p-2 border-b">Actor</th>}
-                  {isPlatformAdmin && <th className="p-2 border-b">Tenant</th>}
-                  <th className="p-2 border-b">Action</th>
-                  <th className="p-2 border-b">Entity</th>
-                  <th className="p-2 border-b">ID</th>
-                  <th className="p-2 border-b">PII</th>
+                  <th className="p-2 border-b">{t("audit.time")}</th>
+                  {isAdmin && <th className="p-2 border-b">{t("audit.actor")}</th>}
+                  {isPlatformAdmin && <th className="p-2 border-b">{t("audit.tenant")}</th>}
+                  <th className="p-2 border-b">{t("audit.action")}</th>
+                  <th className="p-2 border-b">{t("audit.entity")}</th>
+                  <th className="p-2 border-b">{t("audit.id")}</th>
+                  <th className="p-2 border-b">{t("audit.pii")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -170,7 +171,7 @@ export default function AuditPage() {
                         <span className="ml-1 text-xs text-gray-400">({ev.actorRole})</span>
                         {ev.actingAsRole && ev.actingAsTenant && (
                           <span className="ml-1 text-xs text-amber-700">
-                            acting as {ev.actingAsRole} of {ev.actingAsTenant.name}
+                            {t("audit.actingAs", { role: ev.actingAsRole, tenant: ev.actingAsTenant.name })}
                           </span>
                         )}
                       </td>
@@ -188,22 +189,22 @@ export default function AuditPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between mt-4">
-            <span className="text-sm text-gray-500">{total} event{total !== 1 ? "s" : ""}</span>
+            <span className="text-sm text-gray-500">{t("audit.eventCount", { count: total })}</span>
             <div className="flex gap-2">
               <button
                 className="px-3 py-1 border rounded text-sm disabled:opacity-50"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Prev
+                {t("audit.prev")}
               </button>
-              <span className="text-sm py-1">Page {page} of {totalPages}</span>
+              <span className="text-sm py-1">{t("audit.pageOf", { page, total: totalPages })}</span>
               <button
                 className="px-3 py-1 border rounded text-sm disabled:opacity-50"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                {t("audit.next")}
               </button>
             </div>
           </div>

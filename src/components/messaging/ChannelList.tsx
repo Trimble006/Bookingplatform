@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 type Channel = {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export default function ChannelList({
   onCreateClick: () => void;
   currentUserId: string;
 }) {
+  const t = useTranslations("messaging");
   const grouped = {
     PUBLIC: channels.filter((c) => c.type === "PUBLIC"),
     PRIVATE: channels.filter((c) => c.type === "PRIVATE"),
@@ -38,15 +41,15 @@ export default function ChannelList({
     return ch.name;
   }
 
-  const typeLabels: Record<string, string> = { PUBLIC: "Public", PRIVATE: "Private", GROUP: "Groups", DIRECT: "Direct Messages" };
+  const typeLabels: Record<string, string> = { PUBLIC: t("channelList.public"), PRIVATE: t("channelList.private"), GROUP: t("channelList.groups"), DIRECT: t("channelList.directMessages") };
   const typeIcons: Record<string, string> = { PUBLIC: "#", PRIVATE: "🔒", GROUP: "👥", DIRECT: "💬" };
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-3 border-b">
-        <h3 className="font-bold text-lg">Channels</h3>
+        <h3 className="font-bold text-lg">{t("channelList.title")}</h3>
         <button onClick={onCreateClick} className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700" title="New Channel">
-          + New
+          {t("channelList.newChannel")}
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">

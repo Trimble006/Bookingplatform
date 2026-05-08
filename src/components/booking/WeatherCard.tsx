@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 type DailyForecast = {
   temperatureMax: number;
   temperatureMin: number;
@@ -39,6 +41,7 @@ function weatherEmoji(code: number): string {
 }
 
 export default function WeatherCard({ weather }: { weather: WeatherData | null }) {
+  const t = useTranslations("bookings");
   if (!weather || !weather.available || !weather.daily) return null;
 
   const { daily, hourly } = weather;
@@ -59,7 +62,7 @@ export default function WeatherCard({ weather }: { weather: WeatherData | null }
 
       {hourly && hourly.length > 0 && (
         <div className="mt-3 border-t border-blue-100 pt-3">
-          <p className="text-xs text-gray-400 mb-2">Hourly forecast</p>
+          <p className="text-xs text-gray-400 mb-2">{t("weather.hourlyForecast")}</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {hourly.map((h) => {
               const hour = h.time.split("T")[1]?.slice(0, 5) ?? h.time;

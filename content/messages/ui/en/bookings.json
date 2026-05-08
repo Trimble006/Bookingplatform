@@ -33,5 +33,18 @@
     "override": "Override",
     "tenant": "Tenant:",
     "selectClub": "— Select a club —"
+  },
+  "grid": {
+    "time": "Time",
+    "booked": "Booked",
+    "open": "Open",
+    "closedForSeason": "Closed for season",
+    "nextSeason": "Next season: {start} – {end}",
+    "allWeather": "All weather",
+    "season": "Season: {start} – {end}",
+    "noGreens": "No greens configured for this club."
+  },
+  "weather": {
+    "hourlyForecast": "Hourly forecast"
   }
 }

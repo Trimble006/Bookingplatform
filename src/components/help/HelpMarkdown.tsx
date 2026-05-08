@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
@@ -45,6 +46,7 @@ function remarkRoleCallouts() {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export default function HelpMarkdown({ source, realRole }: Props) {
+  const t = useTranslations("help");
   return (
     <div className="prose prose-green max-w-none">
       <ReactMarkdown
@@ -58,7 +60,7 @@ export default function HelpMarkdown({ source, realRole }: Props) {
               return (
                 <div className="my-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-orange-700 mb-1">
-                    For platform admins
+                    {t("markdown.forPlatformAdmins")}
                   </p>
                   <div className="text-sm text-orange-900">{children}</div>
                 </div>
@@ -69,7 +71,7 @@ export default function HelpMarkdown({ source, realRole }: Props) {
               return (
                 <div className="my-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-green-700 mb-1">
-                    For club admins
+                    {t("markdown.forClubAdmins")}
                   </p>
                   <div className="text-sm text-green-900">{children}</div>
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/lib/format";
 import { ChapterShell } from "./shared";
 import type { ChapterProps } from "./shared";
@@ -27,6 +27,7 @@ interface Plan {
  */
 export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterProps) {
   const locale = useLocale();
+  const t = useTranslations("onboarding");
   const [attestedAt, setAttestedAt] = useState<string | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -76,11 +77,11 @@ export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterPro
     await onAdvance();
   };
 
-  if (!loaded) return <div className="text-gray-500">Loading…</div>;
+  if (!loaded) return <div className="text-gray-500">{t("loading")}</div>;
 
   return (
     <ChapterShell
-      title="Subscription"
+      title={t("chapters.subscription")}
       intro="Choose a plan that fits your club. You can change plan later by contacting the platform team."
     >
       {/* Plan Cards */}
@@ -157,7 +158,7 @@ export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterPro
           disabled={busy}
           className="px-5 py-2 rounded-md bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-50"
         >
-          {attestedAt ? "Continue" : busy ? "Saving…" : "Confirm & continue"}
+          {attestedAt ? "Continue" : busy ? t("shared.saving") : "Confirm & continue"}
         </button>
       </div>
     </ChapterShell>

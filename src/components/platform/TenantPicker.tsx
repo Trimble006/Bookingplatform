@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 type Tenant = {
   id: string;
@@ -34,6 +35,7 @@ export default function TenantPicker({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("common");
 
   // Reconcile a stale `actingAs` JWT claim once on mount.
   useEffect(() => {
@@ -77,19 +79,19 @@ export default function TenantPicker({
     <div className="space-y-4">
       <div className="rounded-xl bg-white p-4 shadow-sm">
         <label htmlFor="reason" className="block text-sm font-medium text-gray-700">
-          Reason (optional)
+          {t("tenantPicker.reasonLabel")}
         </label>
         <input
           id="reason"
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="e.g. Investigating booking issue #1234"
+          placeholder={t("tenantPicker.reasonPlaceholder")}
           className="mt-1 w-full rounded border p-2 text-sm"
           maxLength={500}
         />
         <p className="mt-1 text-xs text-gray-500">
-          Recorded against the impersonation log for audit purposes.
+          {t("tenantPicker.reasonHint")}
         </p>
       </div>
 
@@ -99,35 +101,35 @@ export default function TenantPicker({
         </div>
       )}
 
-      <h2 className="text-lg font-semibold text-gray-800">Clubs</h2>
+      <h2 className="text-lg font-semibold text-gray-800">{t("tenantPicker.clubs")}</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {tenants.map((t) => (
+        {tenants.map((tenant) => (
           <button
-            key={t.id}
+            key={tenant.id}
             type="button"
-            onClick={() => pick(t)}
+            onClick={() => pick(tenant)}
             disabled={busyId !== null}
             className="flex items-center gap-4 rounded-xl border bg-white p-6 shadow-sm hover:shadow-md transition-shadow text-left disabled:opacity-50"
           >
             <div
               className="h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold"
-              style={{ backgroundColor: t.brandColor }}
+              style={{ backgroundColor: tenant.brandColor }}
             >
-              {t.name.charAt(0)}
+              {tenant.name.charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <p className="font-semibold text-green-700">{t.name}</p>
-                {t.status === "ONBOARDING" && (
+                <p className="font-semibold text-green-700">{tenant.name}</p>
+                {tenant.status === "ONBOARDING" && (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">ONBOARDING</span>
                 )}
               </div>
               <p className="text-xs text-gray-500">
-                {busyId === t.id
-                  ? "Starting impersonation\u2026"
-                  : t.status === "ONBOARDING"
-                    ? `Help drive the wizard for ${t.name}`
-                    : `Act as TENANT_ADMIN of ${t.name}`}
+                {busyId === tenant.id
+                  ? t("tenantPicker.starting")
+                  : tenant.status === "ONBOARDING"
+                    ? t("tenantPicker.helpDrive", { name: tenant.name })
+                    : t("tenantPicker.actAs", { name: tenant.name })}
               </p>
             </div>
           </button>

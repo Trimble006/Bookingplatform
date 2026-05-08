@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isFeatureEnabled } from "@/lib/features";
 import PublicAvailabilityClient from "./client";
+import { getTranslations } from "next-intl/server";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -19,13 +20,15 @@ export default async function PublicAvailabilityPage({ params }: Params) {
   const flagOn = await isFeatureEnabled(tenant.id, "publicAvailability");
   if (!flagOn) notFound();
 
+  const t = await getTranslations("common");
+
   return (
     <main className="min-h-screen">
       <header className="px-6 py-6 text-center" style={{ backgroundColor: tenant.brandColor }}>
         <Link href={`/${slug}`} className="text-white/80 hover:text-white text-sm">
-          &larr; Back to {tenant.name}
+          {t("club.backToClub", { name: tenant.name })}
         </Link>
-        <h1 className="text-2xl font-bold text-white mt-2">Availability — {tenant.name}</h1>          {tenant.locality && <p className="text-white/80 text-sm mt-1">{tenant.locality}</p>}      </header>
+        <h1 className="text-2xl font-bold text-white mt-2">{t("club.availabilityTitle", { name: tenant.name })}</h1>          {tenant.locality && <p className="text-white/80 text-sm mt-1">{tenant.locality}</p>}      </header>
       <div className="max-w-6xl mx-auto px-4 py-8">
         <PublicAvailabilityClient slug={slug} />
       </div>

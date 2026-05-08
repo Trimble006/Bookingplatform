@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 type Year = {
   id: string;
@@ -97,6 +98,7 @@ function poundsToPence(input: string): number | null {
 }
 
 export default function CharityReportsPage() {
+  const t = useTranslations("charity");
   const [years, setYears] = useState<Year[]>([]);
   const [yearId, setYearId] = useState("");
   const [report, setReport] = useState<ReportPayload | null>(null);
@@ -151,7 +153,7 @@ export default function CharityReportsPage() {
     if (!yearId) return;
     const pence = poundsToPence(bankBalanceInput);
     if (pence === null) {
-      setError("Bank balance must be a number, e.g. 1234.56");
+      setError(t("reports.bankBalanceError"));
       return;
     }
     const res = await fetch(`/api/charity/years/${yearId}`, {
@@ -216,24 +218,24 @@ export default function CharityReportsPage() {
 
   const visibleFunds = useMemo(() => report?.receiptsAndPayments.funds ?? [], [report]);
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p>{t("overview.loading")}</p>;
 
   return (
     <div className="max-w-7xl">
       <div className="mb-4 text-sm">
         <Link href="/dashboard/charity" className="text-green-700 hover:underline">
-          ← Charity Accounts
+          {t("reports.backToCharity")}
         </Link>
       </div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <h1 className="text-2xl font-bold">{t("reports.title")}</h1>
         <div className="flex items-center gap-2">
           <select
             value={yearId}
             onChange={(e) => setYearId(e.target.value)}
             className="border border-slate-300 rounded px-3 py-2 text-sm"
           >
-            {years.length === 0 && <option value="">— no years —</option>}
+            {years.length === 0 && <option value="">{t("reports.noYears")}</option>}
             {years.map((y) => (
               <option key={y.id} value={y.id}>
                 {y.startDate} → {y.endDate} {y.status === "LOCKED" ? "🔒" : ""}
@@ -245,7 +247,7 @@ export default function CharityReportsPage() {
             disabled={!yearId}
             className="px-3 py-2 bg-green-700 text-white text-sm rounded disabled:opacity-50"
           >
-            ⬇ Export R&amp;P CSV
+            {t("reports.exportCsv")}
           </button>
         </div>
       </div>
@@ -256,33 +258,33 @@ export default function CharityReportsPage() {
         </div>
       )}
 
-      {refreshing && <p className="text-sm text-slate-500 mb-2">Refreshing…</p>}
+      {refreshing && <p className="text-sm text-slate-500 mb-2">{t("reports.refreshing")}</p>}
 
       {!report && yearId && !refreshing && (
-        <p className="text-slate-600">No report data.</p>
+        <p className="text-slate-600">{t("reports.noReportData")}</p>
       )}
 
       {report && (
         <>
           {/* Receipts & Payments */}
           <section className="mb-8">
-            <h2 className="text-lg font-semibold mb-2">Receipts &amp; Payments</h2>
+            <h2 className="text-lg font-semibold mb-2">{t("reports.receiptsAndPayments")}</h2>
             <div className="bg-white border border-slate-200 rounded overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="text-left px-3 py-2 sticky left-0 bg-slate-50">Code</th>
-                    <th className="text-left px-3 py-2">Category</th>
+                    <th className="text-left px-3 py-2 sticky left-0 bg-slate-50">{t("reports.code")}</th>
+                    <th className="text-left px-3 py-2">{t("reports.category")}</th>
                     {visibleFunds.map((f) => (
                       <th key={f.fundId} className="text-right px-3 py-2">{f.name}</th>
                     ))}
-                    <th className="text-right px-3 py-2 font-semibold">Total</th>
+                    <th className="text-right px-3 py-2 font-semibold">{t("reports.total")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="bg-green-50 border-t border-slate-200">
                     <td colSpan={2 + visibleFunds.length + 1} className="px-3 py-1.5 font-semibold text-green-900">
-                      Receipts
+                      {t("reports.receiptsHeader")}
                     </td>
                   </tr>
                   {report.receiptsAndPayments.receipts.map((r) => (
@@ -314,7 +316,7 @@ export default function CharityReportsPage() {
 
                   <tr className="bg-red-50 border-t border-slate-200">
                     <td colSpan={2 + visibleFunds.length + 1} className="px-3 py-1.5 font-semibold text-red-900">
-                      Payments
+                      {t("reports.paymentsHeader")}
                     </td>
                   </tr>
                   {report.receiptsAndPayments.payments.map((r) => (
@@ -367,7 +369,7 @@ export default function CharityReportsPage() {
 
             {/* Bank balance */}
             <div className="bg-white border border-slate-200 rounded p-4 mb-3">
-              <label className="block text-sm font-medium mb-1">Bank balance at year end</label>
+              <label className="block text-sm font-medium mb-1">{t("reports.bankBalance")}</label>
               <div className="flex items-center gap-2">
                 <span className="text-slate-500">£</span>
                 <input
@@ -383,7 +385,7 @@ export default function CharityReportsPage() {
                   disabled={yearLocked}
                   className="px-3 py-2 bg-green-700 text-white text-sm rounded disabled:opacity-50"
                 >
-                  Save
+                  {t("reports.saveBankBalance")}
                 </button>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import EventCard from "@/components/events/EventCard";
 
 const CATEGORIES = ["ALL", "SOCIAL", "COMPETITION", "LEAGUE", "OPEN_DAY", "TOURNAMENT", "OTHER"] as const;
@@ -26,6 +27,7 @@ type EventWithTenant = {
 };
 
 export default function GlobalEventsPage() {
+  const t = useTranslations("common");
   const [events, setEvents] = useState<EventWithTenant[]>([]);
   const [category, setCategory] = useState("ALL");
   const [loading, setLoading] = useState(true);
@@ -44,8 +46,8 @@ export default function GlobalEventsPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       <header className="bg-green-700 px-6 py-8 text-center">
-        <h1 className="text-3xl font-bold text-white">Upcoming Events</h1>
-        <p className="text-green-100 mt-2">Public events from bowling clubs across the platform</p>
+        <h1 className="text-3xl font-bold text-white">{t("globalEvents.title")}</h1>
+        <p className="text-green-100 mt-2">{t("globalEvents.subtitle")}</p>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -67,12 +69,12 @@ export default function GlobalEventsPage() {
         </div>
 
         {loading ? (
-          <p className="text-gray-400 text-center py-12">Loading events...</p>
+          <p className="text-gray-400 text-center py-12">{t("globalEvents.loading")}</p>
         ) : events.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No upcoming public events at the moment.</p>
+            <p className="text-gray-500">{t("globalEvents.noEvents")}</p>
             <Link href="/" className="text-green-600 hover:underline mt-4 inline-block">
-              Browse clubs
+              {t("globalEvents.browseClubs")}
             </Link>
           </div>
         ) : (
@@ -93,12 +95,12 @@ export default function GlobalEventsPage() {
 
       {/* Footer CTA */}
       <section className="py-8 px-4 text-center">
-        <p className="text-gray-500 mb-3">Want to get involved?</p>
+        <p className="text-gray-500 mb-3">{t("globalEvents.registerCta")}</p>
         <Link
           href="/auth/register"
           className="inline-block rounded-lg bg-green-600 px-6 py-3 text-white font-medium hover:bg-green-700"
         >
-          Register Now
+          {t("globalEvents.registerNow")}
         </Link>
       </section>
     </main>

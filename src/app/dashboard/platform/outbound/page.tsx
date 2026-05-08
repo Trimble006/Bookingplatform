@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/lib/format";
 
 type Channel = "EMAIL" | "SMS" | "SOCIAL_POST";
@@ -44,6 +44,7 @@ const STATUS_STYLES: Record<Status, string> = {
 
 export default function OutboundInspectorPage() {
   const locale = useLocale();
+  const t = useTranslations("admin");
   const [messages, setMessages] = useState<Message[]>([]);
   const [filter, setFilter] = useState<"ALL" | Channel>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -75,10 +76,9 @@ export default function OutboundInspectorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Outbound Inspector</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{t("platform.outbound.title")}</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Stub-mode messaging — captured locally so you can verify content and
-          format. Nothing actually leaves the box in v1.
+          {t("platform.outbound.subtitle")}
         </p>
       </div>
 
@@ -104,9 +104,9 @@ export default function OutboundInspectorPage() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {loading ? (
-            <p className="p-6 text-gray-500">Loading…</p>
+            <p className="p-6 text-gray-500">{t("platform.outbound.loading")}</p>
           ) : filtered.length === 0 ? (
-            <p className="p-6 text-gray-500">No messages yet.</p>
+            <p className="p-6 text-gray-500">{t("platform.outbound.noMessages")}</p>
           ) : (
             <ul className="divide-y max-h-[70vh] overflow-y-auto">
               {filtered.map((m) => (
@@ -143,7 +143,7 @@ export default function OutboundInspectorPage() {
           {selected ? (
             <Preview message={selected} onMarkSent={markSent} />
           ) : (
-            <p className="text-gray-500">Select a message to preview it.</p>
+            <p className="text-gray-500">{t("platform.outbound.selectToPreview")}</p>
           )}
         </div>
       </div>
@@ -152,13 +152,14 @@ export default function OutboundInspectorPage() {
 }
 
 function Preview({ message, onMarkSent }: { message: Message; onMarkSent: (id: string) => void }) {
+  const t = useTranslations("admin");
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs uppercase text-gray-500">{message.channel}</div>
           <div className="font-semibold text-gray-800">
-            {message.subject ?? message.template ?? "(no subject)"}
+            {message.subject ?? message.template ?? t("platform.outbound.noSubject")}
           </div>
           <div className="text-sm text-gray-500">→ {message.toAddress}</div>
         </div>
@@ -178,7 +179,7 @@ function Preview({ message, onMarkSent }: { message: Message; onMarkSent: (id: s
       {message.channel === "SOCIAL_POST" && <SocialPreview message={message} />}
 
       <div>
-        <div className="text-xs uppercase text-gray-500 mb-1">Plain text</div>
+        <div className="text-xs uppercase text-gray-500 mb-1">{t("platform.outbound.plainText")}</div>
         <pre className="bg-gray-50 rounded p-3 text-xs whitespace-pre-wrap text-gray-700">
           {message.bodyText}
         </pre>
@@ -187,7 +188,7 @@ function Preview({ message, onMarkSent }: { message: Message; onMarkSent: (id: s
       {message.templateData && (
         <details>
           <summary className="text-xs uppercase text-gray-500 cursor-pointer">
-            Template variables
+            {t("platform.outbound.templateVariables")}
           </summary>
           <pre className="bg-gray-50 rounded p-3 text-xs mt-1 overflow-x-auto">
             {JSON.stringify(JSON.parse(message.templateData), null, 2)}
@@ -200,7 +201,7 @@ function Preview({ message, onMarkSent }: { message: Message; onMarkSent: (id: s
           onClick={() => onMarkSent(message.id)}
           className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
         >
-          Mark as sent manually
+          {t("platform.outbound.markSentManually")}
         </button>
       )}
     </div>
@@ -208,9 +209,10 @@ function Preview({ message, onMarkSent }: { message: Message; onMarkSent: (id: s
 }
 
 function EmailPreview({ message }: { message: Message }) {
+  const t = useTranslations("admin");
   return (
     <div>
-      <div className="text-xs uppercase text-gray-500 mb-1">HTML preview</div>
+      <div className="text-xs uppercase text-gray-500 mb-1">{t("platform.outbound.htmlPreview")}</div>
       {message.bodyHtml ? (
         <iframe
           title="Email preview"
@@ -219,7 +221,7 @@ function EmailPreview({ message }: { message: Message }) {
           style={{ height: 360 }}
         />
       ) : (
-        <p className="text-sm text-gray-500 italic">No HTML body.</p>
+        <p className="text-sm text-gray-500 italic">{t("platform.outbound.noHtmlBody")}</p>
       )}
     </div>
   );

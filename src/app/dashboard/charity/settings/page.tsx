@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 type Settings = {
   configured: boolean;
@@ -13,13 +14,15 @@ type Settings = {
   publicBenefitStatement?: string | null;
 };
 
-const REGULATORS: Array<{ value: "CC_EW" | "OSCR" | "CCNI"; label: string }> = [
-  { value: "CC_EW", label: "Charity Commission for England & Wales" },
-  { value: "OSCR", label: "OSCR (Scotland)" },
-  { value: "CCNI", label: "Charity Commission for Northern Ireland" },
-];
+const REGULATOR_VALUES = ["CC_EW", "OSCR", "CCNI"] as const;
+const REGULATOR_KEY: Record<string, string> = {
+  CC_EW: "settings.regulatorCCEW",
+  OSCR: "settings.regulatorOSCR",
+  CCNI: "settings.regulatorCCNI",
+};
 
 export default function CharitySettingsPage() {
+  const t = useTranslations("charity");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -79,54 +82,54 @@ export default function CharitySettingsPage() {
     setWasConfigured(true);
     setSuccess(
       wasConfigured
-        ? "Settings updated."
-        : "Settings saved. Default chart of accounts seeded — head to the Ledger to start recording.",
+        ? t("settings.updated")
+        : t("settings.saved"),
     );
   }
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p>{t("overview.loading")}</p>;
 
   return (
     <div className="max-w-2xl">
       <div className="mb-4 text-sm">
         <Link href="/dashboard/charity" className="text-green-700 hover:underline">
-          ← Charity Accounts
+          {t("settings.backToCharity")}
         </Link>
       </div>
-      <h1 className="text-2xl font-bold mb-6">Charity Settings</h1>
+      <h1 className="text-2xl font-bold mb-6">{t("settings.title")}</h1>
 
       <form onSubmit={save} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Charity number</label>
+          <label className="block text-sm font-medium mb-1">{t("settings.charityNumber")}</label>
           <input
             type="text"
             value={form.charityNumber}
             onChange={(e) => setForm({ ...form, charityNumber: e.target.value })}
-            placeholder="e.g. 1234567 or SC012345 or NIC101234"
+            placeholder={t("settings.charityNumberPlaceholder")}
             className="w-full border border-slate-300 rounded px-3 py-2"
           />
           <p className="text-xs text-slate-500 mt-1">
-            Optional but recommended — appears on your annual return.
+            {t("settings.charityNumberHint")}
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Regulator *</label>
+          <label className="block text-sm font-medium mb-1">{t("settings.regulator")} *</label>
           <select
             required
             value={form.regulator}
             onChange={(e) => setForm({ ...form, regulator: e.target.value as "CC_EW" | "OSCR" | "CCNI" })}
             className="w-full border border-slate-300 rounded px-3 py-2"
           >
-            {REGULATORS.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
+            {REGULATOR_VALUES.map((v) => (
+              <option key={v} value={v}>{t(REGULATOR_KEY[v])}</option>
             ))}
           </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Year-end month *</label>
+            <label className="block text-sm font-medium mb-1">{t("settings.yearEndMonth")} *</label>
             <select
               value={form.yearEndMonth}
               onChange={(e) => setForm({ ...form, yearEndMonth: Number(e.target.value) })}
@@ -138,7 +141,7 @@ export default function CharitySettingsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Year-end day *</label>
+            <label className="block text-sm font-medium mb-1">{t("settings.yearEndDay")} *</label>
             <select
               value={form.yearEndDay}
               onChange={(e) => setForm({ ...form, yearEndDay: Number(e.target.value) })}
@@ -152,24 +155,24 @@ export default function CharitySettingsPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Reserves policy</label>
+          <label className="block text-sm font-medium mb-1">{t("settings.reservesPolicy")}</label>
           <textarea
             value={form.reservesPolicy}
             onChange={(e) => setForm({ ...form, reservesPolicy: e.target.value })}
             rows={3}
             className="w-full border border-slate-300 rounded px-3 py-2"
-            placeholder="Your trustees' policy on reserves (free-text, used in the annual report)."
+            placeholder={t("settings.reservesPolicyPlaceholder")}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Public benefit statement</label>
+          <label className="block text-sm font-medium mb-1">{t("settings.publicBenefitStatement")}</label>
           <textarea
             value={form.publicBenefitStatement}
             onChange={(e) => setForm({ ...form, publicBenefitStatement: e.target.value })}
             rows={3}
             className="w-full border border-slate-300 rounded px-3 py-2"
-            placeholder="How your charitable activities serve the public benefit."
+            placeholder={t("settings.publicBenefitStatementPlaceholder")}
           />
         </div>
 
@@ -181,7 +184,7 @@ export default function CharitySettingsPage() {
           disabled={saving}
           className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 disabled:opacity-50"
         >
-          {saving ? "Saving…" : wasConfigured ? "Save changes" : "Save & seed accounts"}
+          {saving ? t("settings.saving") : wasConfigured ? t("settings.saveChanges") : t("settings.saveAndSeed")}
         </button>
       </form>
     </div>

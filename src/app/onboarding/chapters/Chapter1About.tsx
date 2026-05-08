@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
 export default function Chapter1About({ tenantId, onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [name, setName] = useState("");
   const [brandColor, setBrandColor] = useState("#16a34a");
   const [logoUrl, setLogoUrl] = useState("");
@@ -120,7 +122,7 @@ export default function Chapter1About({ tenantId, onAdvance }: ChapterProps) {
     await onAdvance();
   };
 
-  if (!loaded) return <div className="text-gray-500">Loading…</div>;
+  if (!loaded) return <div className="text-gray-500">{t("loading")}</div>;
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const slugStatusColor =
@@ -135,7 +137,7 @@ export default function Chapter1About({ tenantId, onAdvance }: ChapterProps) {
 
   return (
     <ChapterShell
-      title="About your club"
+      title={t("chapters.about")}
       intro="Let's start with the basics. You can change any of this later — except your URL, which locks once you go live."
       onSubmit={submit}
       busy={busy}

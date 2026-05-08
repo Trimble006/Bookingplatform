@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { formatDateTime } from "@/lib/format";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +11,7 @@ export default async function PlatformOverviewPage() {
     | { user: { id: string; role: string } }
     | null;
   const locale = await getLocale();
+  const t = await getTranslations("admin");
 
   if (!session?.user) redirect("/auth/login");
   if (session.user.role !== "PLATFORM_ADMIN") redirect("/dashboard");
@@ -32,7 +33,7 @@ export default async function PlatformOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Platform Overview</h1>
+        <h1 className="text-2xl font-bold">{t("platform.overview.title")}</h1>
         <p className="text-sm text-gray-600">
           Manage tenants, payments and platform-wide concerns. To act on behalf of a club, start
           an impersonation from the <Link href="/dashboard" className="underline">main dashboard</Link>.
@@ -40,20 +41,20 @@ export default async function PlatformOverviewPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card label="Tenants" value={tenantCount} href="/dashboard/platform/tenants" />
-        <Card label="Active tenants" value={activeTenants} />
-        <Card label="Open impersonations" value={openImpersonations} href="/dashboard/platform/impersonations" />
+        <Card label={t("platform.overview.tenants")} value={tenantCount} href="/dashboard/platform/tenants" />
+        <Card label={t("platform.overview.activeTenants")} value={activeTenants} />
+        <Card label={t("platform.overview.openImpersonations")} value={openImpersonations} href="/dashboard/platform/impersonations" />
       </div>
 
       <section className="rounded-xl bg-white p-6 shadow">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">Recent impersonations</h2>
+          <h2 className="font-semibold">{t("platform.overview.recentImpersonations")}</h2>
           <Link href="/dashboard/platform/impersonations" className="text-sm text-blue-600 hover:underline">
-            View all
+            {t("platform.overview.viewAll")}
           </Link>
         </div>
         {recentImpersonations.length === 0 ? (
-          <p className="text-sm text-gray-500">No impersonations recorded yet.</p>
+          <p className="text-sm text-gray-500">{t("platform.overview.noImpersonations")}</p>
         ) : (
           <ul className="divide-y">
             {recentImpersonations.map((imp) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import { useTrack } from "@/components/TrackingProvider";
@@ -41,6 +41,7 @@ type Run = {
 
 export default function AgentDashboardPage() {
   const locale = useLocale();
+  const t = useTranslations("agents");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [activeSlug, setActiveSlug] = useState<string>("");
   const [decisions, setDecisions] = useState<Decision[]>([]);

@@ -1,59 +1,62 @@
 {
-  "title": "Digwyddiadau",
-  "noEvents": "Dim digwyddiadau eto.",
-  "createEvent": "Creu Digwyddiad",
-  "editEvent": "Golygu Digwyddiad",
-  "selectTenant": "Dewiswch denant uchod i reoli digwyddiadau.",
+  "title": "[cy] Events",
+  "noEvents": "[cy] No events yet.",
+  "createEvent": "[cy] Create Event",
+  "editEvent": "[cy] Edit Event",
+  "selectTenant": "[cy] Select a tenant above to manage events.",
   "form": {
-    "titlePlaceholder": "Teitl y digwyddiad",
-    "descriptionPlaceholder": "Disgrifiad",
-    "date": "Dyddiad",
-    "startTime": "Amser Dechrau",
-    "endTime": "Amser Gorffen (dewisol)",
-    "location": "Lleoliad",
-    "capacity": "Capasiti",
-    "entryFee": "Ffi Mynediad",
-    "currency": "Arian Cyfred",
-    "imageUrl": "URL Delwedd",
-    "contactName": "Enw Cyswllt",
-    "contactEmail": "E-bost Cyswllt",
-    "contactPhone": "Ffôn Cyswllt",
-    "visibility": "Gwelededd",
-    "submit": "Creu",
-    "update": "Diweddaru"
+    "titlePlaceholder": "[cy] Event title",
+    "descriptionPlaceholder": "[cy] Description",
+    "date": "[cy] Date",
+    "startTime": "[cy] Start Time",
+    "endTime": "[cy] End Time (optional)",
+    "location": "[cy] Location",
+    "capacity": "[cy] Capacity",
+    "entryFee": "[cy] Entry Fee",
+    "currency": "[cy] Currency",
+    "imageUrl": "[cy] Image URL",
+    "contactName": "[cy] Contact Name",
+    "contactEmail": "[cy] Contact Email",
+    "contactPhone": "[cy] Contact Phone",
+    "visibility": "[cy] Visibility",
+    "submit": "[cy] Create",
+    "update": "[cy] Update"
   },
   "categories": {
-    "SOCIAL": "Cymdeithasol",
-    "COMPETITION": "Cystadleuaeth",
-    "LEAGUE": "Cynghrair",
-    "OPEN_DAY": "Diwrnod Agored",
-    "TOURNAMENT": "Twrnament",
-    "OTHER": "Arall"
+    "SOCIAL": "[cy] Social",
+    "COMPETITION": "[cy] Competition",
+    "LEAGUE": "[cy] League",
+    "OPEN_DAY": "[cy] Open Day",
+    "TOURNAMENT": "[cy] Tournament",
+    "OTHER": "[cy] Other"
   },
   "formats": {
-    "KNOCKOUT": "Cnocio Allan",
-    "AMERICAN": "Americanaidd",
-    "LEAGUE_FORMAT": "Cynghrair",
-    "CANADIAN": "Canadaidd",
-    "OTHER_FORMAT": "Arall"
+    "KNOCKOUT": "[cy] Knockout",
+    "AMERICAN": "[cy] American",
+    "LEAGUE_FORMAT": "[cy] League",
+    "CANADIAN": "[cy] Canadian",
+    "OTHER_FORMAT": "[cy] Other"
   },
   "playerCounts": {
-    "SINGLES": "Senglau",
-    "PAIRS": "Parau",
-    "TRIPLES": "Triplau",
-    "FOURS": "Pedwarawdau"
+    "SINGLES": "[cy] Singles",
+    "PAIRS": "[cy] Pairs",
+    "TRIPLES": "[cy] Triples",
+    "FOURS": "[cy] Fours"
   },
   "visibility": {
-    "MEMBERS_ONLY": "Aelodau yn Unig",
-    "PUBLIC": "Cyhoeddus"
+    "MEMBERS_ONLY": "[cy] Members Only",
+    "PUBLIC": "[cy] Public"
   },
   "status": {
-    "DRAFT": "Drafft",
-    "PUBLISHED": "Cyhoeddwyd"
+    "DRAFT": "[cy] Draft",
+    "PUBLISHED": "[cy] Published"
   },
   "filters": {
-    "ALL": "Pob un",
-    "DRAFT": "Drafft",
-    "PUBLISHED": "Cyhoeddwyd"
+    "ALL": "[cy] All",
+    "DRAFT": "[cy] Draft",
+    "PUBLISHED": "[cy] Published"
+  },
+  "card": {
+    "capacity": "[cy] Capacity: {count}"
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 import Link from "next/link";
 
@@ -44,6 +44,7 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
 
 export default function ApplicationsPage() {
   const locale = useLocale();
+  const t = useTranslations("admin");
   const [apps, setApps] = useState<Application[]>([]);
   const [filter, setFilter] = useState<"ALL" | ApplicationStatus>("ALL");
   const [loading, setLoading] = useState(true);
@@ -70,7 +71,7 @@ export default function ApplicationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Tenant Applications</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{t("platform.applications.title")}</h1>
         <p className="text-sm text-gray-600 mt-1">
           Clubs that have requested to join the platform via{" "}
           <Link href="/join" className="underline">/join</Link>.
@@ -95,19 +96,19 @@ export default function ApplicationsPage() {
       </div>
 
       {loading ? (
-        <p className="text-gray-500">Loading…</p>
+        <p className="text-gray-500">{t("platform.applications.loading")}</p>
       ) : filtered.length === 0 ? (
-        <p className="text-gray-500">No applications {filter !== "ALL" && `with status ${filter.toLowerCase()}`} yet.</p>
+        <p className="text-gray-500">{t("platform.applications.noApplications")}</p>
       ) : (
         <div className="overflow-hidden rounded-xl bg-white shadow">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <th className="p-3">Club</th>
-                <th className="p-3">Contact</th>
-                <th className="p-3">Country</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Submitted</th>
+                <th className="p-3">{t("platform.applications.club")}</th>
+                <th className="p-3">{t("platform.applications.contact")}</th>
+                <th className="p-3">{t("platform.applications.country")}</th>
+                <th className="p-3">{t("platform.applications.status")}</th>
+                <th className="p-3">{t("platform.applications.submitted")}</th>
                 <th className="p-3"></th>
               </tr>
             </thead>
@@ -136,7 +137,7 @@ export default function ApplicationsPage() {
                       href={`/dashboard/platform/applications/${a.id}`}
                       className="text-green-700 hover:underline"
                     >
-                      Review →
+                      {t("platform.applications.review")}
                     </Link>
                   </td>
                 </tr>

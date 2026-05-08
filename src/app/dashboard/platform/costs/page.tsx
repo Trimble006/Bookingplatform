@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 
 const COLOURS = ["#16a34a", "#2563eb", "#9333ea", "#ea580c", "#64748b", "#dc2626"];
@@ -25,6 +26,7 @@ interface CostReport {
 }
 
 export default function PlatformCostsPage() {
+  const t = useTranslations("admin");
   const [data, setData] = useState<CostReport | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,26 +38,26 @@ export default function PlatformCostsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-gray-500">Loading cost data…</p>;
-  if (!data) return <p className="text-red-500">Failed to load cost report.</p>;
+  if (loading) return <p className="text-gray-500">{t("platform.costs.loading")}</p>;
+  if (!data) return <p className="text-red-500">{t("platform.costs.failed")}</p>;
 
   const byMonthFormatted = data.byMonth.map((d) => ({ month: d.month, spend: d.spend / 100 }));
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Agent Costs</h1>
+      <h1 className="text-2xl font-bold">{t("platform.costs.title")}</h1>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label="Total Spend" value={`£${(data.totalSpend / 100).toFixed(2)}`} />
-        <KPI label="This Month" value={`£${(data.thisMonth / 100).toFixed(2)}`} />
-        <KPI label="Tokens In" value={formatTokens(data.totalTokensIn)} />
-        <KPI label="Tokens Out" value={formatTokens(data.totalTokensOut)} />
+        <KPI label={t("platform.costs.totalSpend")} value={`£${(data.totalSpend / 100).toFixed(2)}`} />
+        <KPI label={t("platform.costs.thisMonth")} value={`£${(data.thisMonth / 100).toFixed(2)}`} />
+        <KPI label={t("platform.costs.tokensIn")} value={formatTokens(data.totalTokensIn)} />
+        <KPI label={t("platform.costs.tokensOut")} value={formatTokens(data.totalTokensOut)} />
       </div>
 
       {/* Spend Trend */}
       <div className="rounded-xl bg-white p-6 shadow">
-        <h3 className="mb-4 text-sm font-semibold text-gray-700">Monthly LLM Spend</h3>
+        <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.costs.monthlySpendChart")}</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={byMonthFormatted}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -70,7 +72,7 @@ export default function PlatformCostsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Model Breakdown */}
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">Spend by Model</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.costs.spendByModel")}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.byModel.map((m) => ({ name: m.model, spend: m.spend / 100 }))}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -88,13 +90,13 @@ export default function PlatformCostsPage() {
 
         {/* Model table fallback */}
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">Model Details</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.costs.modelDetails")}</h3>
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">Model</th>
-                <th className="pb-2">Runs</th>
-                <th className="pb-2">Spend</th>
+                <th className="pb-2">{t("platform.costs.model")}</th>
+                <th className="pb-2">{t("platform.costs.runs")}</th>
+                <th className="pb-2">{t("platform.costs.spend")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -112,17 +114,17 @@ export default function PlatformCostsPage() {
 
       {/* Per-Tenant Table */}
       <div className="rounded-xl bg-white shadow">
-        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">Per-Tenant Cost</h3>
+        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">{t("platform.costs.perTenantCost")}</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
                 <th className="px-4 py-3">Tenant</th>
-                <th className="px-4 py-3">Runs</th>
-                <th className="px-4 py-3">Total Spend</th>
-                <th className="px-4 py-3">Budget Cap</th>
-                <th className="px-4 py-3">Month Spend</th>
-                <th className="px-4 py-3">Tokens (In/Out)</th>
+                <th className="px-4 py-3">{t("platform.costs.runs")}</th>
+                <th className="px-4 py-3">{t("platform.costs.totalSpend")}</th>
+                <th className="px-4 py-3">{t("platform.costs.budgetCap")}</th>
+                <th className="px-4 py-3">{t("platform.costs.monthSpend")}</th>
+                <th className="px-4 py-3">{t("platform.costs.tokensInOut")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -141,7 +143,7 @@ export default function PlatformCostsPage() {
                 </tr>
               ))}
               {data.perTenant.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-3 text-center text-gray-400">No agent runs recorded</td></tr>
+                <tr><td colSpan={6} className="px-4 py-3 text-center text-gray-400">{t("platform.costs.noRuns")}</td></tr>
               )}
             </tbody>
           </table>

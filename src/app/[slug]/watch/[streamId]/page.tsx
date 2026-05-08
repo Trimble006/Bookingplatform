@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 type StreamWatch = {
   id: string;
@@ -20,6 +21,7 @@ export default function WatchStreamPage() {
   const { slug, streamId } = useParams<{ slug: string; streamId: string }>();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const t = useTranslations("streaming");
   const [stream, setStream] = useState<StreamWatch | null>(null);
   const [error, setError] = useState("");
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export default function WatchStreamPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("watch.accessDenied")}</h1>
           <p className="text-gray-400">{error}</p>
         </div>
       </div>
@@ -87,7 +89,7 @@ export default function WatchStreamPage() {
   if (!stream) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <p>Loading stream...</p>
+        <p>{t("watch.loadingStream")}</p>
       </div>
     );
   }
@@ -109,21 +111,21 @@ export default function WatchStreamPage() {
                 ● LIVE
               </div>
               <div className="absolute top-3 right-3 bg-black/60 px-2 py-0.5 rounded text-xs">
-                👁 {stream.viewerCount} watching
+                {t("watchingCount", { count: stream.viewerCount })}
               </div>
             </>
           ) : stream.status === "ENDED" ? (
             <div className="flex items-center justify-center h-full text-gray-400">
               <div className="text-center">
-                <p className="text-xl font-bold">Stream Ended</p>
-                <p className="text-sm mt-1">This stream has finished.</p>
+                <p className="text-xl font-bold">{t("watch.streamEnded")}</p>
+                <p className="text-sm mt-1">{t("watch.streamEndedDescription")}</p>
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
               <div className="text-center">
-                <p className="text-xl font-bold">Stream Starting Soon</p>
-                <p className="text-sm mt-1">Waiting for broadcaster...</p>
+                <p className="text-xl font-bold">{t("watch.streamStartingSoon")}</p>
+                <p className="text-sm mt-1">{t("watch.waitingForBroadcaster")}</p>
               </div>
             </div>
           )}
@@ -139,7 +141,7 @@ export default function WatchStreamPage() {
             </p>
           </div>
           <span className="text-xs bg-gray-700 px-2 py-1 rounded">
-            {stream.visibility === "PUBLIC" ? "🌐 Public" : "🔒 Members"}
+            {stream.visibility === "PUBLIC" ? t("publicBadge") : t("membersBadge")}
           </span>
         </div>
       </div>

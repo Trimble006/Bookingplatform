@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import HelpHint from "@/components/help/HelpHint";
 
 type Tenant = { id: string; name: string; slug: string };
@@ -51,6 +52,7 @@ const CONTENT_TEMPLATES: Record<string, object> = {
 
 export default function ContentPage() {
   const { data: session } = useSession();
+  const t = useTranslations("settings");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -110,10 +112,10 @@ export default function ContentPage() {
     setErrorMsg("");
     const qs = selectedTenant ? `?tenantId=${encodeURIComponent(selectedTenant)}` : "";
 
-    if (!form.title.trim()) { flashError("Title is required"); return; }
+    if (!form.title.trim()) { flashError(t("content.titleRequired")); return; }
 
     let contentObj: object;
-    try { contentObj = JSON.parse(form.content); } catch { flashError("Content must be valid JSON"); return; }
+    try { contentObj = JSON.parse(form.content); } catch { flashError(t("content.contentMustBeJson")); return; }
 
     if (editingId) {
       const res = await fetch(`/api/content/${editingId}${qs}`, {
@@ -192,7 +194,7 @@ export default function ContentPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">Content Management <HelpHint slug="edit-landing-page" /></h1>
+      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">{t("content.title")} <HelpHint slug="edit-landing-page" /></h1>
       {errorMsg && <div className="mb-4 rounded bg-red-100 text-red-800 px-4 py-2" role="alert">{errorMsg}</div>}
       {successMsg && <div className="mb-4 rounded bg-green-100 text-green-800 px-4 py-2">{successMsg}</div>}
 
@@ -221,21 +223,21 @@ export default function ContentPage() {
 
       <div className="flex gap-2 mb-4">
         <button onClick={openCreate} className="rounded bg-green-600 text-white px-4 py-2 hover:bg-green-700">
-          + New Section
+          {t("content.newSection")}
         </button>
         <Link href="/dashboard/content/preview" className="rounded border border-green-600 text-green-700 px-4 py-2 hover:bg-green-50 inline-flex items-center gap-1">
-          Preview Page
+          {t("content.previewPage")}
         </Link>
       </div>
 
       {/* Create / Edit form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 border rounded p-4 bg-gray-50 space-y-3">
-          <h2 className="font-semibold text-lg">{editingId ? "Edit Section" : "New Section"}</h2>
+          <h2 className="font-semibold text-lg">{editingId ? t("content.editSectionTitle") : t("content.newSectionTitle")}</h2>
 
           {!editingId && (
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
+              <label className="block text-sm font-medium mb-1">{t("content.typeLabel")}</label>
               <select
                 value={form.type}
                 onChange={(e) => {
@@ -250,12 +252,12 @@ export default function ContentPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-medium mb-1">{t("content.titleLabel")}</label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="border rounded px-2 py-1 w-full" required />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Content (JSON)</label>
+            <label className="block text-sm font-medium mb-1">{t("content.contentJsonLabel")}</label>
             <textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -266,10 +268,10 @@ export default function ContentPage() {
 
           <div className="flex gap-2">
             <button type="submit" className="rounded bg-green-600 text-white px-4 py-2 hover:bg-green-700">
-              {editingId ? "Save Changes" : "Create"}
+              {editingId ? t("content.saveChanges") : t("content.create")}
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="rounded border px-4 py-2 hover:bg-gray-100">
-              Cancel
+              {t("content.cancel")}
             </button>
           </div>
         </form>
@@ -277,7 +279,7 @@ export default function ContentPage() {
 
       {/* Sections table */}
       {filtered.length === 0 ? (
-        <p className="text-gray-500">No content sections found.</p>
+        <p className="text-gray-500">{t("content.noSections")}</p>
       ) : (
         <div className="space-y-3">
           {filtered.map((s, idx) => (
@@ -288,7 +290,7 @@ export default function ContentPage() {
                 <span className="font-medium flex-1">{s.title}</span>
                 <label className="flex items-center gap-1 text-sm">
                   <input type="checkbox" checked={s.enabled} onChange={() => toggleEnabled(s.id, s.enabled)} />
-                  Visible
+                  {t("content.visible")}
                 </label>
               </div>
 

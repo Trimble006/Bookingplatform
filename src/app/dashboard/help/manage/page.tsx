@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 
 interface ShippedSlug {
   slug: string;
@@ -19,14 +20,14 @@ interface OverrideRow {
   updatedAt: string;
 }
 
-const LOCALE = "en";
-
 export default function HelpManagePage() {
   const [shipped, setShipped] = useState<ShippedSlug[]>([]);
   const [overrides, setOverrides] = useState<OverrideRow[]>([]);
   const [editing, setEditing] = useState<{ slug: string; title: string; body: string; enabled: boolean } | null>(null);
   const [error, setError] = useState("");
   const [flagDisabled, setFlagDisabled] = useState(false);
+  const t = useTranslations("help");
+  const locale = useLocale();
 
   function loadShipped() {
     fetch("/api/help/shipped")
@@ -53,7 +54,7 @@ export default function HelpManagePage() {
   }, []);
 
   function findOverride(slug: string): OverrideRow | undefined {
-    return overrides.find((o) => o.slug === slug && o.locale === LOCALE);
+    return overrides.find((o) => o.slug === slug && o.locale === locale);
   }
 
   function startEdit(s: ShippedSlug) {
@@ -74,7 +75,7 @@ export default function HelpManagePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         slug: editing.slug,
-        locale: LOCALE,
+        locale,
         title: editing.title || null,
         body: editing.body || null,
         enabled: editing.enabled,
@@ -97,12 +98,11 @@ export default function HelpManagePage() {
   if (flagDisabled) {
     return (
       <div className="space-y-3 max-w-2xl">
-        <h1 className="text-2xl font-bold">Help overrides</h1>
+        <h1 className="text-2xl font-bold">{t("manage.title")}</h1>
         <p className="text-sm text-gray-600">
-          Help article overrides are disabled for your club. A platform admin can enable the
-          <code className="mx-1 px-1 rounded bg-gray-100">helpOverrides</code> feature flag.
+          {t("manage.flagDisabled", { flag: "helpOverrides" })}
         </p>
-        <Link href="/dashboard/help" className="text-green-700 hover:underline text-sm">← Back to help centre</Link>
+        <Link href="/dashboard/help" className="text-green-700 hover:underline text-sm">{t("manage.backToHelp")}</Link>
       </div>
     );
   }
@@ -111,19 +111,19 @@ export default function HelpManagePage() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Help overrides</h1>
-          <p className="text-sm text-gray-600">Customise the platform&rsquo;s help articles for your club.</p>
+          <h1 className="text-2xl font-bold">{t("manage.title")}</h1>
+          <p className="text-sm text-gray-600">{t("manage.subtitle")}</p>
         </div>
-        <Link href="/dashboard/help" className="text-green-700 hover:underline text-sm">← Back to help centre</Link>
+        <Link href="/dashboard/help" className="text-green-700 hover:underline text-sm">{t("manage.backToHelp")}</Link>
       </div>
 
       {error && <p className="rounded bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{error}</p>}
 
       {editing ? (
         <div className="rounded-xl border bg-white p-4 space-y-3">
-          <h2 className="font-semibold">Editing &lsquo;{editing.slug}&rsquo;</h2>
+          <h2 className="font-semibold">{t("manage.editingSlug", { slug: editing.slug })}</h2>
           <label className="block text-sm">
-            <span className="block mb-1 font-medium">Title</span>
+            <span className="block mb-1 font-medium">{t("manage.titleLabel")}</span>
             <input
               value={editing.title}
               onChange={(e) => setEditing({ ...editing, title: e.target.value })}
@@ -131,13 +131,13 @@ export default function HelpManagePage() {
             />
           </label>
           <label className="block text-sm">
-            <span className="block mb-1 font-medium">Body (markdown)</span>
+            <span className="block mb-1 font-medium">{t("manage.bodyLabel")}</span>
             <textarea
               value={editing.body}
               onChange={(e) => setEditing({ ...editing, body: e.target.value })}
               rows={14}
               className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-xs"
-              placeholder="Leave empty to inherit the shipped body"
+              placeholder={t("manage.bodyPlaceholder")}
             />
           </label>
           <label className="flex items-center gap-2 text-sm">
@@ -146,14 +146,14 @@ export default function HelpManagePage() {
               checked={editing.enabled}
               onChange={(e) => setEditing({ ...editing, enabled: e.target.checked })}
             />
-            Visible to members of this club (uncheck to hide the article entirely)
+            {t("manage.visibleLabel")}
           </label>
           <div className="flex gap-2">
             <button onClick={saveOverride} className="rounded bg-green-600 text-white px-4 py-1.5 text-sm hover:bg-green-700">
-              Save override
+              {t("manage.saveOverride")}
             </button>
             <button onClick={() => setEditing(null)} className="rounded border px-4 py-1.5 text-sm">
-              Cancel
+              {t("manage.cancel")}
             </button>
           </div>
         </div>
@@ -169,14 +169,14 @@ export default function HelpManagePage() {
                     {s.category} &middot; {s.slug}
                     {o && (
                       <span className="ml-2 rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 uppercase tracking-wide text-[10px]">
-                        {o.enabled ? "customised" : "hidden"}
+                        {o.enabled ? t("manage.customised") : t("manage.hidden")}
                       </span>
                     )}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => startEdit(s)} className="text-sm text-green-700 hover:underline">
-                    {o ? "Edit" : "Override"}
+                    {o ? t("manage.edit") : t("manage.override")}
                   </button>
                   {o && (
                     <button
@@ -184,7 +184,7 @@ export default function HelpManagePage() {
                       className="text-sm text-red-600 hover:underline"
                       title="Restore the shipped article"
                     >
-                      Restore default
+                      {t("manage.restoreDefault")}
                     </button>
                   )}
                 </div>

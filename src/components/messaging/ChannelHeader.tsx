@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 type Member = {
   userId: string;
   role: string;
@@ -20,19 +22,20 @@ export default function ChannelHeader({
   isAdmin: boolean;
   onManageMembers?: () => void;
 }) {
-  const typeLabel: Record<string, string> = { PUBLIC: "Public Channel", PRIVATE: "Private Channel", GROUP: "Group", DIRECT: "Direct Message" };
+  const t = useTranslations("messaging");
+  const typeLabel: Record<string, string> = { PUBLIC: t("channelHeader.publicChannel"), PRIVATE: t("channelHeader.privateChannel"), GROUP: t("channelHeader.group"), DIRECT: t("channelHeader.directMessage") };
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
       <div>
         <h2 className="font-bold text-lg">{channelName}</h2>
         <span className="text-xs text-gray-500">
-          {typeLabel[channelType] ?? channelType} · {members.length} member{members.length !== 1 ? "s" : ""}
+          {typeLabel[channelType] ?? channelType} · {t("channelHeader.memberCount", { count: members.length })}
         </span>
       </div>
       {isAdmin && channelType !== "DIRECT" && onManageMembers && (
         <button onClick={onManageMembers} className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded">
-          Manage Members
+          {t("channelHeader.manageMembers")}
         </button>
       )}
     </div>

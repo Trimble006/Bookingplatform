@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import { useTrack } from "@/components/TrackingProvider";
 
 interface ArticleSummary {
@@ -15,19 +16,19 @@ interface ArticleSummary {
   fallbackFromEnglish: boolean;
 }
 
-const LOCALE = "en"; // TODO: hook into useTranslation when help i18n content lands
-
 export default function HelpIndexPage() {
   const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [query, setQuery] = useState("");
   const { trackAction } = useTrack();
+  const t = useTranslations("help");
+  const locale = useLocale();
 
   useEffect(() => {
-    fetch(`/api/help?locale=${LOCALE}`)
+    fetch(`/api/help?locale=${locale}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setArticles(Array.isArray(d) ? d : []))
       .catch(() => {});
-  }, []);
+  }, [locale]);
 
   const categories = useMemo(() => {
     const map = new Map<string, ArticleSummary[]>();
@@ -52,8 +53,8 @@ export default function HelpIndexPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Help centre</h1>
-        <p className="text-sm text-gray-600">Guides for running your club on the platform.</p>
+        <h1 className="text-2xl font-bold">{t("index.title")}</h1>
+        <p className="text-sm text-gray-600">{t("index.subtitle")}</p>
       </div>
 
       <input
@@ -64,15 +65,15 @@ export default function HelpIndexPage() {
           setQuery(v);
           if (v.length >= 3) trackAction("help.search", "help-search");
         }}
-        placeholder="Search articles…"
+        placeholder={t("index.searchPlaceholder")}
         className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
       {query.trim() ? (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Search results ({filtered.length})</h2>
+          <h2 className="text-lg font-semibold">{t("index.searchResultsTitle", { count: filtered.length })}</h2>
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-500">No articles match &ldquo;{query}&rdquo;.</p>
+            <p className="text-sm text-gray-500">{t("index.noResults", { query })}</p>
           ) : (
             filtered.map((a) => <ArticleCard key={a.slug} a={a} />)
           )}
@@ -94,6 +95,7 @@ export default function HelpIndexPage() {
 }
 
 function ArticleCard({ a }: { a: ArticleSummary }) {
+  const t = useTranslations("help");
   return (
     <Link
       href={`/dashboard/help/article/${a.slug}`}
@@ -103,17 +105,17 @@ function ArticleCard({ a }: { a: ArticleSummary }) {
         <h3 className="font-semibold">{a.title}</h3>
         {a.overridden && (
           <span className="text-[10px] uppercase tracking-wide rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
-            customised
+            {t("manage.customised")}
           </span>
         )}
         {a.fallbackFromEnglish && (
           <span className="text-[10px] uppercase tracking-wide rounded bg-gray-100 text-gray-600 px-1.5 py-0.5">
-            translation pending
+            {t("article.translationPending")}
           </span>
         )}
         {a.audience === "platform_admin" && (
           <span className="text-[10px] uppercase tracking-wide rounded bg-orange-100 text-orange-700 px-1.5 py-0.5">
-            platform admin
+            {t("article.platformAdmin")}
           </span>
         )}
       </div>

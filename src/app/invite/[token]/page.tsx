@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -21,6 +21,7 @@ export default function AcceptInvitePage() {
   const params = useParams<{ token: string }>();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("common");
   const [invite, setInvite] = useState<Invitation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -41,11 +42,11 @@ export default function AcceptInvitePage() {
     e.preventDefault();
     setError("");
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("invite.passwordTooShort"));
       return;
     }
     if (password !== confirm) {
-      setError("Passwords don't match.");
+      setError(t("invite.passwordMismatch"));
       return;
     }
     setSubmitting(true);
@@ -70,7 +71,7 @@ export default function AcceptInvitePage() {
           return;
         }
         setError(
-          "This invitation has already been accepted. Please sign in with the password you set the first time."
+          t("invite.alreadyAccepted")
         );
         return;
       }
@@ -97,7 +98,7 @@ export default function AcceptInvitePage() {
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-gray-500">Loading invitation…</p>
+        <p className="text-gray-500">{t("invite.loading")}</p>
       </main>
     );
   }
@@ -107,10 +108,9 @@ export default function AcceptInvitePage() {
       <main className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-2xl shadow p-8 text-center">
           <div className="text-4xl mb-3">😕</div>
-          <h1 className="text-xl font-bold">Invitation not found</h1>
+          <h1 className="text-xl font-bold">{t("invite.notFound")}</h1>
           <p className="text-gray-600 mt-2">
-            This link doesn't match any invitation. Double-check the URL or
-            ask the person who invited you to send a fresh one.
+            {t("invite.notFoundHint")}
           </p>
         </div>
       </main>
@@ -123,14 +123,13 @@ export default function AcceptInvitePage() {
         <div className="max-w-md w-full bg-white rounded-2xl shadow p-8 text-center space-y-3">
           <div className="text-4xl">⌛</div>
           <h1 className="text-xl font-bold">
-            Invitation {invite.status.toLowerCase()}
+            {t("invite.staleTitle", { status: invite.status.toLowerCase() })}
           </h1>
           <p className="text-gray-600">
-            This invitation is {invite.status.toLowerCase()} and can no longer
-            be used. Please ask {invite.tenant.name} for a fresh invitation.
+            {t("invite.staleMessage", { status: invite.status.toLowerCase(), tenant: invite.tenant.name })}
           </p>
           <Link href="/auth/login" className="inline-block text-green-700 hover:underline mt-2">
-            Go to sign-in
+            {t("invite.goToSignIn")}
           </Link>
         </div>
       </main>
@@ -142,20 +141,18 @@ export default function AcceptInvitePage() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow p-8 space-y-5">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800">
-            Welcome to {invite.tenant.name}
+            {t("invite.welcomeTitle", { tenant: invite.tenant.name })}
           </h1>
           {invite.tenant.locality && (
             <p className="text-gray-400 text-sm">{invite.tenant.locality}</p>
           )}
           <p className="text-gray-600 mt-2">
-            You've been invited to join as a{" "}
-            <strong>{invite.role.replace(/_/g, " ").toLowerCase()}</strong>.
-            Set a password to get started.
+            {t("invite.roleDescription", { role: invite.role.replace(/_/g, " ").toLowerCase() })}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Field label="Email">
+          <Field label={t("invite.emailLabel")}>
             <input
               type="email"
               value={invite.email}
@@ -163,16 +160,16 @@ export default function AcceptInvitePage() {
               className="w-full rounded-lg border p-3 bg-gray-100 text-gray-600"
             />
           </Field>
-          <Field label="Your name (optional)">
+          <Field label={t("invite.nameLabel")}>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border p-3"
-              placeholder="How should we address you?"
+              placeholder={t("invite.namePlaceholder")}
             />
           </Field>
-          <Field label="Password" required>
+          <Field label={t("invite.passwordLabel")} required>
             <input
               type="password"
               value={password}
@@ -180,10 +177,10 @@ export default function AcceptInvitePage() {
               required
               minLength={8}
               className="w-full rounded-lg border p-3"
-              placeholder="At least 8 characters"
+              placeholder={t("invite.passwordPlaceholder")}
             />
           </Field>
-          <Field label="Confirm password" required>
+          <Field label={t("invite.confirmLabel")} required>
             <input
               type="password"
               value={confirm}
@@ -204,11 +201,11 @@ export default function AcceptInvitePage() {
             disabled={submitting}
             className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:bg-gray-400"
           >
-            {submitting ? "Setting up…" : "Accept invitation"}
+            {submitting ? t("invite.submitting") : t("invite.submit")}
           </button>
 
           <p className="text-xs text-gray-500 text-center">
-            Invitation expires {formatDate(invite.expiresAt, locale)}.
+            {t("invite.expiresAt", { date: formatDate(invite.expiresAt, locale) })}
           </p>
         </form>
       </div>

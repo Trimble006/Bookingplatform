@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatTime } from "@/lib/format";
 
 type Message = {
@@ -34,6 +34,7 @@ export default function MessageThread({
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
   const locale = useLocale();
+  const t = useTranslations("messaging");
 
   useEffect(() => {
     if (messages.length > prevLenRef.current) {
@@ -53,7 +54,7 @@ export default function MessageThread({
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-3">
       {hasMore && (
         <button onClick={onLoadMore} className="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2">
-          Load older messages...
+          {t("messageThread.loadOlder")}
         </button>
       )}
       {messages.map((msg) => {
@@ -71,17 +72,17 @@ export default function MessageThread({
                 isDeleted ? "bg-gray-100 text-gray-400 italic" : isMine ? "bg-green-600 text-white" : "bg-gray-200 text-gray-900"
               }`}
             >
-              {isDeleted ? "[message deleted]" : msg.body}
+              {isDeleted ? t("messageThread.deleted") : msg.body}
             </div>
             {!isDeleted && (isAdmin || isMine) && (
               <div className="flex gap-2 mt-1 text-xs">
                 {(isAdmin) && (
                   <button onClick={() => onPin(msg.id, !msg.pinned)} className="text-gray-500 hover:text-yellow-600">
-                    {msg.pinned ? "Unpin" : "Pin"}
+                    {msg.pinned ? t("messageThread.unpin") : t("messageThread.pin")}
                   </button>
                 )}
                 <button onClick={() => onDelete(msg.id)} className="text-gray-500 hover:text-red-600">
-                  Delete
+                  {t("messageThread.delete")}
                 </button>
               </div>
             )}

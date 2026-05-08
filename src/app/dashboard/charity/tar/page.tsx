@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDate as formatDateLocale, formatCurrency } from "@/lib/format";
 
 // ── Types ────────────────────────────────────────────────────
@@ -58,6 +58,7 @@ function penniesToPounds(pence: number, locale: string): string {
 
 export default function TARWizardPage() {
   const locale = useLocale();
+  const t = useTranslations("charity");
   const [years, setYears] = useState<Year[]>([]);
   const [selectedYearId, setSelectedYearId] = useState<string>("");
   const [tarData, setTarData] = useState<TARData | null>(null);
@@ -104,7 +105,7 @@ export default function TARWizardPage() {
       ),
     ]).then(([tar, ctx, readiness]) => {
       if (!tar) {
-        setError("Could not load TAR data. Ensure charity settings are configured.");
+        setError(t("tar.loadFailed"));
         return;
       }
       setTarData(tar as TARData);
@@ -196,7 +197,7 @@ export default function TARWizardPage() {
           return { ...prev, tar: { ...prev.tar, sections } };
         });
       } else if (res.status === 429) {
-        setError("Rate limited — wait a moment and try again.");
+        setError(t("tar.rateLimited"));
       }
     } finally {
       setSuggesting(false);
@@ -216,7 +217,7 @@ export default function TARWizardPage() {
   // ── Finalise ────────────────────────────────────────────────
   const handleFinalise = useCallback(async () => {
     if (!selectedYearId || isFinalised) return;
-    if (!confirm("Finalise the TAR? This will lock the financial year."))
+    if (!confirm(t("tar.finaliseConfirm")))
       return;
     setFinalising(true);
     setError(null);
@@ -243,7 +244,7 @@ export default function TARWizardPage() {
       } else {
         const data = await res.json();
         if (data.missingSections) {
-          setError(`Incomplete sections: ${data.missingSections.join(", ")}`);
+          setError(t("tar.incompleteSections", { sections: data.missingSections.join(", ") }));
         } else {
           setError(data.message ?? "Finalise failed.");
         }
@@ -278,18 +279,14 @@ export default function TARWizardPage() {
 
   // ── Render ─────────────────────────────────────────────────
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p>{t("overview.loading")}</p>;
 
   if (years.length === 0) {
     return (
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold mb-2">Trustees&apos; Annual Report</h1>
+        <h1 className="text-2xl font-bold mb-2">{t("tar.title")}</h1>
         <p className="text-slate-600">
-          No financial years found. Create one in the{" "}
-          <a href="/dashboard/charity/ledger" className="text-green-700 underline">
-            Ledger
-          </a>{" "}
-          first.
+          {t("tar.noYears")}{" "}
         </p>
       </div>
     );
@@ -298,7 +295,7 @@ export default function TARWizardPage() {
   return (
     <div className="max-w-5xl">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Trustees&apos; Annual Report</h1>
+        <h1 className="text-2xl font-bold">{t("tar.title")}</h1>
         <select
           className="border rounded px-3 py-1.5 text-sm"
           value={selectedYearId}
@@ -317,11 +314,9 @@ export default function TARWizardPage() {
 
       {isFinalised && (
         <div className="rounded border border-green-200 bg-green-50 p-3 mb-4 text-green-900 text-sm">
-          This TAR was finalised on{" "}
-          {tarData?.tar.finalisedAt
+          {t("tar.finalisedMessage", { date: tarData?.tar.finalisedAt
             ? formatDateLocale(tarData.tar.finalisedAt, locale)
-            : "unknown"}
-          . It is now read-only.
+            : "unknown" })}
         </div>
       )}
 
@@ -329,7 +324,7 @@ export default function TARWizardPage() {
         <div className="rounded border border-amber-200 bg-amber-50 p-3 mb-4 text-amber-900 text-sm">
           <div className="flex justify-between items-start">
             <div>
-              <p className="font-semibold">Heads up</p>
+              <p className="font-semibold">{t("tar.headsUp")}</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5">
                 {warnings.map((w) => (
                   <li key={w.key}>{w.message}</li>
@@ -354,7 +349,7 @@ export default function TARWizardPage() {
       )}
 
       {!tarData ? (
-        <p>Loading TAR data…</p>
+        <p>{t("tar.loadingTarData")}</p>
       ) : (
         <div className="flex gap-6">
           {/* ── Sidebar stepper ─────────────────────────── */}

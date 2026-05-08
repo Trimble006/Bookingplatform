@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { ChapterShell, Field, inputClass } from "./shared";
 import type { ChapterProps } from "./shared";
 
 type Green = { id: string; name: string; allWeather: boolean; seasonStartMMDD: string | null; seasonEndMMDD: string | null; rinks: { id: string; name: string }[] };
 
 export default function Chapter4Greens({ onAdvance }: ChapterProps) {
+  const t = useTranslations("onboarding");
   const [greens, setGreens] = useState<Green[]>([]);
   const [newName, setNewName] = useState("");
   const [newRinkCount, setNewRinkCount] = useState(6);
@@ -45,7 +47,7 @@ export default function Chapter4Greens({ onAdvance }: ChapterProps) {
 
   return (
     <ChapterShell
-      title="Your greens"
+      title={t("chapters.greens")}
       intro="Add each playing green and how many rinks it has. You can rename or remove them later."
       onSubmit={(e) => { e.preventDefault(); onAdvance(); }}
       submitLabel={greens.length > 0 ? "Done — continue" : "Continue without greens"}

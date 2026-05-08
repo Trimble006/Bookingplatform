@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime, formatDate } from "@/lib/format";
 import Link from "next/link";
 
@@ -42,6 +42,7 @@ export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("admin");
   const { update } = useSession();
   const [app, setApp] = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,8 +129,8 @@ export default function ApplicationDetailPage() {
       });
   }
 
-  if (loading) return <p className="text-gray-500">Loading…</p>;
-  if (!app) return <p className="text-red-600">Application not found.</p>;
+  if (loading) return <p className="text-gray-500">{t("platform.applicationDetail.loading")}</p>;
+  if (!app) return <p className="text-red-600">{t("platform.applicationDetail.notFound")}</p>;
 
   const isFinalised = app.status === "APPROVED" || app.status === "REJECTED";
 
@@ -140,7 +141,7 @@ export default function ApplicationDetailPage() {
           href="/dashboard/platform/applications"
           className="text-sm text-gray-500 hover:text-gray-700"
         >
-          ← All applications
+          {t("platform.applicationDetail.allApplications")}
         </Link>
         <h1 className="text-2xl font-bold text-gray-800 mt-2">{app.clubName}</h1>
         <div className="text-sm text-gray-500">
@@ -149,14 +150,14 @@ export default function ApplicationDetailPage() {
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4 bg-white rounded-xl shadow p-5">
-        <Field label="Contact name">{app.contactName}</Field>
-        <Field label="Email">
+        <Field label={t("platform.applicationDetail.contactName")}>{app.contactName}</Field>
+        <Field label={t("platform.applicationDetail.email")}>
           <a className="text-green-700 hover:underline" href={`mailto:${app.contactEmail}`}>
             {app.contactEmail}
           </a>
         </Field>
-        <Field label="Phone">{app.contactPhone ?? <em className="text-gray-400">none</em>}</Field>
-        <Field label="Country / region">
+        <Field label={t("platform.applicationDetail.phone")}>{app.contactPhone ?? <em className="text-gray-400">none</em>}</Field>
+        <Field label={t("platform.applicationDetail.countryRegion")}>
           {app.country}
           {app.region && <span className="text-gray-400"> / {app.region}</span>}
         </Field>
@@ -166,7 +167,7 @@ export default function ApplicationDetailPage() {
           </span>
         </Field>
         {app.tenant && (
-          <Field label="Provisioned tenant">
+          <Field label={t("platform.applicationDetail.provisionedTenant")}>
             <Link
               href={`/dashboard/platform/tenants/${app.tenant.id}`}
               className="text-green-700 hover:underline"
@@ -193,7 +194,7 @@ export default function ApplicationDetailPage() {
         )}
         {app.notes && (
           <div className="sm:col-span-2">
-            <div className="text-xs uppercase text-gray-500 mb-1">Notes from applicant</div>
+            <div className="text-xs uppercase text-gray-500 mb-1">{t("platform.applicationDetail.notesFromApplicant")}</div>
             <div className="bg-gray-50 rounded p-3 whitespace-pre-wrap text-gray-700">
               {app.notes}
             </div>
@@ -201,7 +202,7 @@ export default function ApplicationDetailPage() {
         )}
         {app.decisionNotes && (
           <div className="sm:col-span-2">
-            <div className="text-xs uppercase text-gray-500 mb-1">Decision notes</div>
+            <div className="text-xs uppercase text-gray-500 mb-1">{t("platform.applicationDetail.decisionNotes")}</div>
             <div className="bg-amber-50 border border-amber-200 rounded p-3 whitespace-pre-wrap text-gray-700">
               {app.decisionNotes}
             </div>
@@ -218,9 +219,9 @@ export default function ApplicationDetailPage() {
       {app.status === "APPROVED" && app.tenant && app.tenant.status === "ONBOARDING" && (
         <div className="bg-white rounded-xl shadow p-5 space-y-3 border-l-4 border-emerald-500">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Next steps</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t("platform.applicationDetail.nextSteps")}</h2>
             <p className="text-sm text-gray-600">
-              The tenant is provisioned but not yet live. Here&rsquo;s what happens next:
+              {t("platform.applicationDetail.nextStepsIntro")}
             </p>
           </div>
           <ol className="text-sm text-gray-700 list-decimal pl-5 space-y-1">
@@ -264,7 +265,7 @@ export default function ApplicationDetailPage() {
               }}
               className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
             >
-              {helpBusy ? "Starting…" : "Help drive onboarding"}
+              {helpBusy ? "Starting…" : t("platform.applicationDetail.helpDriveOnboarding")}
             </button>
           </div>
         </div>
@@ -273,9 +274,9 @@ export default function ApplicationDetailPage() {
       {invitations.length > 0 && (
         <div className="bg-white rounded-xl shadow p-5 space-y-3">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Invitation links</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t("platform.applicationDetail.invitationLinks")}</h2>
             <p className="text-sm text-gray-500">
-              Outbound is stubbed — nothing has actually been emailed. Copy the link below and send it to the applicant out-of-band.
+              {t("platform.applicationDetail.invitationLinksHint")}
             </p>
           </div>
           <ul className="space-y-2">
