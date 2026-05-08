@@ -31,7 +31,7 @@ scratch.
 
 ## Just parked
 
-- `#i18n` — foundation + Phase 3 formatting merged to main. Remaining: deeper string extraction (~30 components), public-page locale resolution (Phase 5), QA. Plan: `parked-plans/i18n.md`.
+
 - `#agent-self-supersede` — Step 3c-iv of agent-v2 plan: detector should mark its own stale PENDING proposals as SUPERSEDED on subsequent runs. Plan: `parked-plans/agent-v2-followups.md`. **Pull in before inbox sees production traffic.**
 - `#triager-proposals` — Step 3c-v of agent-v2 plan: migrate triager to emit `MAINTENANCE_TASK_ASSIGN` proposals. Plan: `parked-plans/agent-v2-followups.md`.
 - `#permission-groups` — federation + permission groups full design done. Plan: `parked-plans/permission-groups.md`. Branch: `feature/permission-groups`.
@@ -42,8 +42,8 @@ scratch.
 
 ## Recently landed
 
+- 2026-05-08 — `#i18n` string extraction complete (92/101 files, 14 namespaces). Branch: `feature/i18n-completion` (merged). `DECISIONS.md`.
 - 2026-05-07 — `#i18n` foundation + locale-aware formatting merged to main. Branch: `feature/i18n` (merged). `DECISIONS.md`.
-- 2026-05-05 — `#agents-v2` propose-not-publish loop closed end-to-end: committer pattern, detector migration, inbox UI + review API, seed script. Follow-ups (`#agent-self-supersede`, `#triager-proposals`) parked at `parked-plans/agent-v2-followups.md`. `DECISIONS.md`.
-- 2026-05-05 — TAR wizard improvements (unlock cascade + readiness warnings) merged to main. Branches deleted.
+- 2026-05-05 — `#agents-v2` propose-not-publish loop closed end-to-end. Follow-ups parked at `parked-plans/agent-v2-followups.md`. `DECISIONS.md`.
+- 2026-05-05 — TAR wizard improvements (unlock cascade + readiness warnings) merged to main.
 - 2026-05-05 — Federation & Permissions full design plan. `DECISIONS.md`.
-- 2026-05-04 — Onboarding KYC Chapter 2 (country + org type + FY end). `DECISIONS.md`.
