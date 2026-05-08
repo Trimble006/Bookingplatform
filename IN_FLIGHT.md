@@ -22,6 +22,7 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
+- `#permission-groups` — C1 (schema + seed) done; C2 (dual gate) next. Session: `bp: #permission-groups`. Branch: `feature/permission-groups`.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).
@@ -34,7 +35,6 @@ scratch.
 
 - `#agent-self-supersede` — Step 3c-iv of agent-v2 plan: detector should mark its own stale PENDING proposals as SUPERSEDED on subsequent runs. Plan: `parked-plans/agent-v2-followups.md`. **Pull in before inbox sees production traffic.**
 - `#triager-proposals` — Step 3c-v of agent-v2 plan: migrate triager to emit `MAINTENANCE_TASK_ASSIGN` proposals. Plan: `parked-plans/agent-v2-followups.md`.
-- `#permission-groups` — federation + permission groups full design done. Plan: `parked-plans/permission-groups.md`. Branch: `feature/permission-groups`.
 - `#midge-forecast` — implementation plan complete, blocked on nothing. Plan: `parked-plans/midge-forecast.md`.
 - `#multi-slot-booking` — design decided, plan in `DECISIONS.md` 2026-05-03. No parked-plan file.
 

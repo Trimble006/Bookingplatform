@@ -262,6 +262,7 @@ async function main() {
   }
   console.log("Demo tenant billing profile seeded.");
 
+  await seedPermissionGroups(tenant.id);
   await seedAgents(tenant.id);
 
   console.log("Seed complete.");
@@ -270,6 +271,95 @@ async function main() {
 main()
   .catch((e) => { console.error(e); process.exit(1); })
   .finally(() => prisma.$disconnect());
+
+// ─── Permission Groups (built-in groups per tenant) ─────────────────
+//
+// Seeds three built-in groups that mirror the existing role tiers. Groups are
+// additive — existing users keep working via role gates. Group membership is
+// opt-in for new features. Safe to re-run (upsert on tenantId+name).
+
+const BUILT_IN_GROUPS: { name: string; description: string; permissions: string[] }[] = [
+  {
+    name: "Members",
+    description: "Standard member permissions — book, view events, message, view help.",
+    permissions: [
+      "bookings_view", "bookings_create",
+      "events_view",
+      "messaging_view", "messaging_send",
+      "notifications_view",
+      "help_view",
+    ],
+  },
+  {
+    name: "Maintenance Staff",
+    description: "Members permissions plus maintenance task management and agent review.",
+    permissions: [
+      "bookings_view", "bookings_create",
+      "events_view",
+      "messaging_view", "messaging_send",
+      "notifications_view",
+      "help_view",
+      "maintenance_view", "maintenance_create", "maintenance_assign", "maintenance_close",
+      "agents_view", "agents_review_proposals",
+    ],
+  },
+  {
+    name: "Administrators",
+    description: "All permissions. TENANT_ADMIN also has an implicit all-permissions bypass.",
+    permissions: [
+      "bookings_view", "bookings_create", "bookings_manage", "bookings_admin_override",
+      "maintenance_view", "maintenance_create", "maintenance_assign", "maintenance_close",
+      "events_view", "events_create", "events_manage",
+      "messaging_view", "messaging_send", "messaging_manage_channels",
+      "content_view", "content_edit", "content_publish",
+      "greens_view", "greens_manage",
+      "streaming_view", "streaming_manage",
+      "charity_view", "charity_edit", "charity_finalise_tar", "charity_manage_funds",
+      "analytics_view",
+      "audit_view",
+      "help_view", "help_manage_overrides",
+      "users_view", "users_invite", "users_manage",
+      "settings_view", "settings_edit",
+      "billing_view", "billing_manage",
+      "agents_view", "agents_configure", "agents_review_proposals",
+      "notifications_view", "notifications_manage",
+      "federation_book_at_partners", "federation_manage",
+    ],
+  },
+];
+
+async function seedPermissionGroups(tenantId: string) {
+  for (const group of BUILT_IN_GROUPS) {
+    const existing = await prisma.permissionGroup.findUnique({
+      where: { tenantId_name: { tenantId, name: group.name } },
+      include: { grants: true },
+    });
+    if (existing) {
+      // Ensure grants are up to date (idempotent)
+      const existingPerms = new Set(existing.grants.map((g: { permission: string }) => g.permission));
+      for (const perm of group.permissions) {
+        if (!existingPerms.has(perm)) {
+          await prisma.permissionGrant.create({
+            data: { groupId: existing.id, permission: perm as any },
+          });
+        }
+      }
+    } else {
+      await prisma.permissionGroup.create({
+        data: {
+          tenantId,
+          name: group.name,
+          description: group.description,
+          isBuiltIn: true,
+          grants: {
+            create: group.permissions.map((p) => ({ permission: p as any })),
+          },
+        },
+      });
+    }
+  }
+  console.log("Permission groups seeded (3 built-in groups).");
+}
 
 // ─── Agent Framework Seeding ────────────────────────────────────────
 //
