@@ -13,6 +13,8 @@
     "viewApplication": "View",
     "recommended": "Recommended for you",
     "deadline": "Deadline",
+    "deadlineSoon": "{days} days left",
+    "deadlinePassed": "Deadline passed",
     "amount": "Up to {amount}",
     "funder": "Funder",
     "allOpportunities": "All Opportunities",

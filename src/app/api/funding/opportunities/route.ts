@@ -5,6 +5,7 @@ import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
 import { assertPermissionOrFail } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { rankOpportunities } from "@/lib/funding/eligibility";
 
 const FUNDING_FEATURE_KEY = "funding";
 
@@ -12,6 +13,7 @@ const FUNDING_FEATURE_KEY = "funding";
  * GET /api/funding/opportunities?tag=...&active=true
  * Returns platform-level opportunities (tenantId IS NULL) plus
  * the caller's own tenant-created opportunities.
+ * Each opportunity includes an eligibility score and reasons.
  */
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
@@ -28,19 +30,40 @@ export async function GET(req: NextRequest) {
   const tag = url.searchParams.get("tag");
   const activeOnly = url.searchParams.get("active") !== "false";
 
-  const opportunities = await prisma.fundingOpportunity.findMany({
-    where: {
-      OR: [{ tenantId: null }, { tenantId }],
-      ...(activeOnly ? { active: true } : {}),
-      ...(tag ? { tags: { has: tag } } : {}),
-    },
-    include: {
-      questions: { orderBy: { sortOrder: "asc" } },
-      _count: { select: { applications: true } },
-    },
-    orderBy: [{ deadline: "asc" }, { name: "asc" }],
-  });
-  return NextResponse.json(opportunities);
+  const [opportunities, tenant] = await Promise.all([
+    prisma.fundingOpportunity.findMany({
+      where: {
+        OR: [{ tenantId: null }, { tenantId }],
+        ...(activeOnly ? { active: true } : {}),
+        ...(tag ? { tags: { has: tag } } : {}),
+      },
+      include: {
+        questions: { orderBy: { sortOrder: "asc" } },
+        _count: { select: { applications: true } },
+      },
+      orderBy: [{ deadline: "asc" }, { name: "asc" }],
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { country: true, organisationType: true },
+    }),
+  ]);
+
+  const profile = {
+    country: tenant?.country ?? "OTHER",
+    organisationType: tenant?.organisationType ?? null,
+  };
+  const scores = rankOpportunities(opportunities, profile);
+  const scoreMap = new Map(scores.map((s) => [s.opportunityId, s]));
+
+  // Attach score to each opportunity and sort by score desc (recommended first)
+  const scored = opportunities.map((opp) => ({
+    ...opp,
+    eligibility: scoreMap.get(opp.id) ?? { score: 0, reasons: ["Not eligible"] },
+  }));
+  scored.sort((a, b) => b.eligibility.score - a.eligibility.score);
+
+  return NextResponse.json(scored);
 }
 
 /**

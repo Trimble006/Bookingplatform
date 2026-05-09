@@ -13,6 +13,8 @@
     "viewApplication": "[cy] View",
     "recommended": "[cy] Recommended for you",
     "deadline": "[cy] Deadline",
+    "deadlineSoon": "[cy] {days} days left",
+    "deadlinePassed": "[cy] Deadline passed",
     "amount": "[cy] Up to {amount}",
     "funder": "[cy] Funder",
     "allOpportunities": "[cy] All Opportunities",

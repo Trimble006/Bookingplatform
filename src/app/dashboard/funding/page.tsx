@@ -10,6 +10,11 @@ type Question = {
   helpText: string | null;
 };
 
+type Eligibility = {
+  score: number;
+  reasons: string[];
+};
+
 type Opportunity = {
   id: string;
   name: string;
@@ -20,6 +25,7 @@ type Opportunity = {
   tags: string[];
   tenantId: string | null;
   questions: Question[];
+  eligibility: Eligibility;
 };
 
 type Application = {
@@ -196,7 +202,14 @@ export default function FundingOverviewPage() {
           <p className="text-gray-500">{t("overview.noOpportunities")}</p>
         ) : (
           <div className="space-y-2">
-            {opportunities.map((opp) => (
+            {opportunities.map((opp) => {
+              const daysUntilDeadline = opp.deadline
+                ? Math.ceil((new Date(opp.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                : null;
+              const deadlineSoon = daysUntilDeadline !== null && daysUntilDeadline >= 0 && daysUntilDeadline <= 30;
+              const deadlinePassed = daysUntilDeadline !== null && daysUntilDeadline < 0;
+
+              return (
               <div key={opp.id} className="border rounded p-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -207,9 +220,21 @@ export default function FundingOverviewPage() {
                       ) : (
                         <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">{t("opportunity.platform")}</span>
                       )}
+                      {opp.eligibility.score >= 70 && (
+                        <span className="text-xs bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                          {t("overview.recommended")}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-500">{opp.funder}</p>
                     <p className="text-sm mt-1">{opp.description}</p>
+                    {opp.eligibility.reasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {opp.eligibility.reasons.map((r, i) => (
+                          <span key={i} className="text-xs text-gray-500">✓ {r}</span>
+                        ))}
+                      </div>
+                    )}
                     {opp.questions.length > 0 && (
                       <p className="text-xs text-gray-400 mt-1">{opp.questions.length} questions defined</p>
                     )}
@@ -221,8 +246,16 @@ export default function FundingOverviewPage() {
                   </div>
                   <div className="text-right ml-4 shrink-0">
                     {opp.deadline && (
-                      <p className="text-sm text-gray-500">
-                        {t("overview.deadline")}: {new Date(opp.deadline).toLocaleDateString("en-GB")}
+                      <p className={`text-sm ${
+                        deadlinePassed ? "text-red-600 line-through" :
+                        deadlineSoon ? "text-amber-600 font-medium" :
+                        "text-gray-500"
+                      }`}>
+                        {deadlinePassed
+                          ? t("overview.deadlinePassed")
+                          : deadlineSoon
+                            ? t("overview.deadlineSoon", { days: daysUntilDeadline! })
+                            : `${t("overview.deadline")}: ${new Date(opp.deadline).toLocaleDateString("en-GB")}`}
                       </p>
                     )}
                     {opp.maxAmount && (
@@ -230,18 +263,19 @@ export default function FundingOverviewPage() {
                     )}
                     {appliedOppIds.has(opp.id) ? (
                       <span className="text-xs text-green-700 mt-2 inline-block">Applied</span>
-                    ) : (
+                    ) : !deadlinePassed ? (
                       <Link
                         href={`/dashboard/funding/apply/${opp.id}`}
                         className="mt-2 inline-block text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
                       >
                         {t("overview.applyNow")}
                       </Link>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
