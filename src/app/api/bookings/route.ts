@@ -5,6 +5,8 @@ import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { isGreenOpenOn, type GreenSeasonInfo } from "@/lib/season";
+import { hasPermission } from "@/lib/permissions";
+import { isFeatureEnabled } from "@/lib/features";
 
 /** List bookings for the caller's tenant context (impersonation-aware). */
 export async function GET(req: NextRequest) {
@@ -42,16 +44,65 @@ export async function POST(req: NextRequest) {
   if (tErr) return tErr;
 
   const body = await req.json();
-  const { date, slots, bookForUserId, adminOverride, overrideReason } = body as {
+  const { date, slots, bookForUserId, adminOverride, overrideReason, targetTenantId, confirmClash } = body as {
     date?: string;
     slots?: { rinkId: string; timeSlot: string; playerName?: string }[];
     bookForUserId?: string;
     adminOverride?: boolean;
     overrideReason?: string;
+    targetTenantId?: string;
+    confirmClash?: boolean;
   };
 
   if (!date || !slots?.length) {
     return jsonError("date and slots[] required");
+  }
+
+  // ── Cross-club (federation) booking resolution ──────────────
+  // If targetTenantId differs from the session's tenant, this is a
+  // cross-club booking via federation. We resolve the booking tenant
+  // to the target, and record provenance.
+  let bookingTenantId = tenantId; // same-club default
+  let bookedByTenantId: string | null = null;
+  let federationId: string | null = null;
+
+  if (targetTenantId && targetTenantId !== tenantId) {
+    // Federation feature must be enabled on the home club
+    if (!(await isFeatureEnabled(tenantId, "federation"))) {
+      return jsonError("Federation feature is not enabled", 403);
+    }
+
+    // Target club must exist
+    const targetTenant = await prisma.tenant.findUnique({ where: { id: targetTenantId }, select: { id: true } });
+    if (!targetTenant) return jsonError("Target club not found", 404);
+
+    // User must have federation_book_at_partners permission at home club
+    if (!(await hasPermission(session, "federation_book_at_partners"))) {
+      return jsonError("You do not have permission to book at partner clubs", 403);
+    }
+
+    // Find a common active federation
+    const homeFederations = await prisma.federationMembership.findMany({
+      where: { tenantId, leftAt: null, federation: { status: "ACTIVE" } },
+      select: { federationId: true },
+    });
+    const homeFedIds = homeFederations.map((f) => f.federationId);
+
+    if (homeFedIds.length === 0) {
+      return jsonError("Your club is not in any active federation", 403);
+    }
+
+    const commonMembership = await prisma.federationMembership.findFirst({
+      where: { tenantId: targetTenantId, leftAt: null, federationId: { in: homeFedIds }, federation: { status: "ACTIVE" } },
+      select: { federationId: true },
+    });
+    if (!commonMembership) {
+      return jsonError("Your club and the target club are not in a common federation", 403);
+    }
+
+    bookingTenantId = targetTenantId;
+    bookedByTenantId = tenantId;
+    federationId = commonMembership.federationId;
   }
 
   // ── Book-on-behalf logic ────────────────────────────────────
@@ -85,10 +136,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Validate rinks belong to tenant ─────────────────────────
+  // ── Validate rinks belong to booking tenant ──────────────────
   const rinkIds: string[] = slots.map((s) => s.rinkId);
   const rinks = await prisma.rink.findMany({
-    where: { id: { in: rinkIds }, green: { tenantId } },
+    where: { id: { in: rinkIds }, green: { tenantId: bookingTenantId } },
     include: {
       green: {
         select: {
@@ -128,7 +179,7 @@ export async function POST(req: NextRequest) {
         where: {
           rinkId: slot.rinkId,
           timeSlot: slot.timeSlot,
-          booking: { date, status: { in: ["APPROVED", "RESERVED", "CONFIRMED"] }, tenantId },
+          booking: { date, status: { in: ["APPROVED", "RESERVED", "CONFIRMED"] }, tenantId: bookingTenantId },
         },
       });
       if (conflict) {
@@ -137,12 +188,64 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── Cross-club clash detection ──────────────────────────────
+  // When booking at a partner club, check whether the user already has
+  // bookings on the same date at ANY federated club. Same slot = clash,
+  // adjacent slot = travel-time warning. Client confirms to proceed.
+  if (federationId && !confirmClash) {
+    const requestedSlots = slots.map((s) => s.timeSlot);
+
+    // Find all the user's bookings on this date across all tenants
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        userId: bookeeUserId,
+        date,
+        status: { in: ["APPROVED", "RESERVED", "CONFIRMED", "REQUESTED"] },
+      },
+      include: {
+        slots: { select: { timeSlot: true } },
+        tenant: { select: { name: true } },
+      },
+    });
+
+    for (const existing of existingBookings) {
+      for (const es of existing.slots) {
+        if (requestedSlots.includes(es.timeSlot)) {
+          return NextResponse.json(
+            {
+              error: "CROSS_CLUB_CLASH",
+              message: `You already have a booking at ${existing.tenant.name} on ${date} at ${es.timeSlot}`,
+              existingBooking: { id: existing.id, tenantName: existing.tenant.name, timeSlot: es.timeSlot },
+              confirm: true,
+            },
+            { status: 409 },
+          );
+        }
+        // Adjacent slot check: compare start/end hours
+        const warnAdj = isAdjacentSlot(es.timeSlot, requestedSlots);
+        if (warnAdj) {
+          return NextResponse.json(
+            {
+              error: "CROSS_CLUB_CONSECUTIVE",
+              message: `You have a booking at ${existing.tenant.name} on ${date} at ${es.timeSlot} — consecutive slots across clubs may not leave travel time`,
+              existingBooking: { id: existing.id, tenantName: existing.tenant.name, timeSlot: es.timeSlot },
+              confirm: true,
+            },
+            { status: 409 },
+          );
+        }
+      }
+    }
+  }
+
   // ── Create booking ──────────────────────────────────────────
   const booking = await prisma.booking.create({
     data: {
-      tenantId,
+      tenantId: bookingTenantId,
       userId: bookeeUserId,
       bookedByUserId,
+      bookedByTenantId: bookedByTenantId,
+      federationId: federationId,
       date,
       status: "REQUESTED",
       adminOverride: useOverride,
@@ -167,8 +270,29 @@ export async function POST(req: NextRequest) {
     meta.adminOverride = true;
     meta.overrideReason = overrideReason!.trim();
   }
+  if (federationId) {
+    meta.crossClub = true;
+    meta.homeTenantId = bookedByTenantId;
+    meta.federationId = federationId;
+  }
 
-  logAudit({ session, action: "booking.created", entity: "Booking", entityId: booking.id, tenantId, meta });
+  logAudit({ session, action: "booking.created", entity: "Booking", entityId: booking.id, tenantId: bookingTenantId, meta });
 
   return NextResponse.json(booking, { status: 201 });
+}
+
+/**
+ * Check if an existing slot's time is adjacent to any requested slot.
+ * "10:00-12:00" is adjacent to "12:00-14:00" (end of one = start of other).
+ */
+function isAdjacentSlot(existingSlot: string, requestedSlots: string[]): boolean {
+  const [, existingEnd] = existingSlot.split("-");
+  const existingStart = existingSlot.split("-")[0];
+  if (!existingEnd || !existingStart) return false;
+
+  for (const rs of requestedSlots) {
+    const [reqStart, reqEnd] = rs.split("-");
+    if (existingEnd === reqStart || reqEnd === existingStart) return true;
+  }
+  return false;
 }

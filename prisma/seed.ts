@@ -144,7 +144,7 @@ async function main() {
 
   // Feature flags
   const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent"];
-  const disabledFlags = ["liveStreaming"];
+  const disabledFlags = ["liveStreaming", "federation"];
   for (const key of enabledFlags) {
     await prisma.featureFlag.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key } },
