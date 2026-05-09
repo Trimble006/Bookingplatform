@@ -1,33 +1,43 @@
 {
-  "index.title": "[cy] Help centre",
-  "index.subtitle": "[cy] Guides for running your club on the platform.",
-  "index.searchPlaceholder": "[cy] Search articles…",
-  "index.searchResultsTitle": "[cy] Search results ({count})",
-  "index.noResults": "[cy] No articles match \"{query}\".",
-  "article.notFound": "[cy] Article not found.",
-  "article.backToHelp": "[cy] ← Back to help centre",
-  "article.loading": "[cy] Loading…",
-  "article.customised": "[cy] customised by your club",
-  "article.translationPending": "[cy] translation pending",
-  "article.platformAdmin": "[cy] platform admin",
-  "article.lastUpdated": "[cy] Last updated {date}",
-  "manage.title": "[cy] Help overrides",
-  "manage.subtitle": "[cy] Customise the platform's help articles for your club.",
-  "manage.backToHelp": "[cy] ← Back to help centre",
-  "manage.editingSlug": "[cy] Editing '{slug}'",
-  "manage.titleLabel": "[cy] Title",
-  "manage.bodyLabel": "[cy] Body (markdown)",
-  "manage.bodyPlaceholder": "[cy] Leave empty to inherit the shipped body",
-  "manage.visibleLabel": "[cy] Visible to members of this club (uncheck to hide the article entirely)",
-  "manage.saveOverride": "[cy] Save override",
-  "manage.cancel": "[cy] Cancel",
-  "manage.edit": "[cy] Edit",
-  "manage.override": "[cy] Override",
-  "manage.restoreDefault": "[cy] Restore default",
-  "manage.customised": "[cy] customised",
-  "manage.hidden": "[cy] hidden",
-  "manage.flagDisabled": "[cy] Help article overrides are disabled for your club. A platform admin can enable the {flag} feature flag.",
-  "markdown.forPlatformAdmins": "[cy] For platform admins",
-  "markdown.forClubAdmins": "[cy] For club admins",
-  "hint.label": "[cy] Help"
+  "index": {
+    "title": "[cy] Help centre",
+    "subtitle": "[cy] Guides for running your club on the platform.",
+    "searchPlaceholder": "[cy] Search articles…",
+    "searchResultsTitle": "[cy] Search results ({count})",
+    "noResults": "[cy] No articles match \"{query}\"."
+  },
+  "article": {
+    "notFound": "[cy] Article not found.",
+    "backToHelp": "[cy] ← Back to help centre",
+    "loading": "[cy] Loading…",
+    "customised": "[cy] customised by your club",
+    "translationPending": "[cy] translation pending",
+    "platformAdmin": "[cy] platform admin",
+    "lastUpdated": "[cy] Last updated {date}"
+  },
+  "manage": {
+    "title": "[cy] Help overrides",
+    "subtitle": "[cy] Customise the platform's help articles for your club.",
+    "backToHelp": "[cy] ← Back to help centre",
+    "editingSlug": "[cy] Editing '{slug}'",
+    "titleLabel": "[cy] Title",
+    "bodyLabel": "[cy] Body (markdown)",
+    "bodyPlaceholder": "[cy] Leave empty to inherit the shipped body",
+    "visibleLabel": "[cy] Visible to members of this club (uncheck to hide the article entirely)",
+    "saveOverride": "[cy] Save override",
+    "cancel": "[cy] Cancel",
+    "edit": "[cy] Edit",
+    "override": "[cy] Override",
+    "restoreDefault": "[cy] Restore default",
+    "customised": "[cy] customised",
+    "hidden": "[cy] hidden",
+    "flagDisabled": "[cy] Help article overrides are disabled for your club. A platform admin can enable the {flag} feature flag."
+  },
+  "markdown": {
+    "forPlatformAdmins": "[cy] For platform admins",
+    "forClubAdmins": "[cy] For club admins"
+  },
+  "hint": {
+    "label": "[cy] Help"
+  }
 }

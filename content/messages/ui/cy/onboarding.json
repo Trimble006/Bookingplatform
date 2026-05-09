@@ -4,17 +4,21 @@
   "previewBannerHint": "[cy] Members can't see your club until you press Go live in the final chapter.",
   "header": "[cy] Setting up your club",
   "saveAndExit": "[cy] Save & exit",
-  "chapters.about": "[cy] About your club",
-  "chapters.organisation": "[cy] Your organisation",
-  "chapters.where": "[cy] Where you are",
-  "chapters.hours": "[cy] When you're open",
-  "chapters.greens": "[cy] Your greens",
-  "chapters.people": "[cy] Your people",
-  "chapters.knowledge": "[cy] What the agents should know",
-  "chapters.features": "[cy] What you want enabled",
-  "chapters.subscription": "[cy] Subscription",
-  "chapters.review": "[cy] Review & Go live",
-  "shared.saveAndContinue": "[cy] Save and continue",
-  "shared.saving": "[cy] Saving…",
-  "shared.skipForNow": "[cy] Skip for now"
+  "chapters": {
+    "about": "[cy] About your club",
+    "organisation": "[cy] Your organisation",
+    "where": "[cy] Where you are",
+    "hours": "[cy] When you're open",
+    "greens": "[cy] Your greens",
+    "people": "[cy] Your people",
+    "knowledge": "[cy] What the agents should know",
+    "features": "[cy] What you want enabled",
+    "subscription": "[cy] Subscription",
+    "review": "[cy] Review & Go live"
+  },
+  "shared": {
+    "saveAndContinue": "[cy] Save and continue",
+    "saving": "[cy] Saving…",
+    "skipForNow": "[cy] Skip for now"
+  }
 }

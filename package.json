@@ -16,6 +16,7 @@
     "agent:detect": "node scripts/run-agent.mjs detector",
     "agent:triage": "node scripts/run-agent.mjs triager",
     "agent:all": "node scripts/run-agent.mjs all",
+    "check:i18n": "scripts/check-i18n-coverage.sh",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch"
   },

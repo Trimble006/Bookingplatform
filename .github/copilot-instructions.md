@@ -67,3 +67,23 @@ but consult them explicitly when relevant:
   focused sprint.
 - The repo memory log `/memories/repo/decisions-log.md` was retired
   2026-05-05; `DECISIONS.md` is the single canonical log.
+
+## i18n convention
+
+Every new `.tsx` component with user-visible text MUST use
+`useTranslations` (client) or `getTranslations` (server) from
+`next-intl`. Structural wrappers (layouts, providers) that render no
+visible text are exempt.
+
+- Keys go in the appropriate namespace JSON under
+  `content/messages/ui/en/`. Use **nested objects**, not flat
+  dot-notation keys (`{ "locality": { "label": "..." } }` not
+  `{ "locality.label": "..." }`). next-intl rejects dots in keys.
+- Copy the key to the matching `cy/` file with a `[cy] ` prefix
+  (machine placeholder — professional translation comes later).
+- 14 namespaces exist: `common`, `auth`, `bookings`, `maintenance`,
+  `events`, `messaging`, `settings`, `streaming`, `help`, `billing`,
+  `agents`, `admin`, `onboarding`, `charity`. Create a new namespace
+  only if none of these fit.
+- `src/i18n/request.ts` must import any new namespace.
+- Run `npm run check:i18n` to verify coverage before committing.
