@@ -1406,3 +1406,46 @@ professional translator required before production.
 lives at `parked-plans/i18n.md`. CJK/Asian locale UI resilience (word-break,
 font stack) is not needed yet — flagged as future consideration when the first
 Asian locale is requested.
+
+## 2026-05-09 — Permission groups + federation v1 shipped (`#permission-groups`)
+
+**Status**: decided
+
+**Context**: The orthogonal role model (PLATFORM_ADMIN / tenant ladder) was
+reaching its limit — clubs need committee-shaped access control ("Events
+Committee can manage events but not greens") and cross-club booking requires
+a federation-level permission gate. A 6-phase plan (C1–C6) was refined on
+2026-05-07 and implemented on `feature/permission-groups`.
+
+**Decision / outcome**: Ship all six phases as a single feature branch merge.
+
+- **C1** — Permission enum (43 values across 14 domains), PermissionGroup /
+  PermissionGrant / GroupMember models, Federation / FederationMembership /
+  FederationInvite models, built-in group seeding.
+- **C2** — `assertPermissionOrFail` dual gate (parallel to existing
+  `assertEffectiveRoleOrFail`). TENANT_ADMIN bypass implicit. No caching v1.
+- **C3** — Groups CRUD UI (8 API routes, 2 dashboard pages, checkbox
+  permission grid by domain).
+- **C4** — Federation lifecycle API (8 routes, feature-flagged per tenant).
+  Guardrails: max 3 federations/club, max 10 clubs/federation, 5 invites/day,
+  14-day invite expiry.
+- **C5** — Cross-club booking via `targetTenantId` on POST /api/bookings.
+  Validates common active federation + `federation_book_at_partners` permission.
+  Cross-club clash detection (same slot / adjacent slot) with confirm-to-proceed.
+  Provenance via `Booking.bookedByTenantId` + `Booking.federationId`.
+- **C6** — Federation UI (list + detail pages), sidebar link (flag-gated),
+  settings hub card.
+
+**Rationale**:
+- Permission groups are additive — existing role gates are unchanged. Groups
+  are opt-in; existing users keep working via role checks. No migration of
+  existing routes (`#retire-role-mode` deferred).
+- Federation is flat (no hierarchy) and invitation-based (club-to-club, not
+  user-to-user). Federation invites use their own model, not `UserInvitation`.
+- Cross-club booking uses soft warnings (confirm-to-proceed), never hard
+  blocks — aligns with the "club-friendly" design principle.
+- `permission-defs.ts` split from `permissions.ts` to keep client components
+  free of Prisma/Node built-in imports (build error discovered during C3).
+
+**Notes**: `#federations` tag in ROADMAP deferred to `#permission-groups` C4–C6.
+476 tests green (started at 416; added 47 across C2–C5).

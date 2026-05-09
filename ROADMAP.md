@@ -26,8 +26,6 @@ _(none currently active — see `IN_FLIGHT.md`)_
   `TenantBillingProfile`, invoice generation) + financial dashboards
   (platform finance, agent costs, tenant billing portal). Stub payment
   engine; recharts for charts. Plan: `parked-plans/billing.md`.
-- `#permission-groups` (L) — permission groups + federation v1. Full 6-phase
-  design (C1 schema → C6 federation UI). Plan: `parked-plans/permission-groups.md`.
 - `#midge-forecast` (S) — UK midge-risk badge on booking weather widget.
   Heuristic from Open-Meteo data. Gated on `Tenant.country ∈ {GB, NI}` +
   `midgeForecast` flag. Plan: `parked-plans/midge-forecast.md`.
@@ -79,8 +77,7 @@ _(none currently active — see `IN_FLIGHT.md`)_
   (dashboard + public club pages), Welsh (cy) first. No URL prefix routing —
   locale follows club setting. Phase 1 (infra) shipped; Phases 2–6 remain.
   Promoted from Deferred → Next 2026-05-06.
-- `#federations` — subsumed by `#permission-groups` phases C4–C6. No
-  standalone work until permission groups land.
+- `#federations` — shipped as part of `#permission-groups` C4–C6. (2026-05-09)
 - `#observability` (M) — error tracking (Sentry), health endpoint,
   rate-limit + agent-cost dashboards. (Phase 11.)
 
@@ -98,6 +95,9 @@ _(none currently active — see `IN_FLIGHT.md`)_
   export, year-lock lifecycle. (2026-05-04)
 - `#tar-wizard` — TAR wizard with LLM-assisted drafting, unlock cascade,
   readiness warnings. All three regulators. (2026-05-05)
+- `#permission-groups` — permission groups (C1–C3) + federation v1 (C4–C6):
+  dual gate, groups CRUD UI, federation lifecycle API, cross-club booking
+  with clash detection, federation UI. 476 tests. (2026-05-09)
 
 ---
 
