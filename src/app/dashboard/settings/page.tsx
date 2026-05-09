@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { getTranslations } from "next-intl/server";
+import { isFeatureEnabled } from "@/lib/features";
 
 type Sess = {
   user: {
@@ -27,6 +28,7 @@ export default async function SettingsPage() {
   if (!effectiveTenantId) redirect("/dashboard");
 
   const t = await getTranslations("settings");
+  const fedEnabled = await isFeatureEnabled(effectiveTenantId, "federation");
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -77,6 +79,22 @@ export default async function SettingsPage() {
             <span className="text-emerald-700 text-sm">{t("edit")}</span>
           </Link>
         </li>
+        {fedEnabled && (
+          <li>
+            <Link
+              href="/dashboard/federation"
+              className="flex items-center justify-between px-4 py-4 hover:bg-gray-50"
+            >
+              <div>
+                <p className="font-medium text-gray-900">{t("federation.label")}</p>
+                <p className="text-sm text-gray-500">
+                  {t("federation.description")}
+                </p>
+              </div>
+              <span className="text-emerald-700 text-sm">{t("edit")}</span>
+            </Link>
+          </li>
+        )}
       </ul>
     </div>
   );
