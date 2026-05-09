@@ -131,6 +131,7 @@ model Tenant {
   createdFederations    Federation[]           @relation("FederationCreatedBy")
   sentFederationInvites FederationInvite[]     @relation("FederationInvitesSent")
   receivedFederationInvites FederationInvite[] @relation("FederationInvitesReceived")
+  federationBookingsMade Booking[]             @relation("BookingsByHomeTenant")
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -384,9 +385,13 @@ model Booking {
   tenant         Tenant        @relation(fields: [tenantId], references: [id])
   userId         String
   user           User          @relation(fields: [userId], references: [id])
-  bookedByUserId String?
-  bookedByUser   User?         @relation("BookingsCreatedBy", fields: [bookedByUserId], references: [id])
-  date           String // ISO date "2026-05-10"
+  bookedByUserId   String?
+  bookedByUser     User?         @relation("BookingsCreatedBy", fields: [bookedByUserId], references: [id])
+  bookedByTenantId String?       // Home club for cross-club (federation) bookings. Null = same-club.
+  bookedByTenant   Tenant?       @relation("BookingsByHomeTenant", fields: [bookedByTenantId], references: [id])
+  federationId     String?       // Federation that enabled cross-club booking. Null = non-federation.
+  federation       Federation?   @relation(fields: [federationId], references: [id])
+  date             String // ISO date "2026-05-10"
   status         BookingStatus @default(REQUESTED)
   adminOverride  Boolean       @default(false)
   overrideReason String?
@@ -398,6 +403,8 @@ model Booking {
   payment         BookingPayment?
 
   @@index([bookedByUserId])
+  @@index([bookedByTenantId])
+  @@index([federationId])
 }
 
 model BookingSlot {
@@ -1963,6 +1970,7 @@ model Federation {
 
   memberships FederationMembership[]
   invites     FederationInvite[]
+  bookings    Booking[]
 
   @@index([status])
 }
