@@ -88,7 +88,18 @@ export const authOptions: NextAuthOptions = {
       // PLATFORM_ADMIN, but we belt-and-brace here too).
       if (trigger === "update" && session && typeof session === "object" && "actingAs" in session) {
         if (token.role === "PLATFORM_ADMIN") {
-          token.actingAs = (session as any).actingAs ?? null;
+          const prev = token.actingAs as { impersonationId?: string } | null;
+          const next = (session as any).actingAs ?? null;
+          token.actingAs = next;
+          // When clearing actingAs, close the impersonation record as a
+          // backstop — the DELETE route should have done this already, but
+          // guard against races and browser crashes.
+          if (prev?.impersonationId && !next) {
+            prisma.impersonation.updateMany({
+              where: { id: prev.impersonationId, platformUserId: token.sub as string, endedAt: null },
+              data: { endedAt: new Date() },
+            }).catch(() => {}); // fire-and-forget
+          }
         } else {
           token.actingAs = null;
         }
@@ -112,6 +123,15 @@ export const authOptions: NextAuthOptions = {
       const u = user as any;
       if (u?.id && u?.role) {
         logAudit({ session: { user: { id: u.id, role: u.role, tenantId: u.tenantId ?? null } }, action: "auth.login", entity: "User", entityId: u.id, tenantId: u.tenantId ?? null });
+      }
+      // Belt-and-brace: close any dangling impersonation records for this
+      // user on login. Handles the case where a prior session expired or the
+      // browser was closed while impersonating.
+      if (u?.id && u?.role === "PLATFORM_ADMIN") {
+        await prisma.impersonation.updateMany({
+          where: { platformUserId: u.id, endedAt: null },
+          data: { endedAt: new Date() },
+        });
       }
     },
   },
