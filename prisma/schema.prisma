@@ -132,6 +132,10 @@ model Tenant {
   sentFederationInvites FederationInvite[]     @relation("FederationInvitesSent")
   receivedFederationInvites FederationInvite[] @relation("FederationInvitesReceived")
   federationBookingsMade Booking[]             @relation("BookingsByHomeTenant")
+
+  // Funding applications
+  fundingApplications     FundingApplication[]
+  fundingOpportunities    FundingOpportunity[]    @relation("TenantFundingOpportunities")
 }
 
 // ─── Auth & RBAC ─────────────────────────────────────────────
@@ -196,6 +200,9 @@ model User {
   agentFeedback             AgentFeedback[]
   agentKnowledgeAuthor      AgentKnowledge[]     @relation("KnowledgeCreatedBy")
   maintenanceHistoryEntries MaintenanceHistory[] @relation("HistoryPerformedBy")
+
+  // Funding applications
+  fundingApplicationsCreated FundingApplication[]
 }
 
 model PasswordResetToken {
@@ -1889,6 +1896,10 @@ enum Permission {
   // Federation (reserved for C5; define now to avoid migration churn)
   federation_book_at_partners
   federation_manage
+
+  // Funding applications
+  funding_view
+  funding_manage
 }
 
 model PermissionGroup {
@@ -2005,4 +2016,101 @@ model FederationInvite {
 
   @@index([federationId, status])
   @@index([inviteeTenantId, status])
+}
+
+// ─── Funding Applications ────────────────────────────────────
+
+enum FundingApplicationStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_DECISION
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum FundingResponseSource {
+  MANUAL
+  AI_DRAFT
+  AI_APPROVED
+}
+
+model FundingOpportunity {
+  id               String             @id @default(cuid())
+  name             String
+  funder           String
+  description      String
+  url              String?
+  eligibilityNotes String?
+  deadline         DateTime?
+  maxAmount        Int?               // pence
+  minAmount        Int?               // pence
+  tags             String[]           // e.g. ["facility", "participation", "youth"]
+  orgTypes         OrganisationType[] // eligible org types; empty = all
+  countries        Country[]          // eligible jurisdictions; empty = all
+  active           Boolean            @default(true)
+  tenantId         String?            // null = platform-curated; set = tenant-created
+  tenant           Tenant?            @relation("TenantFundingOpportunities", fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  applications FundingApplication[]
+  questions    FundingQuestion[]
+
+  @@index([active])
+  @@index([tenantId])
+}
+
+model FundingApplication {
+  id              String                   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunityId   String
+  opportunity     FundingOpportunity       @relation(fields: [opportunityId], references: [id])
+  status          FundingApplicationStatus @default(DRAFT)
+  amountRequested Int?                     // pence
+  amountAwarded   Int?                     // pence
+  submittedAt     DateTime?
+  decisionAt      DateTime?
+  notes           String?
+  createdById     String
+  createdBy       User                     @relation(fields: [createdById], references: [id])
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  responses FundingResponse[]
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model FundingQuestion {
+  id            String             @id @default(cuid())
+  opportunityId String
+  opportunity   FundingOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  label         String
+  helpText      String?
+  sortOrder     Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  responses FundingResponse[]
+
+  @@index([opportunityId])
+}
+
+model FundingResponse {
+  id              String                @id @default(cuid())
+  applicationId   String
+  application     FundingApplication    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  questionId      String?
+  question        FundingQuestion?      @relation(fields: [questionId], references: [id])
+  questionLabel   String                // denormalised; allows freeform when questionId is null
+  content         String                @default("")
+  source          FundingResponseSource @default(MANUAL)
+  agentProposalId String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([applicationId])
 }

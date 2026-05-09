@@ -132,6 +132,13 @@ export const PERMISSION_DOMAINS: Record<string, { label: string; permissions: Pe
       Permission.federation_manage,
     ],
   },
+  funding: {
+    label: "Funding",
+    permissions: [
+      Permission.funding_view,
+      Permission.funding_manage,
+    ],
+  },
 };
 
 /** All permissions as a flat array (convenience). */

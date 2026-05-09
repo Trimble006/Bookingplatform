@@ -22,6 +22,7 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
+- `#funding-applications` — grant discovery, application tracking, AI-assisted drafting. Phase 1 (schema, permissions, CRUD, UI) in progress. Branch: `feat/funding-applications`.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).

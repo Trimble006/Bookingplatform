@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "title": "Funding"
+  },
+  "overview": {
+    "title": "Funding Applications",
+    "description": "Discover grant opportunities, add your own, and track your applications.",
+    "opportunities": "Opportunities",
+    "applications": "Your Applications",
+    "noOpportunities": "No funding opportunities available at the moment.",
+    "noApplications": "You haven't started any funding applications yet.",
+    "applyNow": "Apply",
+    "viewApplication": "View",
+    "recommended": "Recommended for you",
+    "deadline": "Deadline",
+    "amount": "Up to {amount}",
+    "funder": "Funder",
+    "allOpportunities": "All Opportunities",
+    "newApplication": "New Application",
+    "addOpportunity": "Add Opportunity"
+  },
+  "opportunity": {
+    "name": "Grant Name",
+    "funder": "Funder",
+    "description": "Description",
+    "url": "Application URL",
+    "create": "Create Opportunity",
+    "cancel": "Cancel",
+    "yours": "Your club",
+    "platform": "Platform"
+  },
+  "application": {
+    "title": "Funding Application",
+    "backToOverview": "← Back to Funding",
+    "opportunity": "Opportunity",
+    "status": "Status",
+    "amountRequested": "Amount Requested",
+    "amountAwarded": "Amount Awarded",
+    "submittedAt": "Submitted",
+    "decisionAt": "Decision Date",
+    "notes": "Notes",
+    "save": "Save",
+    "submit": "Mark as Submitted",
+    "withdraw": "Withdraw",
+    "delete": "Delete Draft",
+    "responses": "Responses",
+    "addResponse": "Add Response",
+    "startAnswer": "Start answering",
+    "noResponses": "No responses yet. Add answers to common grant questions.",
+    "question": "Question",
+    "answer": "Answer",
+    "source": "Source",
+    "sourceManual": "Manual",
+    "sourceAiDraft": "AI Draft",
+    "sourceAiApproved": "AI Approved",
+    "editResponse": "Edit",
+    "deleteResponse": "Remove",
+    "confirmDelete": "Are you sure you want to delete this draft application?"
+  },
+  "status": {
+    "DRAFT": "Draft",
+    "SUBMITTED": "Submitted",
+    "PENDING_DECISION": "Pending Decision",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+    "WITHDRAWN": "Withdrawn"
+  }
+}

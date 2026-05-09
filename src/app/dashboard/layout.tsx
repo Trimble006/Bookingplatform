@@ -29,6 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [charityAvailable, setCharityAvailable] = useState(false);
   const [showWeatherBanner, setShowWeatherBanner] = useState(false);
   const [federationEnabled, setFederationEnabled] = useState(false);
+  const [fundingEnabled, setFundingEnabled] = useState(false);
 
   const role = (session?.user as any)?.role;
   const acting = (session?.user as any)?.actingAs as ActingAs;
@@ -70,6 +71,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       fetch("/api/charity/status")
         .then((r) => (r.ok ? r.json() : null))
         .then((s) => { if (s && s.available) setCharityAvailable(true); })
+        .catch(() => {});
+      fetch("/api/funding/status")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((s) => { if (s && s.available) setFundingEnabled(true); })
         .catch(() => {});
       fetch("/api/bookings/weather?date=" + new Date().toISOString().slice(0, 10))
         .then((r) => r.json())
@@ -121,6 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {isTenantAdminEffective && <Link href="/dashboard/content" className="hover:bg-green-700 rounded px-3 py-2">Content</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/greens" className="hover:bg-green-700 rounded px-3 py-2">Greens</Link>}
               {isTenantAdminEffective && charityAvailable && <Link href="/dashboard/charity" className="hover:bg-green-700 rounded px-3 py-2">💷 Charity</Link>}
+              {isTenantAdminEffective && fundingEnabled && <Link href="/dashboard/funding" className="hover:bg-green-700 rounded px-3 py-2">📋 Funding</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/settings" className="hover:bg-green-700 rounded px-3 py-2">Settings</Link>}

@@ -1449,3 +1449,59 @@ a federation-level permission gate. A 6-phase plan (C1–C6) was refined on
 
 **Notes**: `#federations` tag in ROADMAP deferred to `#permission-groups` C4–C6.
 476 tests green (started at 416; added 47 across C2–C5).
+
+---
+
+## 2026-05-09 — #funding-applications: Phase 1 scope and data model
+
+**Status**: decided
+
+**Context**: Clubs (especially small charities) routinely apply for grants
+from Sport England, National Lottery Community Fund, Bowls England
+development grants, and local authority sport funds. The platform already
+holds the data these applications need (TAR narratives, financials, org type,
+membership counts) but has no way to surface grant opportunities or help
+clubs draft applications. The permission-groups work (C1) explicitly
+anticipated a "Funding Committee" custom group and called out funding
+applications as a future consumer.
+
+**Decision / outcome**: Three-phase feature on `feat/funding-applications`:
+
+1. **Phase 1 (S)** — Schema, permissions, feature flag, CRUD API, tracking
+   UI. Three new models: `FundingOpportunity` (platform-level catalogue),
+   `FundingApplication` (per-tenant), `FundingResponse` (per-application
+   question/answer pairs, AI-draftable). Two new permissions:
+   `funding_view`, `funding_manage`. Feature-flagged via `"funding"` key
+   (no country restriction, unlike charity).
+2. **Phase 2 (S)** — Grant discovery: seed curated UK opportunities,
+   eligibility matching (org type, country, locality), deadline awareness.
+3. **Phase 3 (M)** — AI-assisted drafting: `FundingApplicationAgent`
+   extending `BaseAgent`, reuses TAR context data keys, emits
+   `FUNDING_APPLICATION_DRAFT` proposals via the agent inbox.
+
+**Rationale**:
+- `FundingOpportunity` is platform-level (shared across tenants) so clubs
+  don't each re-enter the same Sport England grant.
+- One application per opportunity per tenant (`@@unique`) simplifies
+  tracking; clubs update status on the existing record rather than creating
+  duplicates.
+- New `funding` i18n namespace (not `charity`) — funding applications are a
+  separate domain even though they consume charity data.
+- Permissions assigned to TENANT_ADMIN via Administrators built-in group;
+  clubs can subdivide via custom "Funding Committee" groups.
+- Phase 3 reuses TAR context data keys — same club data that feeds TAR
+  narratives is exactly what grant applications need.
+
+**Addendum (same session)**: Reworked during review — original design
+forced all opportunities through a platform-curated catalogue, which was
+too restrictive. Clubs need to add their own opportunities they've found
+independently.
+
+Changes: `FundingOpportunity.tenantId` (nullable — null = platform,
+set = tenant-created). New `FundingQuestion` model linked to opportunity
+(defines the application form questions). `FundingResponse` now links to
+`FundingQuestion` via optional `questionId` (freeform still works via
+`questionLabel` when `questionId` is null). Dropped `@@unique([tenantId,
+opportunityId])` on `FundingApplication` — clubs may re-apply or track
+multiple rounds. This also sets up Phase 3 agent-assisted question
+extraction (scrape questions from a pasted URL/PDF).

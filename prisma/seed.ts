@@ -324,6 +324,7 @@ const BUILT_IN_GROUPS: { name: string; description: string; permissions: string[
       "agents_view", "agents_configure", "agents_review_proposals",
       "notifications_view", "notifications_manage",
       "federation_book_at_partners", "federation_manage",
+      "funding_view", "funding_manage",
     ],
   },
 ];
