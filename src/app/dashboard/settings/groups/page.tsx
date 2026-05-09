@@ -13,7 +13,7 @@ type Group = {
 };
 
 export default function GroupsPage() {
-  const t = useTranslations("groups");
+  const t = useTranslations("settings.groups");
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);

@@ -37,7 +37,7 @@ type TenantMembership = {
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const t = useTranslations("groups");
+  const t = useTranslations("settings.groups");
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
