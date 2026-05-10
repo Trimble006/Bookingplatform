@@ -37,26 +37,26 @@ export default function PlatformInsightsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-gray-500">{t("platform.insights.loading")}</p>;
-  if (!data) return <p className="text-red-500">{t("platform.insights.failed")}</p>;
+  if (loading) return <p className="text-gray-500">{t("insights.loading")}</p>;
+  if (!data) return <p className="text-red-500">{t("insights.failed")}</p>;
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "adoption", label: t("platform.insights.tabs.adoption") },
-    { key: "revenue", label: t("platform.insights.tabs.revenue") },
-    { key: "churn", label: t("platform.insights.tabs.churn") },
-    { key: "operations", label: t("platform.insights.tabs.operations") },
-    { key: "agents", label: t("platform.insights.tabs.agents") },
-    { key: "federation", label: t("platform.insights.tabs.federation") },
-    { key: "onboarding", label: t("platform.insights.tabs.onboarding") },
-    { key: "language", label: t("platform.insights.tabs.language") },
-    { key: "features", label: t("platform.insights.tabs.features") },
+    { key: "adoption", label: t("insights.tabs.adoption") },
+    { key: "revenue", label: t("insights.tabs.revenue") },
+    { key: "churn", label: t("insights.tabs.churn") },
+    { key: "operations", label: t("insights.tabs.operations") },
+    { key: "agents", label: t("insights.tabs.agents") },
+    { key: "federation", label: t("insights.tabs.federation") },
+    { key: "onboarding", label: t("insights.tabs.onboarding") },
+    { key: "language", label: t("insights.tabs.language") },
+    { key: "features", label: t("insights.tabs.features") },
   ];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("platform.insights.title")}</h1>
+      <h1 className="text-2xl font-bold">{t("insights.title")}</h1>
       <p className="text-sm text-gray-500">
-        {t("platform.insights.generatedAt", { time: new Date(data.generatedAt).toLocaleString() })}
+        {t("insights.generatedAt", { time: new Date(data.generatedAt).toLocaleString() })}
       </p>
 
       {/* Tabs */}
@@ -108,16 +108,16 @@ function AdoptionTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.adoption.totalTenants")} value={data.totalTenants} />
-        <KPI label={t("platform.insights.adoption.active")} value={data.activeTenants} />
-        <KPI label={t("platform.insights.adoption.onboarding")} value={data.onboardingTenants} />
-        <KPI label={t("platform.insights.adoption.totalUsers")} value={data.totalUsers} />
+        <KPI label={t("insights.adoption.totalTenants")} value={data.totalTenants} />
+        <KPI label={t("insights.adoption.active")} value={data.activeTenants} />
+        <KPI label={t("insights.adoption.onboarding")} value={data.onboardingTenants} />
+        <KPI label={t("insights.adoption.totalUsers")} value={data.totalUsers} />
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.adoption.newUsers30d")} value={data.newUsers30d} />
-        <KPI label={t("platform.insights.adoption.goneLive30d")} value={data.tenantsGoneLive30d} />
-        <KPI label={t("platform.insights.adoption.onboardingCompleted")} value={data.onboardingCompleted} />
-        <KPI label={t("platform.insights.adoption.avgChapter")} value={data.avgOnboardingChapter} />
+        <KPI label={t("insights.adoption.newUsers30d")} value={data.newUsers30d} />
+        <KPI label={t("insights.adoption.goneLive30d")} value={data.tenantsGoneLive30d} />
+        <KPI label={t("insights.adoption.onboardingCompleted")} value={data.onboardingCompleted} />
+        <KPI label={t("insights.adoption.avgChapter")} value={data.avgOnboardingChapter} />
       </div>
     </div>
   );
@@ -128,16 +128,16 @@ function RevenueTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.revenue.mrr")} value={`£${(data.mrr / 100).toFixed(0)}`} />
-        <KPI label={t("platform.insights.revenue.arr")} value={`£${(data.arr / 100).toFixed(0)}`} />
-        <KPI label={t("platform.insights.revenue.totalRevenue")} value={`£${(data.totalRevenue / 100).toFixed(0)}`} />
-        <KPI label={t("platform.insights.revenue.arpt")} value={`£${(data.arpt / 100).toFixed(0)}`} />
+        <KPI label={t("insights.revenue.mrr")} value={`£${(data.mrr / 100).toFixed(0)}`} />
+        <KPI label={t("insights.revenue.arr")} value={`£${(data.arr / 100).toFixed(0)}`} />
+        <KPI label={t("insights.revenue.totalRevenue")} value={`£${(data.totalRevenue / 100).toFixed(0)}`} />
+        <KPI label={t("insights.revenue.arpt")} value={`£${(data.arpt / 100).toFixed(0)}`} />
       </div>
 
       {/* Revenue by month */}
       {data.byMonth?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.revenue.monthlyChart")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.revenue.monthlyChart")}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={data.byMonth}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -153,13 +153,13 @@ function RevenueTab({ data, t }: { data: any; t: any }) {
       {/* Revenue by country */}
       {data.byCountry?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.revenue.byCountry")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.revenue.byCountry")}</h3>
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">{t("platform.insights.revenue.country")}</th>
-                <th className="pb-2">{t("platform.insights.revenue.tenants")}</th>
-                <th className="pb-2">{t("platform.insights.revenue.mrrLabel")}</th>
+                <th className="pb-2">{t("insights.revenue.country")}</th>
+                <th className="pb-2">{t("insights.revenue.tenants")}</th>
+                <th className="pb-2">{t("insights.revenue.mrrLabel")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -178,7 +178,7 @@ function RevenueTab({ data, t }: { data: any; t: any }) {
       {/* Revenue by plan */}
       {data.byPlan?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.revenue.byPlan")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.revenue.byPlan")}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.byPlan.map((p: { planName: string; mrr: number }) => ({ name: p.planName, mrr: p.mrr / 100 }))}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -203,12 +203,12 @@ function ChurnTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <KPI label={t("platform.insights.churn.totalChurned")} value={data.totalChurned} />
-        <KPI label={t("platform.insights.churn.churnRate")} value={`${data.churnRate}%`} />
+        <KPI label={t("insights.churn.totalChurned")} value={data.totalChurned} />
+        <KPI label={t("insights.churn.churnRate")} value={`${data.churnRate}%`} />
       </div>
       {data.byMonth?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.churn.monthlyChart")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.churn.monthlyChart")}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.byMonth}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -229,26 +229,26 @@ function OperationsTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.operations.bookings")} value={data.bookings30d} />
-        <KPI label={t("platform.insights.operations.confirmRate")} value={`${data.confirmRate}%`} />
-        <KPI label={t("platform.insights.operations.cancelRate")} value={`${data.cancelRate}%`} />
-        <KPI label={t("platform.insights.operations.tasks")} value={data.tasks30d} />
+        <KPI label={t("insights.operations.bookings")} value={data.bookings30d} />
+        <KPI label={t("insights.operations.confirmRate")} value={`${data.confirmRate}%`} />
+        <KPI label={t("insights.operations.cancelRate")} value={`${data.cancelRate}%`} />
+        <KPI label={t("insights.operations.tasks")} value={data.tasks30d} />
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.operations.taskCompletion")} value={`${data.taskCompletionRate}%`} />
-        <KPI label={t("platform.insights.operations.events")} value={data.events30d} />
-        <KPI label={t("platform.insights.operations.eventsPublished")} value={data.eventsPublished30d} />
+        <KPI label={t("insights.operations.taskCompletion")} value={`${data.taskCompletionRate}%`} />
+        <KPI label={t("insights.operations.events")} value={data.events30d} />
+        <KPI label={t("insights.operations.eventsPublished")} value={data.eventsPublished30d} />
       </div>
 
       {/* Tenant leaderboard */}
       {data.tenantLeaderboard?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.operations.leaderboard")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.operations.leaderboard")}</h3>
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">{t("platform.insights.operations.tenant")}</th>
-                <th className="pb-2">{t("platform.insights.operations.bookingsCol")}</th>
+                <th className="pb-2">{t("insights.operations.tenant")}</th>
+                <th className="pb-2">{t("insights.operations.bookingsCol")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -271,26 +271,26 @@ function AgentsTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.agents.runs")} value={data.runs30d} />
-        <KPI label={t("platform.insights.agents.successRate")} value={`${data.successRate}%`} />
-        <KPI label={t("platform.insights.agents.proposals")} value={data.proposals30d} />
-        <KPI label={t("platform.insights.agents.approvalRate")} value={`${data.approvalRate}%`} />
+        <KPI label={t("insights.agents.runs")} value={data.runs30d} />
+        <KPI label={t("insights.agents.successRate")} value={`${data.successRate}%`} />
+        <KPI label={t("insights.agents.proposals")} value={data.proposals30d} />
+        <KPI label={t("insights.agents.approvalRate")} value={`${data.approvalRate}%`} />
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <KPI label={t("platform.insights.agents.spend")} value={`£${((data.spend30d ?? 0) / 100).toFixed(2)}`} />
-        <KPI label={t("platform.insights.agents.tokensIn")} value={formatTokens(data.tokensIn30d ?? 0)} />
-        <KPI label={t("platform.insights.agents.tokensOut")} value={formatTokens(data.tokensOut30d ?? 0)} />
+        <KPI label={t("insights.agents.spend")} value={`£${((data.spend30d ?? 0) / 100).toFixed(2)}`} />
+        <KPI label={t("insights.agents.tokensIn")} value={formatTokens(data.tokensIn30d ?? 0)} />
+        <KPI label={t("insights.agents.tokensOut")} value={formatTokens(data.tokensOut30d ?? 0)} />
       </div>
 
       {/* Detector chat→task conversion */}
       {data.detector && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.agents.detectorTitle")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.agents.detectorTitle")}</h3>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KPI label={t("platform.insights.agents.detectorRuns")} value={data.detector.runs30d} />
-            <KPI label={t("platform.insights.agents.detectorProposals")} value={data.detector.taskProposals30d} />
-            <KPI label={t("platform.insights.agents.detectorApproved")} value={data.detector.tasksApproved30d} />
-            <KPI label={t("platform.insights.agents.detectorApprovalRate")} value={`${data.detector.approvalRate}%`} />
+            <KPI label={t("insights.agents.detectorRuns")} value={data.detector.runs30d} />
+            <KPI label={t("insights.agents.detectorProposals")} value={data.detector.taskProposals30d} />
+            <KPI label={t("insights.agents.detectorApproved")} value={data.detector.tasksApproved30d} />
+            <KPI label={t("insights.agents.detectorApprovalRate")} value={`${data.detector.approvalRate}%`} />
           </div>
         </div>
       )}
@@ -298,13 +298,13 @@ function AgentsTab({ data, t }: { data: any; t: any }) {
       {/* Per-agent breakdown */}
       {data.byAgent?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.agents.byAgent")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.agents.byAgent")}</h3>
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">{t("platform.insights.agents.agentName")}</th>
-                <th className="pb-2">{t("platform.insights.agents.runsCol")}</th>
-                <th className="pb-2">{t("platform.insights.agents.spendCol")}</th>
+                <th className="pb-2">{t("insights.agents.agentName")}</th>
+                <th className="pb-2">{t("insights.agents.runsCol")}</th>
+                <th className="pb-2">{t("insights.agents.spendCol")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -328,13 +328,13 @@ function FederationTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.federation.total")} value={data.totalFederations} />
-        <KPI label={t("platform.insights.federation.active")} value={data.activeFederations} />
-        <KPI label={t("platform.insights.federation.fundingApps")} value={data.totalFundingApplications} />
+        <KPI label={t("insights.federation.total")} value={data.totalFederations} />
+        <KPI label={t("insights.federation.active")} value={data.activeFederations} />
+        <KPI label={t("insights.federation.fundingApps")} value={data.totalFundingApplications} />
       </div>
       {data.fundingByStatus?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.federation.fundingByStatus")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.federation.fundingByStatus")}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
@@ -364,14 +364,14 @@ function OnboardingTab({ data, t }: { data: any; t: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KPI label={t("platform.insights.onboarding.totalApplications")} value={data.totalApplications} />
-        <KPI label={t("platform.insights.onboarding.avgReviewDays")} value={data.avgReviewDays ?? "—"} />
-        <KPI label={t("platform.insights.onboarding.totalActivated")} value={data.totalActivated} />
-        <KPI label={t("platform.insights.onboarding.avgActivationDays")} value={data.avgActivationDays ?? "—"} />
+        <KPI label={t("insights.onboarding.totalApplications")} value={data.totalApplications} />
+        <KPI label={t("insights.onboarding.avgReviewDays")} value={data.avgReviewDays ?? "—"} />
+        <KPI label={t("insights.onboarding.totalActivated")} value={data.totalActivated} />
+        <KPI label={t("insights.onboarding.avgActivationDays")} value={data.avgActivationDays ?? "—"} />
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <KPI
-          label={t("platform.insights.onboarding.medianActivationDays")}
+          label={t("insights.onboarding.medianActivationDays")}
           value={data.medianActivationDays ?? "—"}
         />
       </div>
@@ -379,7 +379,7 @@ function OnboardingTab({ data, t }: { data: any; t: any }) {
       {/* Application status breakdown */}
       {data.applicationsByStatus && Object.keys(data.applicationsByStatus).length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.onboarding.appsByStatus")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.onboarding.appsByStatus")}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={Object.entries(data.applicationsByStatus).map(([status, count]) => ({ status, count }))}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -395,13 +395,13 @@ function OnboardingTab({ data, t }: { data: any; t: any }) {
       {/* Activation time by country */}
       {data.activationByCountry?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.onboarding.activationByCountry")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.onboarding.activationByCountry")}</h3>
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">{t("platform.insights.onboarding.country")}</th>
-                <th className="pb-2">{t("platform.insights.onboarding.activated")}</th>
-                <th className="pb-2">{t("platform.insights.onboarding.avgDays")}</th>
+                <th className="pb-2">{t("insights.onboarding.country")}</th>
+                <th className="pb-2">{t("insights.onboarding.activated")}</th>
+                <th className="pb-2">{t("insights.onboarding.avgDays")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -427,7 +427,7 @@ function LanguageTab({ data, t }: { data: any; t: any }) {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Tenants by locale */}
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.language.byLocale")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.language.byLocale")}</h3>
           {data.tenantsByLocale?.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -448,13 +448,13 @@ function LanguageTab({ data, t }: { data: any; t: any }) {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-gray-400">{t("platform.insights.language.noData")}</p>
+            <p className="text-sm text-gray-400">{t("insights.language.noData")}</p>
           )}
         </div>
 
         {/* Tenants by country */}
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.language.byCountry")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.language.byCountry")}</h3>
           {data.tenantsByCountry?.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -475,7 +475,7 @@ function LanguageTab({ data, t }: { data: any; t: any }) {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-gray-400">{t("platform.insights.language.noData")}</p>
+            <p className="text-sm text-gray-400">{t("insights.language.noData")}</p>
           )}
         </div>
       </div>
@@ -490,7 +490,7 @@ function FeaturesTab({ data, t }: { data: any; t: any }) {
       {/* Top features globally */}
       {data.topFeatures30d?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.features.topFeatures")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.features.topFeatures")}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={data.topFeatures30d.slice(0, 15)} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
@@ -510,9 +510,9 @@ function FeaturesTab({ data, t }: { data: any; t: any }) {
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">{t("platform.insights.features.country")}</th>
-                <th className="pb-2">{t("platform.insights.features.feature")}</th>
-                <th className="pb-2">{t("platform.insights.features.count")}</th>
+                <th className="pb-2">{t("insights.features.country")}</th>
+                <th className="pb-2">{t("insights.features.feature")}</th>
+                <th className="pb-2">{t("insights.features.count")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -531,14 +531,14 @@ function FeaturesTab({ data, t }: { data: any; t: any }) {
       {/* Feature usage by tenant */}
       {data.byTenant?.length > 0 && (
         <div className="rounded-xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("platform.insights.features.byTenant")}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">{t("insights.features.byTenant")}</h3>
           <table className="w-full text-left text-sm">
             <thead className="border-b text-xs uppercase text-gray-500">
               <tr>
-                <th className="pb-2">{t("platform.insights.features.tenant")}</th>
-                <th className="pb-2">{t("platform.insights.features.locale")}</th>
-                <th className="pb-2">{t("platform.insights.features.countryCol")}</th>
-                <th className="pb-2">{t("platform.insights.features.uses")}</th>
+                <th className="pb-2">{t("insights.features.tenant")}</th>
+                <th className="pb-2">{t("insights.features.locale")}</th>
+                <th className="pb-2">{t("insights.features.countryCol")}</th>
+                <th className="pb-2">{t("insights.features.uses")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
