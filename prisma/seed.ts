@@ -142,9 +142,9 @@ async function main() {
     },
   });
 
-  // Feature flags
-  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent"];
-  const disabledFlags = ["liveStreaming", "federation"];
+  // Feature flags — enable everything in dev so we don't have to toggle manually
+  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent", "liveStreaming", "federation", "helpOverrides", "funding"];
+  const disabledFlags: string[] = [];
   for (const key of enabledFlags) {
     await prisma.featureFlag.upsert({
       where: { tenantId_key: { tenantId: tenant.id, key } },
@@ -374,6 +374,8 @@ async function seedAgents(demoTenantId: string) {
       description: "Monitors chat messages and converts complaints into maintenance tasks." },
     { slug: "triager", name: "Triage Officer", email: "triager@agent.system",
       description: "Prioritises and assigns submitted maintenance tasks using workload, weather and history." },
+    { slug: "funding-app", name: "Funding Application Drafter", email: "funding-app@agent.system",
+      description: "Drafts answers for DRAFT funding applications using club data and common grant question patterns." },
   ];
 
   const sysHash = await bcrypt.hash(`agent-system-${Date.now()}`, 12);

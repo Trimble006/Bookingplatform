@@ -57,7 +57,14 @@
     "sourceAiApproved": "[cy] AI Approved",
     "editResponse": "[cy] Edit",
     "deleteResponse": "[cy] Remove",
-    "confirmDelete": "[cy] Are you sure you want to delete this draft application?"
+    "confirmDelete": "[cy] Are you sure you want to delete this draft application?",
+    "aiGenerate": "[cy] ✨ Generate AI Drafts",
+    "aiDrafting": "[cy] Generating…",
+    "aiDrafts": "[cy] AI Draft Proposals",
+    "aiDraftsIntro": "[cy] Review these AI-drafted answers. Approve to add them to your application, or reject to discard.",
+    "aiConfidence": "[cy] Confidence",
+    "aiApprove": "[cy] Approve",
+    "aiReject": "[cy] Reject"
   },
   "status": {
     "DRAFT": "[cy] Draft",

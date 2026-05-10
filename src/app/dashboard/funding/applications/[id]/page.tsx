@@ -39,6 +39,20 @@ type Application = {
   createdBy: { id: string; name: string | null; email: string };
 };
 
+type DraftProposal = {
+  id: string;
+  confidence: number;
+  reasoning: string;
+  payload: {
+    applicationId: string;
+    questionId?: string;
+    questionLabel: string;
+    draftText: string;
+    confidence: number;
+    reasoning: string;
+  };
+};
+
 function formatPence(pence: number): string {
   return `£${(pence / 100).toLocaleString("en-GB", { minimumFractionDigits: 0 })}`;
 }
@@ -52,12 +66,34 @@ export default function ApplicationDetailPage() {
   const [saving, setSaving] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftProposals, setDraftProposals] = useState<DraftProposal[]>([]);
+  const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch(`/api/funding/applications/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setApp)
       .finally(() => setLoading(false));
+    // Also load pending AI proposals for this application.
+    fetch(`/api/agent/proposals?status=PENDING&kind=FUNDING_APPLICATION_DRAFT&limit=50`)
+      .then((r) => (r.ok ? r.json() : { proposals: [] }))
+      .then((data) => {
+        const all: DraftProposal[] = (data.proposals ?? [])
+          .map((p: { id: string; confidence: number; reasoning: string; payload: string }) => {
+            try {
+              return { ...p, payload: JSON.parse(p.payload) };
+            } catch {
+              return null;
+            }
+          })
+          .filter(
+            (p: DraftProposal | null): p is DraftProposal =>
+              p !== null && p.payload?.applicationId === id,
+          );
+        setDraftProposals(all);
+      })
+      .catch(() => setDraftProposals([]));
   }, [id]);
 
   useEffect(load, [load]);
@@ -95,6 +131,44 @@ export default function ApplicationDetailPage() {
     setNewAnswer("");
     load();
     setSaving(false);
+  }
+
+  async function generateDrafts() {
+    setDrafting(true);
+    try {
+      await fetch(`/api/funding/applications/${id}/draft`, { method: "POST" });
+      load();
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  async function approveDraft(proposalId: string) {
+    setBusyProposalId(proposalId);
+    try {
+      await fetch(`/api/agent/proposals/${proposalId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      load();
+    } finally {
+      setBusyProposalId(null);
+    }
+  }
+
+  async function rejectDraft(proposalId: string) {
+    setBusyProposalId(proposalId);
+    try {
+      await fetch(`/api/agent/proposals/${proposalId}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Not suitable" }),
+      });
+      load();
+    } finally {
+      setBusyProposalId(null);
+    }
   }
 
   if (loading) return <p className="p-4">Loading…</p>;
@@ -163,6 +237,13 @@ export default function ApplicationDetailPage() {
               {t("application.submit")}
             </button>
             <button
+              onClick={generateDrafts}
+              disabled={drafting || saving}
+              className="bg-purple-600 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+            >
+              {drafting ? t("application.aiDrafting") : t("application.aiGenerate")}
+            </button>
+            <button
               onClick={deleteApplication}
               disabled={saving}
               className="bg-red-600 text-white px-3 py-1.5 rounded text-sm hover:bg-red-700 disabled:opacity-50"
@@ -206,6 +287,43 @@ export default function ApplicationDetailPage() {
           </>
         )}
       </div>
+
+      {/* AI Draft Proposals */}
+      {draftProposals.length > 0 && (
+        <section>
+          <h2 className="text-xl font-semibold mb-3">{t("application.aiDrafts")}</h2>
+          <p className="text-sm text-gray-500 mb-3">{t("application.aiDraftsIntro")}</p>
+          <div className="space-y-3">
+            {draftProposals.map((dp) => (
+              <div key={dp.id} className="border-2 border-purple-200 rounded p-4 bg-purple-50">
+                <p className="font-medium text-sm">{dp.payload.questionLabel}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm">{dp.payload.draftText}</p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                  <span>{t("application.aiConfidence")}: {Math.round(dp.payload.confidence * 100)}%</span>
+                  <span>·</span>
+                  <span>{dp.payload.reasoning}</span>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => approveDraft(dp.id)}
+                    disabled={busyProposalId === dp.id}
+                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {t("application.aiApprove")}
+                  </button>
+                  <button
+                    onClick={() => rejectDraft(dp.id)}
+                    disabled={busyProposalId === dp.id}
+                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {t("application.aiReject")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Responses */}
       <section>

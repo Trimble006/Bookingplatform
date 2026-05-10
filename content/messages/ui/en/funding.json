@@ -57,7 +57,14 @@
     "sourceAiApproved": "AI Approved",
     "editResponse": "Edit",
     "deleteResponse": "Remove",
-    "confirmDelete": "Are you sure you want to delete this draft application?"
+    "confirmDelete": "Are you sure you want to delete this draft application?",
+    "aiGenerate": "✨ Generate AI Drafts",
+    "aiDrafting": "Generating…",
+    "aiDrafts": "AI Draft Proposals",
+    "aiDraftsIntro": "Review these AI-drafted answers. Approve to add them to your application, or reject to discard.",
+    "aiConfidence": "Confidence",
+    "aiApprove": "Approve",
+    "aiReject": "Reject"
   },
   "status": {
     "DRAFT": "Draft",
