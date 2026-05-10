@@ -35,12 +35,28 @@ interface BookingInsights {
   greenUtilisation: { greenName: string; count: number }[];
 }
 
+interface MemberInsights {
+  period: string;
+  totalMembers: number;
+  newMembers: number;
+  membersByWeek: { week: string; count: number }[];
+  roleBreakdown: { role: string; count: number }[];
+  activeBookers: number;
+  activeMessagers: number;
+  dormantMembers: number;
+  topActive: { userId: string; name: string; bookings: number; messages: number; total: number }[];
+}
+
+type Tab = "bookings" | "members";
+
 export default function InsightsPage() {
   const { data: session } = useSession();
   const t = useTranslations("insights");
   const locale = useLocale();
-  const [data, setData] = useState<BookingInsights | null>(null);
+  const [bookingData, setBookingData] = useState<BookingInsights | null>(null);
+  const [memberData, setMemberData] = useState<MemberInsights | null>(null);
   const [period, setPeriod] = useState<string>("30d");
+  const [tab, setTab] = useState<Tab>("bookings");
   const [loading, setLoading] = useState(true);
 
   const role = (session?.user as any)?.role;
@@ -51,10 +67,12 @@ export default function InsightsPage() {
   useEffect(() => {
     if (!isAdmin) return;
     setLoading(true);
-    fetch(`/api/insights/bookings?period=${period}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setData)
-      .catch(() => setData(null))
+    Promise.all([
+      fetch(`/api/insights/bookings?period=${period}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/insights/members?period=${period}`).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([b, m]) => { setBookingData(b); setMemberData(m); })
+      .catch(() => { setBookingData(null); setMemberData(null); })
       .finally(() => setLoading(false));
   }, [period, isAdmin]);
 
@@ -84,179 +102,238 @@ export default function InsightsPage() {
         </div>
       </div>
 
+      {/* Tab selector */}
+      <div className="flex gap-1 border-b">
+        {(["bookings", "members"] as const).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => setTab(tb)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+              tab === tb
+                ? "border-green-600 text-green-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {t(`${tb}.title`)}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <p className="text-gray-400">{t("loading")}</p>
-      ) : !data ? (
-        <p className="text-red-500">{t("loadFailed")}</p>
+      ) : tab === "bookings" ? (
+        <BookingsTab data={bookingData} t={t} locale={locale} />
       ) : (
-        <>
-          {/* KPI cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KPICard
-              label={t("bookings.totalBookings")}
-              value={formatNumber(data.totalBookings, locale)}
-            />
-            <KPICard
-              label={t("bookings.confirmedBookings")}
-              value={formatNumber(data.confirmedBookings, locale)}
-            />
-            <KPICard
-              label={t("bookings.cancellationRate")}
-              value={`${data.cancellationRate}%`}
-              alert={data.cancellationRate > 20}
-            />
-            <KPICard
-              label={t("bookings.totalRevenue")}
-              value={`£${(data.totalRevenue / 100).toFixed(2)}`}
-            />
-          </div>
-
-          {/* Bookings over time */}
-          <section className="rounded-xl bg-white p-6 shadow">
-            <h2 className="mb-4 text-sm font-semibold text-gray-700">
-              {t("bookings.bookingsOverTime")}
-            </h2>
-            {data.dailyBookings.length === 0 ? (
-              <p className="text-gray-400 text-sm">{t("bookings.noBookings")}</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={data.dailyBookings}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => v.slice(5)}
-                  />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip
-                    labelFormatter={(v) => v}
-                    formatter={(v: number) => [v, t("bookings.bookingsTooltip")]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    stroke="#16a34a"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </section>
-
-          {/* Revenue trend */}
-          <section className="rounded-xl bg-white p-6 shadow">
-            <h2 className="mb-4 text-sm font-semibold text-gray-700">
-              {t("bookings.revenueTrend")}
-            </h2>
-            {data.revenueByDay.length === 0 ? (
-              <p className="text-gray-400 text-sm">{t("noData")}</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart
-                  data={data.revenueByDay.map((d) => ({
-                    day: d.day,
-                    revenue: d.total / 100,
-                  }))}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => v.slice(5)}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => `£${v}`}
-                  />
-                  <Tooltip
-                    formatter={(v: number) => [
-                      `£${v.toFixed(2)}`,
-                      t("bookings.revenueTooltip"),
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </section>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Green utilisation */}
-            <section className="rounded-xl bg-white p-6 shadow">
-              <h2 className="mb-4 text-sm font-semibold text-gray-700">
-                {t("occupancy.byGreen")}
-              </h2>
-              {data.greenUtilisation.length === 0 ? (
-                <p className="text-gray-400 text-sm">{t("noData")}</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={data.greenUtilisation}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="greenName" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {data.greenUtilisation.map((_, i) => (
-                        <Cell key={i} fill={COLOURS[i % COLOURS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </section>
-
-            {/* Peak hours heatmap */}
-            <section className="rounded-xl bg-white p-6 shadow">
-              <h2 className="mb-4 text-sm font-semibold text-gray-700">
-                {t("bookings.peakHours")}
-              </h2>
-              <PeakHoursGrid data={data.peakHours} />
-            </section>
-          </div>
-
-          {/* Top bookers */}
-          <section className="rounded-xl bg-white shadow">
-            <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">
-              {t("bookings.topBookers")}
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-                  <tr>
-                    <th className="px-4 py-3">{t("bookings.name")}</th>
-                    <th className="px-4 py-3 text-right">{t("bookings.count")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {data.topBookers.map((b) => (
-                    <tr key={b.userId} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">{b.name}</td>
-                      <td className="px-4 py-3 text-right">{b.count}</td>
-                    </tr>
-                  ))}
-                  {data.topBookers.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={2}
-                        className="px-4 py-4 text-center text-gray-400"
-                      >
-                        {t("bookings.noBookings")}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
+        <MembersTab data={memberData} t={t} locale={locale} />
       )}
+    </div>
+  );
+}
+
+// ─── Tab panels ──────────────────────────────────────────────
+
+function BookingsTab({ data, t, locale }: { data: BookingInsights | null; t: any; locale: string }) {
+  if (!data) return <p className="text-red-500">{t("loadFailed")}</p>;
+
+  return (
+    <div className="space-y-6">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPICard label={t("bookings.totalBookings")} value={formatNumber(data.totalBookings, locale)} />
+        <KPICard label={t("bookings.confirmedBookings")} value={formatNumber(data.confirmedBookings, locale)} />
+        <KPICard label={t("bookings.cancellationRate")} value={`${data.cancellationRate}%`} alert={data.cancellationRate > 20} />
+        <KPICard label={t("bookings.totalRevenue")} value={`£${(data.totalRevenue / 100).toFixed(2)}`} />
+      </div>
+
+      {/* Bookings over time */}
+      <section className="rounded-xl bg-white p-6 shadow">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("bookings.bookingsOverTime")}</h2>
+        {data.dailyBookings.length === 0 ? (
+          <p className="text-gray-400 text-sm">{t("bookings.noBookings")}</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={data.dailyBookings}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="day" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip labelFormatter={(v) => v} formatter={(v) => [v, t("bookings.bookingsTooltip")]} />
+              <Line type="monotone" dataKey="count" stroke="#16a34a" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </section>
+
+      {/* Revenue trend */}
+      <section className="rounded-xl bg-white p-6 shadow">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("bookings.revenueTrend")}</h2>
+        {data.revenueByDay.length === 0 ? (
+          <p className="text-gray-400 text-sm">{t("noData")}</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={data.revenueByDay.map((d) => ({ day: d.day, revenue: d.total / 100 }))}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="day" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `£${v}`} />
+              <Tooltip formatter={(v) => [`£${Number(v).toFixed(2)}`, t("bookings.revenueTooltip")]} />
+              <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Green utilisation */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("occupancy.byGreen")}</h2>
+          {data.greenUtilisation.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t("noData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.greenUtilisation}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="greenName" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {data.greenUtilisation.map((_, i) => (
+                    <Cell key={i} fill={COLOURS[i % COLOURS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </section>
+
+        {/* Peak hours heatmap */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("bookings.peakHours")}</h2>
+          <PeakHoursGrid data={data.peakHours} />
+        </section>
+      </div>
+
+      {/* Top bookers */}
+      <section className="rounded-xl bg-white shadow">
+        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">{t("bookings.topBookers")}</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-3">{t("bookings.name")}</th>
+                <th className="px-4 py-3 text-right">{t("bookings.count")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.topBookers.map((b) => (
+                <tr key={b.userId} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">{b.name}</td>
+                  <td className="px-4 py-3 text-right">{b.count}</td>
+                </tr>
+              ))}
+              {data.topBookers.length === 0 && (
+                <tr><td colSpan={2} className="px-4 py-4 text-center text-gray-400">{t("bookings.noBookings")}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MembersTab({ data, t, locale }: { data: MemberInsights | null; t: any; locale: string }) {
+  if (!data) return <p className="text-red-500">{t("loadFailed")}</p>;
+
+  return (
+    <div className="space-y-6">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPICard label={t("members.totalMembers")} value={formatNumber(data.totalMembers, locale)} />
+        <KPICard label={t("members.newMembers")} value={formatNumber(data.newMembers, locale)} />
+        <KPICard label={t("members.dormantMembers")} value={formatNumber(data.dormantMembers, locale)} alert={data.dormantMembers > data.totalMembers * 0.5} />
+        <KPICard label={t("members.activeBookersLabel")} value={formatNumber(data.activeBookers, locale)} />
+      </div>
+
+      {/* Member growth chart */}
+      <section className="rounded-xl bg-white p-6 shadow">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("members.memberGrowth")}</h2>
+        {data.membersByWeek.length === 0 ? (
+          <p className="text-gray-400 text-sm">{t("noData")}</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={data.membersByWeek}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="week" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#16a34a" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Role breakdown */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("members.roleBreakdown")}</h2>
+          {data.roleBreakdown.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t("noData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.roleBreakdown} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis dataKey="role" type="category" tick={{ fontSize: 11 }} width={120} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {data.roleBreakdown.map((_, i) => (
+                    <Cell key={i} fill={COLOURS[i % COLOURS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </section>
+
+        {/* Activity breakdown */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("members.activityBreakdown")}</h2>
+          <div className="space-y-3">
+            <ActivityBar label={t("members.activeBookersLabel")} count={data.activeBookers} total={data.totalMembers} color="bg-green-500" />
+            <ActivityBar label={t("members.activeMessagersLabel")} count={data.activeMessagers} total={data.totalMembers} color="bg-blue-500" />
+            <ActivityBar label={t("members.dormantMembers")} count={data.dormantMembers} total={data.totalMembers} color="bg-gray-400" />
+          </div>
+        </section>
+      </div>
+
+      {/* Top active members */}
+      <section className="rounded-xl bg-white shadow">
+        <h3 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">{t("members.topActive")}</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-3">{t("bookings.name")}</th>
+                <th className="px-4 py-3 text-right">{t("members.bookingsCol")}</th>
+                <th className="px-4 py-3 text-right">{t("members.messagesCol")}</th>
+                <th className="px-4 py-3 text-right">{t("members.totalCol")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.topActive.map((m) => (
+                <tr key={m.userId} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">{m.name}</td>
+                  <td className="px-4 py-3 text-right">{m.bookings}</td>
+                  <td className="px-4 py-3 text-right">{m.messages}</td>
+                  <td className="px-4 py-3 text-right font-medium">{m.total}</td>
+                </tr>
+              ))}
+              {data.topActive.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-4 text-center text-gray-400">{t("noData")}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
@@ -346,6 +423,21 @@ function PeakHoursGrid({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function ActivityBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex justify-between text-sm text-gray-600 mb-1">
+        <span>{label}</span>
+        <span>{count} ({pct}%)</span>
+      </div>
+      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }

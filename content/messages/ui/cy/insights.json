@@ -39,7 +39,15 @@
     "newMembers": "[cy] New Members",
     "activeMembersTitle": "[cy] Active Members Over Time",
     "dormantMembers": "[cy] Dormant (90d inactive)",
-    "memberGrowth": "[cy] Member Growth"
+    "memberGrowth": "[cy] Member Growth",
+    "roleBreakdown": "[cy] Members by Role",
+    "activityBreakdown": "[cy] Activity Breakdown",
+    "activeBookersLabel": "[cy] Active Bookers",
+    "activeMessagersLabel": "[cy] Active in Messaging",
+    "topActive": "[cy] Most Active Members",
+    "bookingsCol": "[cy] Bookings",
+    "messagesCol": "[cy] Messages",
+    "totalCol": "[cy] Total"
   },
   "operations": {
     "title": "[cy] Operations",

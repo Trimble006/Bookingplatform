@@ -39,7 +39,15 @@
     "newMembers": "New Members",
     "activeMembersTitle": "Active Members Over Time",
     "dormantMembers": "Dormant (90d inactive)",
-    "memberGrowth": "Member Growth"
+    "memberGrowth": "Member Growth",
+    "roleBreakdown": "Members by Role",
+    "activityBreakdown": "Activity Breakdown",
+    "activeBookersLabel": "Active Bookers",
+    "activeMessagersLabel": "Active in Messaging",
+    "topActive": "Most Active Members",
+    "bookingsCol": "Bookings",
+    "messagesCol": "Messages",
+    "totalCol": "Total"
   },
   "operations": {
     "title": "Operations",
