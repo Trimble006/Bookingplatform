@@ -75,4 +75,13 @@ Cross-tenant benchmarks on `/dashboard/platform/insights`.
 
 ## Status as of 2026-05-10
 
-Phase A in progress. Branch: `feat/business-insights`.
+**Shipped**:
+- Phases A–C (tenant-level bookings, members, operations) — 27 tests.
+- Platform-admin enterprise MI (9-domain KPI dashboard) — 8 tests.
+  Covers adoption, revenue (by country), churn, operations, agents
+  (detector chat→task), federation/funding, onboarding pipeline,
+  language/locale, feature usage (by tenant/country).
+- All on branch `feat/business-insights`, 4 commits, build green, 511 tests total.
+
+**Remaining**: materialised daily snapshots (v2, only if query latency
+becomes a problem at scale), tenant health scorecards.

@@ -1536,3 +1536,35 @@ the data-layer investment pays off across features.
 
 **Notes**: Branch `feat/funding-applications`, commits d068bf6 (P1),
 a18b68c (P2), 7a0cc9f (P3).
+
+## 2026-05-10 — #business-insights: platform-admin enterprise MI
+
+**Status**: decided
+
+**Context**: The approved plan (memory-tool plan.md) called for a
+PLATFORM_ADMIN-only enterprise MI dashboard with curated KPIs across
+multiple domains, daily snapshots, and no self-serve builder. For v1 we
+query live data rather than materialised snapshots — good enough for the
+current tenant count and avoids a new cron job.
+
+**Decision / outcome**: Single API endpoint at
+`/api/admin/reports/insights` returning 9 KPI domains: adoption, revenue
+(with country breakdown), churn, operations (tenant leaderboard),
+agents (including detector chat→task conversion rates), federation &
+funding, onboarding pipeline (application→activation time by country),
+language/locale distribution (translation ROI), and feature usage (by
+tenant/country). Tabbed dashboard at `/dashboard/platform/insights`.
+
+**Rationale**: Reuses `getRevenueReport()` / `getChurnReport()` from
+billing.ts rather than duplicating queries. Revenue-by-country and
+feature-usage-by-country use raw SQL joining Tenant.country. Onboarding
+pipeline derives time-to-activate from `Tenant.createdAt→goLiveAt` and
+application review time from `TenantApplication.createdAt→reviewedAt`.
+Detector agent KPIs filter by `AgentDefinition.slug = "detector"` and
+`AgentProposal.kind = "MAINTENANCE_TASK_CREATE"`. Locale distribution
+shows whether cy translations are earning their keep.
+
+**Notes**: Branch `feat/business-insights`. Tenant-level analytics
+(bookings/members/operations) shipped in prior commits on the same
+branch. Materialised daily snapshots deferred to v2 if query latency
+becomes an issue at scale.
