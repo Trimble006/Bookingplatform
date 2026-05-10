@@ -21,6 +21,7 @@ scratch.
 
 ## Active threads
 
+- `#business-insights` — tenant-facing business analytics (bookings, revenue, members, operations). Phase A (bookings & revenue). Session: `bp: #business-insights`. Branch: `feat/business-insights`.
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
 
 <!-- Format:

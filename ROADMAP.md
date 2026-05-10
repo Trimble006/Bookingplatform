@@ -14,7 +14,10 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Now
 
-_(nothing active — pick from Next)_
+- `#business-insights` (M) — tenant-facing business analytics dashboard:
+  bookings over time, revenue trend, occupancy, cancellation rate, peak
+  hours, member activity, task completion. Recharts + server-side
+  aggregation. Feature-flag gated (`businessInsights`).
 
 ## Next
 

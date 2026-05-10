@@ -30,6 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showWeatherBanner, setShowWeatherBanner] = useState(false);
   const [federationEnabled, setFederationEnabled] = useState(false);
   const [fundingEnabled, setFundingEnabled] = useState(false);
+  const [insightsEnabled, setInsightsEnabled] = useState(false);
 
   const role = (session?.user as any)?.role;
   const acting = (session?.user as any)?.actingAs as ActingAs;
@@ -62,6 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .then((flags) => {
         setEventsEnabled(!!(flags && flags.events));
         setFederationEnabled(!!(flags && flags.federation));
+        setInsightsEnabled(!!(flags && flags.businessInsights));
       })
       .catch(() => {});
     if (isTenantAdminEffective) {
@@ -136,6 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link href="/dashboard/audit" className="hover:bg-green-700 rounded px-3 py-2">
                 {isTenantAdminEffective ? "Audit Log" : "My Activity"}
               </Link>
+              {insightsEnabled && <Link href="/dashboard/insights" className="hover:bg-green-700 rounded px-3 py-2">📊 Insights</Link>}
               {analyticsEnabled && <Link href="/dashboard/analytics" className="hover:bg-green-700 rounded px-3 py-2">Analytics</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/help" className="hover:bg-green-700 rounded px-3 py-2">Help</Link>}
             </>

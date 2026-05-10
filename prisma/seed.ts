@@ -143,7 +143,7 @@ async function main() {
   });
 
   // Feature flags — enable everything in dev so we don't have to toggle manually
-  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent", "liveStreaming", "federation", "helpOverrides", "funding"];
+  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent", "liveStreaming", "federation", "helpOverrides", "funding", "businessInsights"];
   const disabledFlags: string[] = [];
   for (const key of enabledFlags) {
     await prisma.featureFlag.upsert({
