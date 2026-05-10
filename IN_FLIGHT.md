@@ -22,7 +22,6 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`. Branch: `feature/billing`.
-- `#funding-applications` — grant discovery, application tracking, AI-assisted drafting. Phase 1 (schema, permissions, CRUD, UI) in progress. Branch: `feat/funding-applications`.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).
@@ -42,8 +41,8 @@ scratch.
 
 ## Recently landed
 
+- 2026-05-10 — `#funding-applications` all 3 phases shipped: schema/CRUD/UI, eligibility scoring + 9 seeded UK grants, AI-assisted drafting via FundingApplicationAgent. Branch: `feat/funding-applications`. `DECISIONS.md`.
 - 2026-05-09 — `#permission-groups` full 6-phase feature (C1–C6) merged: permission groups, federation lifecycle, cross-club booking, federation UI. 476 tests. `DECISIONS.md`.
 - 2026-05-08 — `#i18n` string extraction complete (92/101 files, 14 namespaces). Branch: `feature/i18n-completion` (merged). `DECISIONS.md`.
 - 2026-05-07 — `#i18n` foundation + locale-aware formatting merged to main. Branch: `feature/i18n` (merged). `DECISIONS.md`.
 - 2026-05-05 — `#agents-v2` propose-not-publish loop closed end-to-end. Follow-ups parked at `parked-plans/agent-v2-followups.md`. `DECISIONS.md`.
-- 2026-05-05 — TAR wizard improvements (unlock cascade + readiness warnings) merged to main.

@@ -1505,3 +1505,34 @@ set = tenant-created). New `FundingQuestion` model linked to opportunity
 opportunityId])` on `FundingApplication` — clubs may re-apply or track
 multiple rounds. This also sets up Phase 3 agent-assisted question
 extraction (scrape questions from a pasted URL/PDF).
+
+
+## 2026-05-10 — #funding-applications: all three phases shipped
+
+**Status**: decided / shipped
+
+**Context**: Phases 2 and 3 completed in the same session as Phase 1.
+
+**Decision / outcome**:
+- **Phase 2** — 9 curated UK bowling/sport grants seeded via idempotent
+  `scripts/seed-funding-opportunities.ts`. Rule-based eligibility scorer
+  (`src/lib/funding/eligibility.ts`) ranks opportunities 0–100 by country,
+  org-type, and deadline proximity. Recommended badges + deadline countdown
+  pills on the overview grid.
+- **Phase 3** — `FundingApplicationAgent` extends `BaseAgent`, aggregates
+  tenant context (members, events, financials, charity settings), drafts
+  answers for unanswered questions via LLM, emits
+  `FUNDING_APPLICATION_DRAFT` proposals. Committer upserts
+  `FundingResponse` with `source=AI_APPROVED` + `agentProposalId` audit
+  link. 8 common question templates as fallback when an opportunity has no
+  per-opportunity `FundingQuestion` rows. Inline draft review on the
+  application detail page (generate button, approve/reject per-draft).
+- Dev seed now enables all feature flags by default.
+
+**Rationale**: Scoring is deliberately naïve (rule-based, not ML) — good
+enough to surface relevant grants and demonstrate the pattern. The agent
+reuses the same context-aggregation approach as the TAR wizard, confirming
+the data-layer investment pays off across features.
+
+**Notes**: Branch `feat/funding-applications`, commits d068bf6 (P1),
+a18b68c (P2), 7a0cc9f (P3).

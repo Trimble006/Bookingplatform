@@ -14,9 +14,7 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Now
 
-- `#funding-applications` (M) — grant discovery, application tracking,
-  AI-assisted drafting. Phase 1 (schema, permissions, CRUD, UI) in progress.
-  Branch: `feat/funding-applications`. `DECISIONS.md` 2026-05-09.
+_(nothing active — pick from Next)_
 
 ## Next
 
