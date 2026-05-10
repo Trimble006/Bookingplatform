@@ -47,7 +47,25 @@ interface MemberInsights {
   topActive: { userId: string; name: string; bookings: number; messages: number; total: number }[];
 }
 
-type Tab = "bookings" | "members";
+interface OperationsInsights {
+  period: string;
+  tasks: {
+    total: number;
+    closed: number;
+    completionRate: number;
+    avgDaysToClose: number;
+    byCategory: { category: string; count: number }[];
+    byPriority: { priority: string; count: number }[];
+  };
+  events: {
+    total: number;
+    published: number;
+    upcoming: number;
+    byCategory: { category: string; count: number }[];
+  };
+}
+
+type Tab = "bookings" | "members" | "operations";
 
 export default function InsightsPage() {
   const { data: session } = useSession();
@@ -55,6 +73,7 @@ export default function InsightsPage() {
   const locale = useLocale();
   const [bookingData, setBookingData] = useState<BookingInsights | null>(null);
   const [memberData, setMemberData] = useState<MemberInsights | null>(null);
+  const [opsData, setOpsData] = useState<OperationsInsights | null>(null);
   const [period, setPeriod] = useState<string>("30d");
   const [tab, setTab] = useState<Tab>("bookings");
   const [loading, setLoading] = useState(true);
@@ -70,9 +89,10 @@ export default function InsightsPage() {
     Promise.all([
       fetch(`/api/insights/bookings?period=${period}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/insights/members?period=${period}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/insights/operations?period=${period}`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([b, m]) => { setBookingData(b); setMemberData(m); })
-      .catch(() => { setBookingData(null); setMemberData(null); })
+      .then(([b, m, o]) => { setBookingData(b); setMemberData(m); setOpsData(o); })
+      .catch(() => { setBookingData(null); setMemberData(null); setOpsData(null); })
       .finally(() => setLoading(false));
   }, [period, isAdmin]);
 
@@ -104,7 +124,7 @@ export default function InsightsPage() {
 
       {/* Tab selector */}
       <div className="flex gap-1 border-b">
-        {(["bookings", "members"] as const).map((tb) => (
+        {(["bookings", "members", "operations"] as const).map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
@@ -123,8 +143,10 @@ export default function InsightsPage() {
         <p className="text-gray-400">{t("loading")}</p>
       ) : tab === "bookings" ? (
         <BookingsTab data={bookingData} t={t} locale={locale} />
-      ) : (
+      ) : tab === "members" ? (
         <MembersTab data={memberData} t={t} locale={locale} />
+      ) : (
+        <OperationsTab data={opsData} t={t} locale={locale} />
       )}
     </div>
   );
@@ -334,6 +356,111 @@ function MembersTab({ data, t, locale }: { data: MemberInsights | null; t: any; 
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+const PRIORITY_COLOURS: Record<string, string> = {
+  LOW: "#64748b",
+  MEDIUM: "#2563eb",
+  HIGH: "#ea580c",
+  URGENT: "#dc2626",
+};
+
+function OperationsTab({ data, t, locale }: { data: OperationsInsights | null; t: any; locale: string }) {
+  if (!data) return <p className="text-red-500">{t("loadFailed")}</p>;
+
+  return (
+    <div className="space-y-6">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPICard label={t("operations.taskCompletion")} value={`${data.tasks.completionRate}%`} alert={data.tasks.completionRate < 50} />
+        <KPICard label={t("operations.avgTimeToClose")} value={`${data.tasks.avgDaysToClose} ${t("operations.days")}`} />
+        <KPICard label={t("operations.totalTasks")} value={formatNumber(data.tasks.total, locale)} />
+        <KPICard label={t("operations.upcomingEvents")} value={formatNumber(data.events.upcoming, locale)} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tasks by category */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("operations.tasksByCategory")}</h2>
+          {data.tasks.byCategory.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t("noData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.tasks.byCategory} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis dataKey="category" type="category" tick={{ fontSize: 10 }} width={100} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {data.tasks.byCategory.map((_, i) => (
+                    <Cell key={i} fill={COLOURS[i % COLOURS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </section>
+
+        {/* Tasks by priority */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("operations.tasksByPriority")}</h2>
+          {data.tasks.byPriority.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t("noData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.tasks.byPriority}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="priority" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {data.tasks.byPriority.map((r, i) => (
+                    <Cell key={i} fill={PRIORITY_COLOURS[r.priority] ?? COLOURS[i % COLOURS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Events by category */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("operations.eventsByCategory")}</h2>
+          {data.events.byCategory.length === 0 ? (
+            <p className="text-gray-400 text-sm">{t("noData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.events.byCategory} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis dataKey="category" type="category" tick={{ fontSize: 10 }} width={100} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {data.events.byCategory.map((_, i) => (
+                    <Cell key={i} fill={COLOURS[i % COLOURS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </section>
+
+        {/* Events summary */}
+        <section className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">{t("operations.eventsSummary")}</h2>
+          <div className="space-y-3">
+            <ActivityBar label={t("operations.publishedEvents")} count={data.events.published} total={data.events.total} color="bg-green-500" />
+            <ActivityBar label={t("operations.draftEvents")} count={data.events.total - data.events.published} total={data.events.total} color="bg-gray-400" />
+          </div>
+          <div className="mt-4 text-sm text-gray-600">
+            {t("operations.upcomingEvents")}: <span className="font-semibold">{data.events.upcoming}</span>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

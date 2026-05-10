@@ -54,6 +54,13 @@
     "taskCompletion": "[cy] Task Completion Rate",
     "avgTimeToClose": "[cy] Avg Time to Close",
     "tasksByCategory": "[cy] Tasks by Category",
+    "tasksByPriority": "[cy] Tasks by Priority",
+    "totalTasks": "[cy] Total Tasks",
+    "eventsByCategory": "[cy] Events by Category",
+    "eventsSummary": "[cy] Events Summary",
+    "publishedEvents": "[cy] Published",
+    "draftEvents": "[cy] Draft",
+    "upcomingEvents": "[cy] Upcoming Events",
     "days": "[cy] days"
   }
 }

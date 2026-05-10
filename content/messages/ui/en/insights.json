@@ -54,6 +54,13 @@
     "taskCompletion": "Task Completion Rate",
     "avgTimeToClose": "Avg Time to Close",
     "tasksByCategory": "Tasks by Category",
+    "tasksByPriority": "Tasks by Priority",
+    "totalTasks": "Total Tasks",
+    "eventsByCategory": "Events by Category",
+    "eventsSummary": "Events Summary",
+    "publishedEvents": "Published",
+    "draftEvents": "Draft",
+    "upcomingEvents": "Upcoming Events",
     "days": "days"
   }
 }
