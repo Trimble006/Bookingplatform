@@ -316,5 +316,114 @@
     "topInteractions": "Top Interactions",
     "action": "Action",
     "noInteractions": "No interaction data yet"
+  },
+  "insights": {
+    "title": "Enterprise Insights",
+    "loading": "Loading insights…",
+    "failed": "Failed to load insights.",
+    "generatedAt": "Generated {time}",
+    "tabs": {
+      "adoption": "Adoption",
+      "revenue": "Revenue",
+      "churn": "Churn",
+      "operations": "Operations",
+      "agents": "Agents",
+      "federation": "Federation & Funding",
+      "onboarding": "Onboarding Pipeline",
+      "language": "Language & i18n",
+      "features": "Feature Usage"
+    },
+    "adoption": {
+      "totalTenants": "Total Tenants",
+      "active": "Active",
+      "onboarding": "Onboarding",
+      "totalUsers": "Total Users",
+      "newUsers30d": "New Users (30d)",
+      "goneLive30d": "Gone Live (30d)",
+      "onboardingCompleted": "Onboarding Completed",
+      "avgChapter": "Avg Chapter (in-progress)"
+    },
+    "revenue": {
+      "mrr": "MRR",
+      "arr": "ARR",
+      "totalRevenue": "Total Revenue",
+      "arpt": "ARPT",
+      "monthlyChart": "Monthly Revenue",
+      "byCountry": "Revenue by Country",
+      "country": "Country",
+      "tenants": "Tenants",
+      "mrrLabel": "MRR",
+      "byPlan": "Revenue by Plan"
+    },
+    "churn": {
+      "totalChurned": "Total Churned",
+      "churnRate": "Churn Rate",
+      "monthlyChart": "Monthly Churn"
+    },
+    "operations": {
+      "bookings": "Bookings (30d)",
+      "confirmRate": "Confirm Rate",
+      "cancelRate": "Cancel Rate",
+      "tasks": "Tasks (30d)",
+      "taskCompletion": "Task Completion",
+      "events": "Events (30d)",
+      "eventsPublished": "Published",
+      "leaderboard": "Tenant Booking Leaderboard (30d)",
+      "tenant": "Tenant",
+      "bookingsCol": "Bookings"
+    },
+    "agents": {
+      "runs": "Runs (30d)",
+      "successRate": "Success Rate",
+      "proposals": "Proposals (30d)",
+      "approvalRate": "Approval Rate",
+      "spend": "Spend (30d)",
+      "tokensIn": "Tokens In",
+      "tokensOut": "Tokens Out",
+      "detectorTitle": "Chat → Task Conversion (Detector Agent)",
+      "detectorRuns": "Detector Runs",
+      "detectorProposals": "Tasks Proposed",
+      "detectorApproved": "Tasks Approved",
+      "detectorApprovalRate": "Approval Rate",
+      "byAgent": "Spend by Agent",
+      "agentName": "Agent",
+      "runsCol": "Runs",
+      "spendCol": "Spend"
+    },
+    "federation": {
+      "total": "Total Federations",
+      "active": "Active",
+      "fundingApps": "Funding Applications",
+      "fundingByStatus": "Funding by Status"
+    },
+    "onboarding": {
+      "totalApplications": "Total Applications",
+      "avgReviewDays": "Avg Review Time (days)",
+      "totalActivated": "Total Activated",
+      "avgActivationDays": "Avg Activation Time (days)",
+      "medianActivationDays": "Median Activation Time (days)",
+      "appsByStatus": "Applications by Status",
+      "activationByCountry": "Activation Time by Country",
+      "country": "Country",
+      "activated": "Activated",
+      "avgDays": "Avg Days"
+    },
+    "language": {
+      "byLocale": "Tenants by Locale",
+      "byCountry": "Tenants by Country",
+      "noData": "No data yet"
+    },
+    "features": {
+      "topFeatures": "Top Features (30d)",
+      "byCountry": "Feature Usage by Country",
+      "country": "Country",
+      "feature": "Feature",
+      "count": "Count",
+      "byTenant": "Feature Usage by Tenant",
+      "tenant": "Tenant",
+      "locale": "Locale",
+      "countryCol": "Country",
+      "uses": "Feature Uses"
+    }
   }
 }

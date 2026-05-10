@@ -316,5 +316,114 @@
     "topInteractions": "[cy] Top Interactions",
     "action": "[cy] Action",
     "noInteractions": "[cy] No interaction data yet"
+  },
+  "insights": {
+    "title": "[cy] Enterprise Insights",
+    "loading": "[cy] Loading insights…",
+    "failed": "[cy] Failed to load insights.",
+    "generatedAt": "[cy] Generated {time}",
+    "tabs": {
+      "adoption": "[cy] Adoption",
+      "revenue": "[cy] Revenue",
+      "churn": "[cy] Churn",
+      "operations": "[cy] Operations",
+      "agents": "[cy] Agents",
+      "federation": "[cy] Federation & Funding",
+      "onboarding": "[cy] Onboarding Pipeline",
+      "language": "[cy] Language & i18n",
+      "features": "[cy] Feature Usage"
+    },
+    "adoption": {
+      "totalTenants": "[cy] Total Tenants",
+      "active": "[cy] Active",
+      "onboarding": "[cy] Onboarding",
+      "totalUsers": "[cy] Total Users",
+      "newUsers30d": "[cy] New Users (30d)",
+      "goneLive30d": "[cy] Gone Live (30d)",
+      "onboardingCompleted": "[cy] Onboarding Completed",
+      "avgChapter": "[cy] Avg Chapter (in-progress)"
+    },
+    "revenue": {
+      "mrr": "[cy] MRR",
+      "arr": "[cy] ARR",
+      "totalRevenue": "[cy] Total Revenue",
+      "arpt": "[cy] ARPT",
+      "monthlyChart": "[cy] Monthly Revenue",
+      "byCountry": "[cy] Revenue by Country",
+      "country": "[cy] Country",
+      "tenants": "[cy] Tenants",
+      "mrrLabel": "[cy] MRR",
+      "byPlan": "[cy] Revenue by Plan"
+    },
+    "churn": {
+      "totalChurned": "[cy] Total Churned",
+      "churnRate": "[cy] Churn Rate",
+      "monthlyChart": "[cy] Monthly Churn"
+    },
+    "operations": {
+      "bookings": "[cy] Bookings (30d)",
+      "confirmRate": "[cy] Confirm Rate",
+      "cancelRate": "[cy] Cancel Rate",
+      "tasks": "[cy] Tasks (30d)",
+      "taskCompletion": "[cy] Task Completion",
+      "events": "[cy] Events (30d)",
+      "eventsPublished": "[cy] Published",
+      "leaderboard": "[cy] Tenant Booking Leaderboard (30d)",
+      "tenant": "[cy] Tenant",
+      "bookingsCol": "[cy] Bookings"
+    },
+    "agents": {
+      "runs": "[cy] Runs (30d)",
+      "successRate": "[cy] Success Rate",
+      "proposals": "[cy] Proposals (30d)",
+      "approvalRate": "[cy] Approval Rate",
+      "spend": "[cy] Spend (30d)",
+      "tokensIn": "[cy] Tokens In",
+      "tokensOut": "[cy] Tokens Out",
+      "detectorTitle": "[cy] Chat → Task Conversion (Detector Agent)",
+      "detectorRuns": "[cy] Detector Runs",
+      "detectorProposals": "[cy] Tasks Proposed",
+      "detectorApproved": "[cy] Tasks Approved",
+      "detectorApprovalRate": "[cy] Approval Rate",
+      "byAgent": "[cy] Spend by Agent",
+      "agentName": "[cy] Agent",
+      "runsCol": "[cy] Runs",
+      "spendCol": "[cy] Spend"
+    },
+    "federation": {
+      "total": "[cy] Total Federations",
+      "active": "[cy] Active",
+      "fundingApps": "[cy] Funding Applications",
+      "fundingByStatus": "[cy] Funding by Status"
+    },
+    "onboarding": {
+      "totalApplications": "[cy] Total Applications",
+      "avgReviewDays": "[cy] Avg Review Time (days)",
+      "totalActivated": "[cy] Total Activated",
+      "avgActivationDays": "[cy] Avg Activation Time (days)",
+      "medianActivationDays": "[cy] Median Activation Time (days)",
+      "appsByStatus": "[cy] Applications by Status",
+      "activationByCountry": "[cy] Activation Time by Country",
+      "country": "[cy] Country",
+      "activated": "[cy] Activated",
+      "avgDays": "[cy] Avg Days"
+    },
+    "language": {
+      "byLocale": "[cy] Tenants by Locale",
+      "byCountry": "[cy] Tenants by Country",
+      "noData": "[cy] No data yet"
+    },
+    "features": {
+      "topFeatures": "[cy] Top Features (30d)",
+      "byCountry": "[cy] Feature Usage by Country",
+      "country": "[cy] Country",
+      "feature": "[cy] Feature",
+      "count": "[cy] Count",
+      "byTenant": "[cy] Feature Usage by Tenant",
+      "tenant": "[cy] Tenant",
+      "locale": "[cy] Locale",
+      "countryCol": "[cy] Country",
+      "uses": "[cy] Feature Uses"
+    }
   }
 }

@@ -108,6 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link href="/dashboard/platform/payments" className="hover:bg-slate-700 rounded px-3 py-2">Payments</Link>
               <Link href="/dashboard/platform/finance" className="hover:bg-slate-700 rounded px-3 py-2">Finance</Link>
               <Link href="/dashboard/platform/costs" className="hover:bg-slate-700 rounded px-3 py-2">Agent Costs</Link>
+              <Link href="/dashboard/platform/insights" className="hover:bg-slate-700 rounded px-3 py-2">Insights</Link>
               <Link href="/dashboard/platform/outbound" className="hover:bg-slate-700 rounded px-3 py-2">Outbound</Link>
               <Link href="/dashboard/platform/audit" className="hover:bg-slate-700 rounded px-3 py-2">Platform Audit</Link>
               <Link href="/dashboard/platform/impersonations" className="hover:bg-slate-700 rounded px-3 py-2">Impersonation History</Link>
