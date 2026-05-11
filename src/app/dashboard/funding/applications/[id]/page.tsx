@@ -58,6 +58,26 @@ function formatPence(pence: number): string {
 }
 
 export default function ApplicationDetailPage() {
+    // Handler to improve a single answer with AI
+    async function improveWithAI(questionId: string | null, currentText: string) {
+      setSaving(true);
+      await fetch(`/api/funding/applications/${id}/draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, currentText }),
+      });
+      load();
+      setSaving(false);
+    }
+
+    // Handler to improve all answers with AI
+    async function improveAllWithAI() {
+      setDrafting(true);
+      await fetch(`/api/funding/applications/${id}/draft`, {
+        method: "POST" });
+      load();
+      setDrafting(false);
+    }
   const t = useTranslations("funding");
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
@@ -69,7 +89,110 @@ export default function ApplicationDetailPage() {
   const [drafting, setDrafting] = useState(false);
   const [draftProposals, setDraftProposals] = useState<DraftProposal[]>([]);
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
+  const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
+  const uniqueQuestions = app?.opportunity?.questions
+    ? Array.from(new Map(app.opportunity.questions.map((q) => [q.id, q])).values())
+    : [];
 
+// Inline editable response component (must be top-level)
+function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWithAI }: {
+  resp: Response,
+  t: any,
+  saving: boolean,
+  setSaving: (v: boolean) => void,
+  load: () => void,
+  appId: string,
+  onImproveWithAI: (questionId: string | null, text: string) => Promise<void> | void,
+}) {
+  const [editing, setEditing] = useState(resp.content === "");
+  const [value, setValue] = useState(resp.content);
+  useEffect(() => {
+    setValue(resp.content);
+  }, [resp.content]);
+
+  async function saveEdit() {
+    setSaving(true);
+    await fetch(`/api/funding/applications/${appId}/responses/${resp.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: value }),
+    });
+    setEditing(false);
+    load();
+    setSaving(false);
+  }
+
+  return (
+    <div className="border rounded p-3">
+      <p className="font-medium text-sm">{resp.questionLabel}</p>
+      {editing ? (
+        <>
+          <textarea
+            className="border rounded px-3 py-1.5 w-full text-sm h-20 mt-2"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            disabled={saving}
+          />
+          <div className="flex gap-2 mt-2 items-center">
+            <button
+              onClick={saveEdit}
+              disabled={saving || !value.trim()}
+              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+            >
+              {t("application.save")}
+            </button>
+            {resp.content !== "" && (
+              <button
+                onClick={() => { setEditing(false); setValue(resp.content); }}
+                disabled={saving}
+                className="text-gray-600 border px-3 py-1 rounded text-sm hover:bg-gray-100 disabled:opacity-50"
+              >
+                {t("application.cancel")}
+              </button>
+            )}
+          </div>
+          <div className="flex mt-2">
+            <button
+              onClick={() => onImproveWithAI(resp.questionId, value)}
+              disabled={saving}
+              className="btn btn-ai btn-ai--large"
+              title={t("application.improveWithAI")}
+            >
+              <span className="btn-ai__icon">✨</span>
+              {t("application.improveWithAI").toUpperCase()}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 whitespace-pre-wrap">{resp.content || <span className="text-gray-400 italic">No answer yet</span>}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <p className="text-xs text-gray-400">
+              {t(`application.source${resp.source === "MANUAL" ? "Manual" : resp.source === "AI_DRAFT" ? "AiDraft" : "AiApproved"}`)}
+            </p>
+            <button
+              onClick={() => setEditing(true)}
+              disabled={saving}
+              className="text-blue-600 text-xs underline ml-2 disabled:opacity-50"
+            >
+              {t("application.editResponse")}
+            </button>
+            {/* Always show Improve with AI button, larger and more visible */}
+            <button
+              onClick={() => onImproveWithAI(resp.questionId, resp.content)}
+              disabled={saving}
+              className="btn btn-ai"
+              title={t("application.improveWithAI")}
+            >
+              <span className="btn-ai__icon">✨</span>
+              {t("application.improveWithAI").toUpperCase()}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
   const load = useCallback(() => {
     fetch(`/api/funding/applications/${id}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -97,6 +220,15 @@ export default function ApplicationDetailPage() {
   }, [id]);
 
   useEffect(load, [load]);
+
+  // Initialize collapsed state map when questions load
+  useEffect(() => {
+    if (!app?.opportunity?.questions) return;
+    const map: Record<string, boolean> = {};
+    // default collapsed to true for a denser, more scannable UI
+    app.opportunity.questions.forEach((q) => { map[q.id] = true; });
+    setCollapsedMap(map);
+  }, [app?.opportunity?.questions]);
 
   async function updateStatus(status: string) {
     setSaving(true);
@@ -178,6 +310,7 @@ export default function ApplicationDetailPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
+      {/* debug JSON removed to simplify the page for users */}
       <Link href="/dashboard/funding" className="text-sm text-green-700 hover:underline">
         {t("application.backToOverview")}
       </Link>
@@ -288,98 +421,133 @@ export default function ApplicationDetailPage() {
         )}
       </div>
 
-      {/* AI Draft Proposals */}
-      {draftProposals.length > 0 && (
-        <section>
-          <h2 className="text-xl font-semibold mb-3">{t("application.aiDrafts")}</h2>
-          <p className="text-sm text-gray-500 mb-3">{t("application.aiDraftsIntro")}</p>
-          <div className="space-y-3">
-            {draftProposals.map((dp) => (
-              <div key={dp.id} className="border-2 border-purple-200 rounded p-4 bg-purple-50">
-                <p className="font-medium text-sm">{dp.payload.questionLabel}</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm">{dp.payload.draftText}</p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                  <span>{t("application.aiConfidence")}: {Math.round(dp.payload.confidence * 100)}%</span>
-                  <span>·</span>
-                  <span>{dp.payload.reasoning}</span>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => approveDraft(dp.id)}
-                    disabled={busyProposalId === dp.id}
-                    className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {t("application.aiApprove")}
-                  </button>
-                  <button
-                    onClick={() => rejectDraft(dp.id)}
-                    disabled={busyProposalId === dp.id}
-                    className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {t("application.aiReject")}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Draft proposals are shown inline under each question now; top-level list removed */}
 
-      {/* Responses */}
+      {/* Responses grouped by question */}
       <section>
         <h2 className="text-xl font-semibold mb-3">{t("application.responses")}</h2>
-
-        {/* Show unanswered opportunity questions */}
-        {(() => {
-          const answeredQIds = new Set(app.responses.filter((r) => r.questionId).map((r) => r.questionId));
-          const unanswered = app.opportunity.questions.filter((q) => !answeredQIds.has(q.id));
-          if (unanswered.length === 0) return null;
+        {/* Collapsible Q/A blocks */}
+        {uniqueQuestions.map((q, idx) => {
+          // Use top-level collapsed map instead of per-item hooks
+          const collapsed = collapsedMap[q.id] ?? false;
+          // Find the latest response for this question (manual, approved, or AI draft)
+          const allResps = app.responses.filter((r) => r.questionId === q.id);
+          const resp = allResps.length > 0 ? allResps[allResps.length - 1] : null;
+          const aiDrafts = draftProposals.filter((dp) => dp.payload.questionId === q.id);
           return (
-            <div className="mb-4 space-y-2">
-              {unanswered.map((q) => (
-                <div key={q.id} className="border border-dashed border-gray-300 rounded p-3 bg-gray-50">
-                  <p className="font-medium text-sm">{q.label}</p>
-                  {q.helpText && <p className="text-xs text-gray-500 mt-0.5">{q.helpText}</p>}
-                  <button
-                    onClick={async () => {
-                      setSaving(true);
-                      await fetch(`/api/funding/applications/${id}/responses`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ questionId: q.id, content: "" }),
-                      });
-                      load();
-                      setSaving(false);
-                    }}
-                    disabled={saving}
-                    className="mt-2 text-xs text-green-700 hover:underline disabled:opacity-50"
-                  >
-                    {t("application.startAnswer")}
-                  </button>
+            <div key={q.id} className="mb-6 border rounded bg-gray-50">
+              <div className="flex items-center justify-between p-3 cursor-pointer select-none" onClick={() => setCollapsedMap(prev => ({ ...prev, [q.id]: !prev[q.id] }))}>
+                <span className="font-medium text-sm">{q.label}</span>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setCollapsedMap(prev => ({ ...prev, [q.id]: !prev[q.id] })); }}
+                  className="ml-2 text-xs px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100"
+                  aria-label={collapsed ? 'Show response' : 'Hide response'}
+                >
+                  {collapsed ? 'Show' : 'Hide'}
+                </button>
+              </div>
+              {!collapsed && (
+                <div className="p-3 pt-0">
+                  {q.helpText && <p className="text-xs text-gray-500 mb-2">{q.helpText}</p>}
+                  {resp ? (
+                    <EditableResponse
+                      resp={resp}
+                      t={t}
+                      saving={saving}
+                      setSaving={setSaving}
+                      load={load}
+                      appId={app.id}
+                      onImproveWithAI={improveWithAI}
+                    />
+                  ) : (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={async () => {
+                          setSaving(true);
+                          await fetch(`/api/funding/applications/${id}/responses`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ questionId: q.id, content: "" }),
+                          });
+                          load();
+                          setSaving(false);
+                        }}
+                        disabled={saving}
+                        className="text-xs text-green-700 hover:underline disabled:opacity-50"
+                      >
+                        {t("application.startAnswer")}
+                      </button>
+                      <button
+                        onClick={() => improveWithAI(q.id, "")}
+                        disabled={saving}
+                        className="btn btn-ai"
+                        title={t("application.improveWithAI")}
+                      >
+                        <span className="btn-ai__icon">✨</span>
+                        {t("application.improveWithAI").toUpperCase()}
+                      </button>
+                    </div>
+                  )}
+                  {/* AI Drafts for this question (still show approve/reject for legacy, but main workflow is now iterative) */}
+                  {aiDrafts.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {aiDrafts.map((dp) => (
+                        <div key={dp.id} className="border-2 border-purple-200 rounded p-3 bg-purple-50">
+                          <p className="text-xs text-gray-500 mb-1">AI Draft</p>
+                          <p className="whitespace-pre-wrap text-sm">{dp.payload.draftText}</p>
+                          <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                            <span>{t("application.aiConfidence")}: {Math.round(dp.payload.confidence * 100)}%</span>
+                            <span>·</span>
+                            <span>{dp.payload.reasoning}</span>
+                          </div>
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() => approveDraft(dp.id)}
+                              disabled={busyProposalId === dp.id}
+                              className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 disabled:opacity-50"
+                            >
+                              {t("application.aiApprove")}
+                            </button>
+                            <button
+                              onClick={() => rejectDraft(dp.id)}
+                              disabled={busyProposalId === dp.id}
+                              className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {t("application.aiReject")}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
           );
-        })()}
-
-        {app.responses.length === 0 && app.opportunity.questions.length === 0 ? (
-          <p className="text-gray-500 mb-4">{t("application.noResponses")}</p>
-        ) : app.responses.length > 0 ? (
-          <div className="space-y-3 mb-4">
-            {app.responses.map((resp) => (
-              <div key={resp.id} className="border rounded p-3">
-                <p className="font-medium text-sm">{resp.questionLabel}</p>
-                <p className="mt-1 whitespace-pre-wrap">{resp.content || <span className="text-gray-400 italic">No answer yet</span>}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {t(`application.source${resp.source === "MANUAL" ? "Manual" : resp.source === "AI_DRAFT" ? "AiDraft" : "AiApproved"}`)}
-                </p>
-              </div>
-            ))}
+        })}
+        {/* Freeform responses (no questionId) */}
+        {app.responses.filter((r) => !r.questionId).length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-sm font-medium mb-2">Other responses</h3>
+            <div className="space-y-3">
+              {app.responses.filter((r) => !r.questionId).map((resp) => (
+                <EditableResponse
+                  key={resp.id}
+                  resp={resp}
+                  t={t}
+                  saving={saving}
+                  setSaving={setSaving}
+                  load={load}
+                  appId={app.id}
+                  onImproveWithAI={improveWithAI}
+                />
+              ))}
+            </div>
           </div>
-        ) : null}
-
-        {/* Add response form */}
-        <form onSubmit={addResponse} className="border rounded p-3 bg-gray-50 space-y-3">
+        )}
+        {/* Add response form for freeform questions */}
+        <form onSubmit={addResponse} className="border rounded p-3 bg-gray-50 space-y-3 mt-8">
           <h3 className="text-sm font-medium">{t("application.addResponse")}</h3>
           <div>
             <label className="block text-sm mb-1">{t("application.question")}</label>
@@ -407,6 +575,17 @@ export default function ApplicationDetailPage() {
             {t("application.addResponse")}
           </button>
         </form>
+
+        {/* Review all answers with AI */}
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={improveAllWithAI}
+            disabled={drafting}
+            className="bg-purple-700 text-white px-4 py-2 rounded text-sm hover:bg-purple-800 disabled:opacity-50"
+          >
+            ✨ {t("application.improveAllWithAI")}
+          </button>
+        </div>
       </section>
     </div>
   );

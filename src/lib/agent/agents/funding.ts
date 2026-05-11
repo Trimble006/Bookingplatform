@@ -266,6 +266,13 @@ export class FundingApplicationAgent extends BaseAgent {
     ].join("\n");
 
     try {
+      console.log('[funding-app] LLM input:', {
+        systemPrompt,
+        userPrompt,
+        responseSchema: RESPONSE_SCHEMA,
+        temperature: 0.3,
+        maxTokens: 4000,
+      });
       const result = await this.provider.call({
         systemPrompt,
         userPrompt,
@@ -273,7 +280,9 @@ export class FundingApplicationAgent extends BaseAgent {
         temperature: 0.3,
         maxTokens: 4000,
       });
+      console.log('[funding-app] LLM raw result:', result);
       const parsed = result.content as LLMResponse;
+      console.log('[funding-app] LLM parsed drafts:', parsed?.drafts);
       return parsed?.drafts ?? [];
     } catch (e) {
       // eslint-disable-next-line no-console

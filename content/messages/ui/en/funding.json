@@ -65,6 +65,9 @@
     "aiConfidence": "Confidence",
     "aiApprove": "Approve",
     "aiReject": "Reject"
+    ,
+    "improveWithAI": "Improve with AI",
+    "improveAllWithAI": "Review all answers with AI"
   },
   "status": {
     "DRAFT": "Draft",
