@@ -323,7 +323,9 @@ export class FundingApplicationAgent extends BaseAgent {
           where: {
             tenantId,
             status: "PUBLISHED",
-            date: { gte: oneYearAgo },
+            // `Event.date` is stored as a string (YYYY-MM-DD) in the schema,
+            // so compare using a date-string rather than a JS Date object.
+            date: { gte: oneYearAgo.toISOString().slice(0, 10) },
           },
           select: { title: true, date: true },
           orderBy: { date: "desc" },
@@ -352,7 +354,8 @@ export class FundingApplicationAgent extends BaseAgent {
       newMembersThisYear: newMembers,
       recentEvents: events.map((e) => ({
         title: e.title,
-        date: e.date.toISOString().slice(0, 10),
+        // `e.date` is already a string in the DB (YYYY-MM-DD), keep as-is.
+        date: e.date,
       })),
       financialSummary: charitySettings?.reservesPolicy ?? null,
       recentMaintenance: maintenance.map((m) => ({
