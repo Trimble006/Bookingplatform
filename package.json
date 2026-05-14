@@ -12,7 +12,7 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "db:seed": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "agent:detect": "node scripts/run-agent.mjs detector",
     "agent:triage": "node scripts/run-agent.mjs triager",
     "agent:all": "node scripts/run-agent.mjs all",
