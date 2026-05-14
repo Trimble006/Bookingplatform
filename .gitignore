@@ -12,3 +12,5 @@ tsconfig.tsbuildinfo
 
 # local-only workshop facilitator notes
 .cache-loader/
+
+seed-npm.log
