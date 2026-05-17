@@ -3,7 +3,7 @@
  * /api/admin/billing/generate endpoint using AGENT_SECRET.
  *
  * Usage:
- *   node scripts/run-billing.mjs [--tenant <tenantId>] [--dry-run]
+ *   node scripts/run-billing.mjs [--tenant <tenantId>] [--dry-run] [--trigger-webhook]
  *
  * Env:
  *   AGENT_SECRET    — required, matches server-side secret
@@ -22,6 +22,8 @@ const args = process.argv.slice(2);
 const tenantIdx = args.indexOf("--tenant");
 const tenantId = tenantIdx >= 0 ? args[tenantIdx + 1] : undefined;
 const dryRun = args.includes("--dry-run");
+const triggerWebhook = args.includes("--trigger-webhook");
+const STUB_SECRET = process.env.PAYMENT_STUB_SECRET ?? "";
 
 async function main() {
   const url = `${BASE}/api/admin/billing/generate`;
@@ -49,6 +51,28 @@ async function main() {
     if (data.dryRun) console.log("  (dry run — no records created)");
     for (const r of data.results ?? []) {
       console.log(`  • Tenant ${r.tenantId}: £${(r.amount / 100).toFixed(2)} (${r.lineItems.length} line items)`);
+    }
+    // Optionally trigger simulated webhooks for each created invoice (dev convenience)
+    if (triggerWebhook && !dryRun) {
+      for (const r of data.results ?? []) {
+        const webhookUrl = `${BASE}/api/payments/webhook`;
+        const body = { type: "payment_succeeded", paymentId: r.paymentId, providerId: r.paymentId };
+        try {
+          const headers = { "Content-Type": "application/json" };
+          if (STUB_SECRET) headers.Authorization = `Bearer ${STUB_SECRET}`;
+          const wr = await fetch(webhookUrl, { method: "POST", headers, body: JSON.stringify(body) });
+          const wdata = await wr.text().catch(() => "");
+          if (wr.ok) {
+            console.log(`  → Triggered webhook for ${r.paymentId}`);
+          } else {
+            console.error(`  → Webhook HTTP ${wr.status}: ${wdata}`);
+          }
+        } catch (e) {
+          console.error(`  → Webhook request failed for ${r.paymentId}: ${e.message}`);
+        }
+        // small pause to avoid bursts
+        await new Promise((res) => setTimeout(res, 150));
+      }
     }
   } catch (err) {
     console.error("Request failed:", err.message);
