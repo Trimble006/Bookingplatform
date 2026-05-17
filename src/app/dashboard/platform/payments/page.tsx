@@ -1,104 +1,158 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { formatDate } from "@/lib/format";
 
-type TenantPayment = {
+interface TenantPayment {
   id: string;
-  tenantId: string;
-  tenant: { name: string };
+  invoiceRef?: string | null;
   amount: number;
-  currency: string;
-  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
-  invoiceRef: string | null;
+  status: string;
+  tenant?: { name?: string | null };
   createdAt: string;
-};
+}
 
-const statusStyles: Record<string, string> = {
-  PAID: "bg-green-100 text-green-700",
-  PENDING: "bg-yellow-100 text-yellow-700",
-  FAILED: "bg-red-100 text-red-700",
-  REFUNDED: "bg-blue-100 text-blue-700",
-};
+interface BookingPayment {
+  id: string;
+  bookingId: string;
+  amount: number;
+  status: string;
+  booking?: { id: string; date?: string | null; tenantId?: string | null };
+  createdAt: string;
+}
 
 export default function PlatformPaymentsPage() {
-  const locale = useLocale();
-  const t = useTranslations("admin");
-  const [payments, setPayments] = useState<TenantPayment[]>([]);
+  const [tenantPayments, setTenantPayments] = useState<TenantPayment[]>([]);
+  const [bookingPayments, setBookingPayments] = useState<BookingPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    fetch("/api/admin/payments")
-      .then((r) => r.json())
-      .then((d) => setPayments(Array.isArray(d) ? d : []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/payments");
+      if (res.ok) {
+        const data = await res.json();
+        setTenantPayments(data.tenantPayments ?? []);
+        setBookingPayments(data.bookingPayments ?? []);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const totalRevenue = payments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
-  const pendingCount = payments.filter((p) => p.status === "PENDING").length;
-  const failedCount = payments.filter((p) => p.status === "FAILED").length;
-  const uniqueTenants = new Set(payments.map((p) => p.tenantId)).size;
+  useEffect(() => { load(); }, []);
 
-  if (loading) return <p className="text-gray-500">{t("platform.payments.loading")}</p>;
+  async function simulateTenant(id: string, action: "paid" | "failed") {
+    setBusy((s) => ({ ...s, [id]: true }));
+    try {
+      await fetch("/api/payments/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: action === "paid" ? "payment_succeeded" : "payment_failed", paymentId: id }),
+      });
+      await load();
+    } finally {
+      setBusy((s) => ({ ...s, [id]: false }));
+    }
+  }
+
+  async function simulateBooking(bookingId: string, action: "paid" | "failed") {
+    setBusy((s) => ({ ...s, [bookingId]: true }));
+    try {
+      await fetch("/api/payments/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: action === "paid" ? "payment.completed" : "payment.failed", bookingId }),
+      });
+      await load();
+    } finally {
+      setBusy((s) => ({ ...s, [bookingId]: false }));
+    }
+  }
+
+  if (loading) return <p className="text-gray-500">Loading payments…</p>;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("platform.payments.title")}</h1>
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">{t("platform.payments.totalTenants")}</p>
-          <p className="text-2xl font-semibold">{uniqueTenants}</p>
-        </div>
-        <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">{t("platform.payments.totalRevenue")}</p>
-          <p className="text-2xl font-semibold">£{(totalRevenue / 100).toFixed(2)}</p>
-        </div>
-        <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">{t("platform.payments.pending")}</p>
-          <p className="text-2xl font-semibold">{pendingCount}</p>
-        </div>
-        <div className="rounded-xl bg-white p-4 shadow">
-          <p className="text-xs text-gray-500">{t("platform.payments.failed")}</p>
-          <p className="text-2xl font-semibold">{failedCount}</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Platform Payments (Admin)</h1>
+        <div>
+          <button onClick={load} className="rounded border px-3 py-1 text-sm">Refresh</button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl bg-white shadow">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-3">{t("platform.payments.tenant")}</th>
-              <th className="px-4 py-3">{t("platform.payments.amount")}</th>
-              <th className="px-4 py-3">{t("platform.payments.status")}</th>
-              <th className="px-4 py-3">{t("platform.payments.invoiceRef")}</th>
-              <th className="px-4 py-3">{t("platform.payments.date")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {payments.map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{p.tenant.name}</td>
-                <td className="px-4 py-3">£{(p.amount / 100).toFixed(2)}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[p.status]}`}>
-                    {p.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-500">{p.invoiceRef ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt, locale)}</td>
-              </tr>
-            ))}
-            {payments.length === 0 && (
+      <div className="rounded-xl bg-white shadow">
+        <h2 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">Tenant Invoices (Pending)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">{t("platform.payments.noPayments")}</td>
+                <th className="px-4 py-3">Ref</th>
+                <th className="px-4 py-3">Tenant</th>
+                <th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y">
+              {tenantPayments.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-3 text-center text-gray-400">No pending tenant invoices</td></tr>
+              )}
+              {tenantPayments.map((p) => (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? p.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3">{p.tenant?.name ?? "Unknown"}</td>
+                  <td className="px-4 py-3">£{(p.amount / 100).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button disabled={!!busy[p.id]} onClick={() => simulateTenant(p.id, "paid")} className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50">Mark Paid</button>
+                      <button disabled={!!busy[p.id]} onClick={() => simulateTenant(p.id, "failed")} className="rounded border px-3 py-1 text-xs disabled:opacity-50">Mark Failed</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white shadow">
+        <h2 className="border-b px-4 py-3 text-sm font-semibold text-gray-700">Booking Payments (Pending)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Booking</th>
+                <th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {bookingPayments.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-3 text-center text-gray-400">No pending booking payments</td></tr>
+              )}
+              {bookingPayments.map((bp) => (
+                <tr key={bp.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-xs">{bp.booking?.id ?? bp.bookingId}</td>
+                  <td className="px-4 py-3">£{(bp.amount / 100).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-500">{bp.booking?.date ? new Date(bp.booking.date).toLocaleString() : new Date(bp.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button disabled={!!busy[bp.bookingId]} onClick={() => simulateBooking(bp.bookingId, "paid")} className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50">Mark Paid</button>
+                      <button disabled={!!busy[bp.bookingId]} onClick={() => simulateBooking(bp.bookingId, "failed")} className="rounded border px-3 py-1 text-xs disabled:opacity-50">Mark Failed</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
+
