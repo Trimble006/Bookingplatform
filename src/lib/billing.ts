@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { BillingStatus, PaymentStatus } from "@prisma/client";
+import { paymentProvider } from "@/lib/payments";
 
 // ─── Invoice Generation ─────────────────────────────────────────────
 
@@ -110,6 +111,20 @@ export async function generateInvoice(
 
     return p;
   });
+
+  // If the tenant's profile uses an external payment method, invoke the provider.
+  try {
+    if (profile.paymentMethod && profile.paymentMethod !== "INVOICE") {
+      const result = await paymentProvider.chargeTenantPayment(payment.id);
+      if (result.status === "PAID") {
+        await prisma.tenantPayment.update({ where: { id: payment.id }, data: { status: "PAID" } });
+      } else if (result.status === "FAILED") {
+        await prisma.tenantPayment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
+      }
+    }
+  } catch (err) {
+    // Leave payment as PENDING on provider errors; reconciliation can occur via webhooks.
+  }
 
   return { paymentId: payment.id, tenantId, amount: totalAmount, lineItems };
 }
