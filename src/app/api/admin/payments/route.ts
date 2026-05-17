@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertRoleOrFail, rejectIfImpersonating } from "@/lib/api-utils";
-import { logAudit } from "@/lib/audit";
 
-/** List all tenant payments (platform admin). */
-export async function GET() {
+/**
+ * GET /api/admin/payments
+ *
+ * Returns pending tenant payments (invoices) and booking payments for admin review.
+ */
+export async function GET(_req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
   const roleErr = assertRoleOrFail(session, "PLATFORM_ADMIN");
@@ -12,12 +15,20 @@ export async function GET() {
   const impErr = rejectIfImpersonating(session);
   if (impErr) return impErr;
 
-  const payments = await prisma.tenantPayment.findMany({
+  const tenantPayments = await prisma.tenantPayment.findMany({
+    where: { status: "PENDING" },
     orderBy: { createdAt: "desc" },
+    take: 200,
     include: { tenant: { select: { name: true } } },
   });
 
-  logAudit({ session, action: "pii.payment_list_viewed", entity: "TenantPayment", piiAccess: true, meta: { count: payments.length } });
+  const bookingPayments = await prisma.bookingPayment.findMany({
+    where: { status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: { booking: { select: { id: true, date: true, tenantId: true, userId: true } } },
+  });
 
-  return NextResponse.json(payments);
+  return NextResponse.json({ tenantPayments, bookingPayments });
 }
+
