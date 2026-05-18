@@ -15,8 +15,8 @@ type Task = {
   category: string;
   priority: string;
   status: string;
-  submittedBy: { name: string };
-  assignedTo?: { name: string };
+  submittedBy?: { id?: string; name?: string };
+  assignedTo?: { id?: string; name?: string };
   notes: { text: string; createdAt: string; user: { name: string } }[];
 };
 
@@ -54,8 +54,30 @@ export default function MaintenancePage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const { data: session } = useSession();
+  const [canSubmit, setCanSubmit] = useState(false);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null);
   const { trackFeature } = useTrack();
   const t = useTranslations("maintenance");
+
+  useEffect(() => {
+    let mounted = true;
+    setCanSubmit(false);
+    setPermissions([]);
+    setEffectiveUserId(null);
+    if (!session) return () => { mounted = false; };
+    fetch("/api/permissions/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!mounted || !data) return;
+        const perms: string[] = data.permissions ?? [];
+        setPermissions(perms);
+        setCanSubmit(perms.includes("maintenance_create"));
+        setEffectiveUserId(data.effectiveUserId ?? null);
+      })
+      .catch(() => { if (mounted) { setCanSubmit(false); setPermissions([]); setEffectiveUserId(null); } });
+    return () => { mounted = false; };
+  }, [session]);
 
   useEffect(() => { trackFeature("maintenance.dashboard_opened", "MaintenanceTask"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -186,6 +208,7 @@ export default function MaintenancePage() {
       ) : (
       <>
       {/* Submit form */}
+      {canSubmit ? (
       <form onSubmit={handleSubmit} className="rounded-xl bg-white p-6 shadow space-y-3">
         <h2 className="font-semibold">{t("submitForm.heading")}</h2>
         <input placeholder="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrorMsg(""); }} className="w-full rounded border p-2" />
@@ -200,6 +223,12 @@ export default function MaintenancePage() {
         </div>
         <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">{t("submitForm.submit")}</button>
       </form>
+      ) : (
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="font-semibold">{t("submitForm.heading")}</h2>
+          <p className="text-gray-600">You don't have permission to submit maintenance tasks. Contact a club admin or use the maintenance contact details.</p>
+        </div>
+      )}
 
       {/* Task list */}
       <div className="space-y-3">
@@ -247,19 +276,37 @@ export default function MaintenancePage() {
               By {t.submittedBy?.name}{t.assignedTo ? ` · Assigned to ${t.assignedTo.name}` : ""}
             </p>
 
-            {STATUS_TRANSITIONS[t.status] && (
-              <div className="mt-3 flex gap-2">
-                {STATUS_TRANSITIONS[t.status].map((tr) => (
-                  <button
-                    key={tr.next}
-                    onClick={() => handleStatusTransition(t.id, tr.next)}
-                    className="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700"
-                  >
-                    {tr.label}
-                  </button>
-                ))}
-              </div>
-            )}
+                {STATUS_TRANSITIONS[t.status] && (
+                  <div className="mt-3 flex gap-2">
+                    {STATUS_TRANSITIONS[t.status].map((tr) => {
+                      const action = tr.next;
+                      const assignedToId = t.assignedTo?.id ?? null;
+                      const canAssign = permissions.includes("maintenance_assign");
+                      const canChangePriority = permissions.includes("maintenance_assign");
+                      const canStartWork = assignedToId ? (effectiveUserId === assignedToId) || permissions.includes("maintenance_assign") : permissions.includes("maintenance_assign");
+                      const canClose = assignedToId ? (effectiveUserId === assignedToId) || permissions.includes("maintenance_close") : permissions.includes("maintenance_close");
+                      const canReopen = permissions.includes("maintenance_assign");
+
+                      let allowed = true;
+                      if (action === "ASSIGNED") allowed = canAssign;
+                      else if (action === "IN_PROGRESS") allowed = canStartWork;
+                      else if (action === "CLOSED") allowed = canClose;
+                      else if (action === "REOPENED") allowed = canReopen;
+
+                      if (!allowed) return null;
+
+                      return (
+                        <button
+                          key={tr.next}
+                          onClick={() => handleStatusTransition(t.id, tr.next)}
+                          className="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700"
+                        >
+                          {tr.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
             {t.notes.length > 0 && (
               <div className="mt-2 border-t pt-2 space-y-1">

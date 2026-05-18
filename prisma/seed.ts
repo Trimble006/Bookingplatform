@@ -38,6 +38,7 @@ async function main() {
       longitude: -1.6178,
     },
   });
+  const tenantId = tenant.id;
 
   // Greens & rinks
   const green = await prisma.green.upsert({
@@ -265,6 +266,72 @@ async function main() {
   await seedPermissionGroups(tenant.id);
   await seedAgents(tenant.id);
 
+  // Ensure demo users have Membership rows and are added to the built-in groups
+  const tenantAdminUser = await prisma.user.findUnique({ where: { email: "admin@lakeview.club" } });
+  if (tenantAdminUser) {
+    await prisma.membership.upsert({
+      where: { userId_tenantId: { userId: tenantAdminUser.id, tenantId } },
+      update: {},
+      create: { userId: tenantAdminUser.id, tenantId, role: "TENANT_ADMIN", kind: "STAFF", status: "ACTIVE" },
+    });
+  }
+
+  const regularUser = await prisma.user.findUnique({ where: { email: "user@lakeview.club" } });
+  if (regularUser) {
+    await prisma.membership.upsert({
+      where: { userId_tenantId: { userId: regularUser.id, tenantId } },
+      update: {},
+      create: { userId: regularUser.id, tenantId, role: "USER", kind: "MEMBER", status: "ACTIVE" },
+    });
+  }
+
+  const maintUser = await prisma.user.findUnique({ where: { email: "maint@lakeview.club" } });
+  if (maintUser) {
+    await prisma.membership.upsert({
+      where: { userId_tenantId: { userId: maintUser.id, tenantId } },
+      update: {},
+      create: { userId: maintUser.id, tenantId, role: "MAINTENANCE", kind: "MEMBER", status: "ACTIVE" },
+    });
+  }
+
+  // Add demo memberships to built-in groups so they inherit the seeded grants
+  const membersGroup = await prisma.permissionGroup.findUnique({ where: { tenantId_name: { tenantId, name: "Members" } } });
+  const adminsGroup = await prisma.permissionGroup.findUnique({ where: { tenantId_name: { tenantId, name: "Administrators" } } });
+  const maintenanceGroup = await prisma.permissionGroup.findUnique({ where: { tenantId_name: { tenantId, name: "Maintenance Staff" } } });
+
+  if (membersGroup && regularUser) {
+    const regMembership = await prisma.membership.findUnique({ where: { userId_tenantId: { userId: regularUser.id, tenantId } } });
+    if (regMembership) {
+      await prisma.groupMember.upsert({
+        where: { groupId_membershipId: { groupId: membersGroup.id, membershipId: regMembership.id } },
+        update: {},
+        create: { groupId: membersGroup.id, membershipId: regMembership.id },
+      });
+    }
+  }
+
+  if (adminsGroup && tenantAdminUser) {
+    const adminMembership = await prisma.membership.findUnique({ where: { userId_tenantId: { userId: tenantAdminUser.id, tenantId } } });
+    if (adminMembership) {
+      await prisma.groupMember.upsert({
+        where: { groupId_membershipId: { groupId: adminsGroup.id, membershipId: adminMembership.id } },
+        update: {},
+        create: { groupId: adminsGroup.id, membershipId: adminMembership.id },
+      });
+    }
+  }
+
+  if (maintenanceGroup && maintUser) {
+    const mMembership = await prisma.membership.findUnique({ where: { userId_tenantId: { userId: maintUser.id, tenantId } } });
+    if (mMembership) {
+      await prisma.groupMember.upsert({
+        where: { groupId_membershipId: { groupId: maintenanceGroup.id, membershipId: mMembership.id } },
+        update: {},
+        create: { groupId: maintenanceGroup.id, membershipId: mMembership.id },
+      });
+    }
+  }
+
   console.log("Seed complete.");
 }
 
@@ -288,6 +355,8 @@ const BUILT_IN_GROUPS: { name: string; description: string; permissions: string[
       "messaging_view", "messaging_send",
       "notifications_view",
       "help_view",
+      // Allow regular members to submit maintenance tasks via permission grant
+      "maintenance_create",
     ],
   },
   {

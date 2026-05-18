@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/lib/format";
 import Link from "next/link";
 import { useTrack } from "@/components/TrackingProvider";
+import { formatShortRef } from "@/lib/refs";
 
 type Audience = "TENANT" | "USER" | "PLATFORM" | "FEDERATION";
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "SUPERSEDED" | "EXPIRED";
@@ -245,7 +246,7 @@ function ProposalCard({
           )}
           {p.status === "APPROVED" && p.committedEntityId && (
             <div className="text-xs text-green-700 mt-2">
-              {t("inbox.appliedTo", { entityType: p.committedEntityType ?? "" })} <code>{p.committedEntityId.slice(0, 8)}…</code>
+              {t("inbox.appliedTo", { entityType: p.committedEntityType ?? "" })} <code>{formatShortRef(p.committedEntityId)}…</code>
               {p.committedAt && <> at {formatDateTime(p.committedAt, locale)}</>}
             </div>
           )}

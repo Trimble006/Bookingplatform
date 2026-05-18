@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, getEffective, assertEffectiveRoleOrFail, jsonError } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
+import { assertPermissionOrFail } from "@/lib/permissions";
+import { Permission } from "@prisma/client";
 import { hasRole } from "@/lib/roles";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
@@ -62,13 +64,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Submit a new task. Requires at least MAINTENANCE role. */
+/** Submit a new task. Requires at least USER role. */
 export async function POST(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
 
-  const roleErr = assertEffectiveRoleOrFail(session, "MAINTENANCE");
-  if (roleErr) return roleErr;
+  // Require explicit `maintenance_create` permission (via groups), or TENANT_ADMIN bypass.
+  // Agent-generated tasks still use the committer flow and default to
+  // MAINTENANCE_ONLY visibility; human-submitted tasks default to MEMBERS.
+  const permErr = await assertPermissionOrFail(session, Permission.maintenance_create);
+  if (permErr) return permErr;
 
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
