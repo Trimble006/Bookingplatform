@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  assertEffectiveRoleOrFail,
-  getSessionOrFail,
-  jsonError,
-} from "@/lib/api-utils";
+import { getSessionOrFail, jsonError } from "@/lib/api-utils";
+import { assertPermissionOrFail, Permission } from "@/lib/permissions";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { checkCharityGate } from "@/lib/charity/feature-gate";
@@ -17,10 +14,10 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
-  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
-  if (roleErr) return roleErr;
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
+  const permErr = await assertPermissionOrFail(session, tenantId, Permission.charity_view);
+  if (permErr) return permErr;
   const gate = await checkCharityGate(tenantId);
   const gateErr = charityGateError(gate);
   if (gateErr) return gateErr;
@@ -36,10 +33,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
-  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
-  if (roleErr) return roleErr;
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
+  const permErr2 = await assertPermissionOrFail(session, tenantId, Permission.charity_edit);
+  if (permErr2) return permErr2;
   const gate = await checkCharityGate(tenantId);
   const gateErr = charityGateError(gate);
   if (gateErr) return gateErr;

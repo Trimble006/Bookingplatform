@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { assertEffectiveRoleOrFail, getSessionOrFail } from "@/lib/api-utils";
+import { getSessionOrFail } from "@/lib/api-utils";
+import { assertPermissionOrFail, Permission } from "@/lib/permissions";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
 import {
@@ -17,10 +18,10 @@ import {
 export async function GET(req: NextRequest) {
   const { session, error } = await getSessionOrFail();
   if (error) return error;
-  const roleErr = assertEffectiveRoleOrFail(session, "TENANT_ADMIN");
-  if (roleErr) return roleErr;
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
+  const permErr = await assertPermissionOrFail(session, tenantId, Permission.charity_view);
+  if (permErr) return permErr;
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
