@@ -6,6 +6,8 @@ import type { TrackingEventType } from "@prisma/client";
 
 const VALID_EVENT_TYPES = new Set<string>(["PAGE_VIEW", "FEATURE_USE", "INTERACTION", "SESSION_START"]);
 const MAX_EVENTS_PER_REQUEST = 50;
+// Dev toggle: disable tracking rate limiter in non-production or via env
+const DISABLE_TRACKING_RATE_LIMIT = process.env.DISABLE_TRACKING_RATE_LIMIT === "1" || process.env.NODE_ENV !== "production";
 
 // Simple in-memory rate limiter: max 10 requests per IP per 10 seconds
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -13,6 +15,7 @@ const RATE_WINDOW_MS = 10_000;
 const RATE_MAX = 10;
 
 function isRateLimited(ip: string): boolean {
+  if (DISABLE_TRACKING_RATE_LIMIT) return false;
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {

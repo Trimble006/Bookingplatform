@@ -1,5 +1,24 @@
 # Decisions Log — BookingPlatform
 
+## 2026-05-17 — Park: Permission-based maintenance submission & impersonation semantics (#permissions)
+
+**Status**: parked
+
+**Context**: After debugging a "Forbidden" when members submitted maintenance tasks, the maintenance creation route was changed to require the `maintenance_create` permission and the dashboard UI was updated to call `/api/permissions/me` before showing the submit form. The dev seed was adjusted to grant `maintenance_create` to the built-in `Members` group for convenience. The session explored how impersonation affects `/api/permissions/me` and whether platform admins should be able to impersonate members (not just tenant-admin).
+
+**Decision / outcome**: Park this for later policy consideration. Implementation notes recorded here for reference:
+
+- Backend now enforces `maintenance_create` via `assertPermissionOrFail(session, Permission.maintenance_create)`.
+- Frontend queries `/api/permissions/me` and only shows the submit form when `maintenance_create` is present.
+- Dev seed grants `maintenance_create` to `Members` to simplify local testing; production policy on which groups get this permission remains undecided.
+- Impersonation currently issues an `actingAs` claim with `role: TENANT_ADMIN`; when impersonating, `getEffectivePermissions` returns the full permission set for the impersonated tenant (tenant-admin → ALL_PERMISSIONS).
+
+Open choices to resolve later: (A) keep current impersonation-as-tenant-admin behaviour; (B) implement member-level impersonation (extend the claim to include a target `memberId`/`userId` and have `getEffectivePermissions` use that id); (C) change production seeding/policy so `Members` do not automatically receive `maintenance_create`.
+
+**Rationale**: Permission-based gating is finer-grained and preferable to role-only checks, but the question of who should hold `maintenance_create` in production and whether platform admins should impersonate individual members has audit, UX, and security implications that warrant deliberate policy discussion.
+
+**Notes**: Relevant code references for follow-up: src/app/api/maintenance/route.ts, src/app/dashboard/maintenance/page.tsx, src/app/api/permissions/me/route.ts, src/lib/permissions.ts, prisma/seed.ts, src/app/api/platform/impersonation/route.ts.
+
 
 ## 2026-05-05 — Platform billing plan refined: stub-first, all-encompassing dashboards (`#billing`)
 

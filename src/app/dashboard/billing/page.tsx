@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { formatShortRef } from "@/lib/refs";
 import { formatDate } from "@/lib/format";
 import Link from "next/link";
 
@@ -194,7 +195,7 @@ export default function TenantBillingPage() {
             <tbody className="divide-y">
               {invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{inv.invoiceRef ?? inv.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{inv.invoiceRef ?? formatShortRef(inv.id)}</td>
                   <td className="px-4 py-3">£{(inv.amount / 100).toFixed(2)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${paymentBadge(inv.status)}`}>{inv.status}</span>

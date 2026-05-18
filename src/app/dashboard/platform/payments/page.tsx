@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatShortRef } from "@/lib/refs";
 
 interface TenantPayment {
   id: string;
@@ -21,10 +22,16 @@ interface BookingPayment {
 }
 
 export default function PlatformPaymentsPage() {
+  type Tenant = { id: string; name?: string | null; slug?: string | null };
+  type BookingOption = { id: string; date?: string | null };
+
   const [tenantPayments, setTenantPayments] = useState<TenantPayment[]>([]);
   const [bookingPayments, setBookingPayments] = useState<BookingPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [selectedTenantForBooking, setSelectedTenantForBooking] = useState("");
+  const [tenantBookings, setTenantBookings] = useState<BookingOption[]>([]);
 
   async function load() {
     setLoading(true);
@@ -43,6 +50,23 @@ export default function PlatformPaymentsPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // Load tenants for dropdown (platform admin context)
+  useEffect(() => {
+    fetch("/api/admin/tenants")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setTenants(Array.isArray(data) ? data : []))
+      .catch(() => setTenants([]));
+  }, []);
+
+  // When a tenant is chosen for booking lookup, fetch its bookings
+  useEffect(() => {
+    if (!selectedTenantForBooking) return setTenantBookings([]);
+    fetch(`/api/admin/bookings?tenantId=${encodeURIComponent(selectedTenantForBooking)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setTenantBookings(Array.isArray(data) ? data : []))
+      .catch(() => setTenantBookings([]));
+  }, [selectedTenantForBooking]);
 
   async function simulateTenant(id: string, action: "paid" | "failed") {
     setBusy((s) => ({ ...s, [id]: true }));
@@ -76,6 +100,81 @@ export default function PlatformPaymentsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Manual stub controls */}
+      <div className="rounded-xl bg-white p-4 shadow">
+        <h3 className="text-sm font-semibold mb-3">Manual Stub — Create Payment</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget as HTMLFormElement & { tenantId: HTMLSelectElement; amount: HTMLInputElement; processNow: HTMLInputElement };
+            const tenantId = form.tenantId.value.trim();
+            const amount = Math.round(parseFloat(form.amount.value || "0") * 100);
+            const processNow = form.processNow.checked;
+            if (!tenantId || amount <= 0) return;
+            setLoading(true);
+            try {
+              await fetch('/api/admin/payments/create-tenant', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tenantId, amount, processNow }),
+              });
+              await load();
+            } finally { setLoading(false); }
+          }}>
+            <div className="grid gap-2">
+              <label className="text-xs text-gray-500">Tenant ID</label>
+              <select name="tenantId" className="rounded border px-3 py-2 text-sm">
+                <option value="">— select tenant —</option>
+                {tenants.map((t) => (<option key={t.id} value={t.id}>{t.name ?? t.id}{t.slug ? ` (/${t.slug})` : ''}</option>))}
+              </select>
+              <label className="text-xs text-gray-500">Amount (£)</label>
+              <input name="amount" type="number" step="0.01" className="rounded border px-3 py-2 text-sm" />
+              <label className="flex items-center gap-2"><input name="processNow" type="checkbox" /> Process now (invoke stub)</label>
+              <div><button type="submit" className="rounded bg-blue-600 px-3 py-1 text-sm text-white">Create Tenant Payment</button></div>
+            </div>
+          </form>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget as HTMLFormElement & { tenantId: HTMLSelectElement; bookingId: HTMLSelectElement | HTMLInputElement; amount: HTMLInputElement; processNow: HTMLInputElement };
+            const tenantId = form.tenantId?.value?.trim();
+            const bookingId = form.bookingId.value.trim();
+            const amount = Math.round(parseFloat(form.amount.value || "0") * 100);
+            const processNow = form.processNow.checked;
+            if (!bookingId || amount <= 0) return;
+            setLoading(true);
+            try {
+              await fetch('/api/admin/payments/create-booking', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId, amount, processNow }),
+              });
+              await load();
+            } finally { setLoading(false); }
+          }}>
+            <div className="grid gap-2">
+              <label className="text-xs text-gray-500">Tenant (for booking lookup)</label>
+              <select name="tenantId" value={selectedTenantForBooking} onChange={(e) => setSelectedTenantForBooking(e.target.value)} className="rounded border px-3 py-2 text-sm">
+                <option value="">— optional —</option>
+                {tenants.map((t) => (<option key={t.id} value={t.id}>{t.name ?? t.id}{t.slug ? ` (/${t.slug})` : ''}</option>))}
+              </select>
+              <label className="text-xs text-gray-500">Booking ID</label>
+              {selectedTenantForBooking ? (
+                <select name="bookingId" className="rounded border px-3 py-2 text-sm">
+                  <option value="">— select booking —</option>
+                  {tenantBookings.map((b) => (
+                    <option key={b.id} value={b.id}>{b.date ? `${new Date(b.date).toLocaleString()} — ${formatShortRef(b.id)}` : formatShortRef(b.id)}</option>
+                  ))}
+                </select>
+              ) : (
+                <input name="bookingId" className="rounded border px-3 py-2 text-sm" />
+              )}
+              <label className="text-xs text-gray-500">Amount (£)</label>
+              <input name="amount" type="number" step="0.01" className="rounded border px-3 py-2 text-sm" />
+              <label className="flex items-center gap-2"><input name="processNow" type="checkbox" /> Process now (mark paid)</label>
+              <div><button type="submit" className="rounded bg-blue-600 px-3 py-1 text-sm text-white">Create Booking Payment</button></div>
+            </div>
+          </form>
+        </div>
+      </div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Platform Payments (Admin)</h1>
         <div>
@@ -100,9 +199,9 @@ export default function PlatformPaymentsPage() {
               {tenantPayments.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-3 text-center text-gray-400">No pending tenant invoices</td></tr>
               )}
-              {tenantPayments.map((p) => (
+                {tenantPayments.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? p.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? formatShortRef(p.id)}</td>
                   <td className="px-4 py-3">{p.tenant?.name ?? "Unknown"}</td>
                   <td className="px-4 py-3">£{(p.amount / 100).toFixed(2)}</td>
                   <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleString()}</td>
@@ -137,7 +236,7 @@ export default function PlatformPaymentsPage() {
               )}
               {bookingPayments.map((bp) => (
                 <tr key={bp.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{bp.booking?.id ?? bp.bookingId}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{formatShortRef(bp.booking?.id ?? bp.bookingId)}</td>
                   <td className="px-4 py-3">£{(bp.amount / 100).toFixed(2)}</td>
                   <td className="px-4 py-3 text-gray-500">{bp.booking?.date ? new Date(bp.booking.date).toLocaleString() : new Date(bp.createdAt).toLocaleString()}</td>
                   <td className="px-4 py-3">

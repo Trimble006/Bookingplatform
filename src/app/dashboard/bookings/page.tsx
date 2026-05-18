@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatShortRef } from "@/lib/refs";
 import { useSession } from "next-auth/react";
 import AvailabilityGrid from "@/components/booking/AvailabilityGrid";
 import WeatherCard from "@/components/booking/WeatherCard";
@@ -183,11 +184,13 @@ export default function BookingsPage() {
         const err = await res.json().catch(() => ({}));
         setBookingError(err.error ?? "Booking failed");
       } else {
+        const bookingRes = await res.json().catch(() => null);
         setBookingRink(null);
         const target = bookForUserId
           ? members.find((m) => m.id === bookForUserId)?.name ?? "member"
           : "you";
-        setSuccessMsg(`Booking requested for ${target} successfully!`);
+        const ref = bookingRes?.id ? ` Ref: ${formatShortRef(bookingRes.id)}` : "";
+        setSuccessMsg(`Booking requested for ${target} successfully!${ref}`);
         trackAction("booking.created", "Booking");
         loadData(selectedTenant || undefined);
       }
@@ -258,6 +261,9 @@ export default function BookingsPage() {
             <div key={b.id} className="rounded border bg-white p-4 flex justify-between items-start">
               <div>
                 <p className="font-medium">{b.date}</p>
+                {isAdmin && (
+                  <p className="text-xs text-gray-400">Ref: <span className="font-mono">{formatShortRef(b.id)}</span></p>
+                )}
                 {isAdmin && b.user && (
                   <p className="text-xs text-gray-400">{b.user.name ?? b.user.email}</p>
                 )}

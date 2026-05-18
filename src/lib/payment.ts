@@ -76,8 +76,31 @@ export const stubPaymentEngine: PaymentEngine = {
   },
 };
 
-/** Active engine — replace with real provider when ready. */
-let activeEngine: PaymentEngine = stubPaymentEngine;
+import { paymentProvider } from "@/lib/payments";
+
+/** Adapter that forwards booking + refund calls to the configured payment provider. */
+export const providerPaymentEngine: PaymentEngine = {
+  async createCheckout({ amount, currency, bookingId, returnUrl }) {
+    try {
+      const res = await paymentProvider.createBookingCheckout(bookingId, amount, currency);
+      if (res.checkoutUrl) return { success: true, checkoutUrl: res.checkoutUrl };
+      return { success: false, error: "payment provider did not return a checkout URL" };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  },
+  async refund({ paymentId, amount }) {
+    try {
+      const result = await paymentProvider.refundPayment(paymentId, amount);
+      return { success: result.success, error: result.success ? undefined : "refund failed" };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  },
+};
+
+/** Active engine — forward to provider-backed adapter by default. */
+let activeEngine: PaymentEngine = providerPaymentEngine;
 
 export function getPaymentEngine(): PaymentEngine {
   return activeEngine;

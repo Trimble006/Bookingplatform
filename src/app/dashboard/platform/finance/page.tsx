@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatShortRef } from "@/lib/refs";
 import { useLocale, useTranslations } from "next-intl";
 import { formatDate } from "@/lib/format";
 import { RevenueChart } from "@/components/billing/RevenueChart";
@@ -119,7 +120,7 @@ export default function PlatformFinancePage() {
             <tbody className="divide-y">
               {recentPayments.filter((p) => p.status === "PENDING").map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? p.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? formatShortRef(p.id)}</td>
                   <td className="px-4 py-3">£{(p.amount / 100).toFixed(2)}</td>
                   <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt, locale)}</td>
                 </tr>
@@ -148,7 +149,7 @@ export default function PlatformFinancePage() {
             <tbody className="divide-y">
               {recentPayments.slice(0, 20).map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? p.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{p.invoiceRef ?? formatShortRef(p.id)}</td>
                   <td className="px-4 py-3">£{(p.amount / 100).toFixed(2)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle(p.status)}`}>

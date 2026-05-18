@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionOrFail } from "@/lib/api-utils";
+import { getSessionOrFail, getEffective } from "@/lib/api-utils";
 import { getEffectivePermissions, PERMISSION_DOMAINS } from "@/lib/permissions";
 
 /**
@@ -17,6 +17,12 @@ export async function GET() {
   if (error) return error;
 
   const permissions = await getEffectivePermissions(session);
-
-  return NextResponse.json({ permissions, domains: Object.keys(PERMISSION_DOMAINS) });
+  const eff = getEffective(session);
+  return NextResponse.json({
+    permissions,
+    domains: Object.keys(PERMISSION_DOMAINS),
+    effectiveUserId: eff.realUserId,
+    effectiveRole: eff.role,
+    isImpersonating: eff.isImpersonating,
+  });
 }
