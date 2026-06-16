@@ -74,10 +74,16 @@
     "aiDraftsIntro": "Review these AI-drafted answers. Approve to add them to your application, or reject to discard.",
     "aiConfidence": "Confidence",
     "aiApprove": "Approve",
-    "aiReject": "Reject"
-    ,
+    "aiReject": "Reject",
     "improveWithAI": "Improve with AI",
-    "improveAllWithAI": "Review all answers with AI"
+    "improveAllWithAI": "Review all answers with AI",
+    "cancel": "Cancel",
+    "draftFirstWithAI": "Draft with AI",
+    "refineInstructionPlaceholder": "Optional: tell the AI how to improve this answer (e.g. make it more formal)",
+    "refineSubmit": "Refine answer",
+    "refineRunning": "Refining…",
+    "refineCancel": "Cancel",
+    "refineFailed": "Couldn't refine this answer. Please try again."
   },
   "status": {
     "DRAFT": "Draft",

@@ -1616,3 +1616,43 @@ shows whether cy translations are earning their keep.
 (bookings/members/operations) shipped in prior commits on the same
 branch. Materialised daily snapshots deferred to v2 if query latency
 becomes an issue at scale.
+
+
+
+## 2026-06-16 — #funding-applications: per-response AI refine + shared `funding/ai.ts`
+
+**Status**: decided / shipped
+
+**Context**: Drafting funding answers previously had one mode — the batch
+`FundingApplicationAgent` proposing whole-application drafts through the
+propose-not-publish proposal-inbox flow. Clubs wanted to iterate on a *single*
+answer in place ("make this more formal", "shorten it") without regenerating the
+whole application or routing through the inbox. The agent's context-gathering
+logic was also locked inside the agent class, unavailable to any synchronous
+request path.
+
+**Decision / outcome**:
+- Extracted shared helpers into `src/lib/funding/ai.ts`: `aggregateTenantContext()`,
+  `formatContextBlock()`, and a new `refineAnswer()`. The batch agent now imports
+  these instead of owning private copies — one source of truth for club-context
+  aggregation.
+- New `POST /api/funding/applications/[id]/responses/[responseId]/refine` refines
+  one response in place via the LLM, writing the result back with `source = AI_DRAFT`.
+  Gated on `funding_manage` with 404/400/403 handling.
+- Inline UI on the application page: each answer gets a refine panel with an optional
+  free-text instruction; empty-answer questions get a one-click "Draft with AI"
+  (create empty response → refine). Whole-application drafting still uses the agent +
+  proposal-inbox flow — the two are complementary, not a replacement.
+
+**Rationale**:
+- Per-response refine is a synchronous, low-stakes edit the user explicitly triggers
+  and immediately sees — it doesn't need the propose-not-publish inbox ceremony that
+  whole-application drafting warrants.
+- Sharing `funding/ai.ts` stops the context-aggregation logic drifting between the
+  batch and inline paths, which would have produced inconsistent drafts from
+  identical club data.
+
+**Notes**: `refine.test.ts` covers the endpoint. Six i18n keys added to `funding.json`
+(en + cy) for the refine/draft UI; a pre-existing `application.cancel` gap was
+backfilled in the same pass. Ships in the `feat/charity-permissions-20260518162137`
+merge alongside the bookings + funding permission-check migration.
