@@ -10,7 +10,9 @@
     "noOpportunities": "[cy] No funding opportunities available at the moment.",
     "noApplications": "[cy] You haven't started any funding applications yet.",
     "applyNow": "[cy] Apply",
+    "reapply": "[cy] Re-apply",
     "viewApplication": "[cy] View",
+    "inProgress": "[cy] In progress",
     "recommended": "[cy] Recommended for you",
     "deadline": "[cy] Deadline",
     "deadlineSoon": "[cy] {days} days left",
@@ -19,7 +21,15 @@
     "funder": "[cy] Funder",
     "allOpportunities": "[cy] All Opportunities",
     "newApplication": "[cy] New Application",
-    "addOpportunity": "[cy] Add Opportunity"
+    "addOpportunity": "[cy] Add Opportunity",
+    "rounds": "[cy] {count, plural, one {# round} other {# rounds}}",
+    "cadenceWarning": "[cy] This funder suggests waiting {months, plural, one {# more month} other {# more months}} before re-applying.",
+    "cadenceLabel": "[cy] Re-apply window",
+    "cadenceMonths": "[cy] {months, plural, one {# month} other {# months}}",
+    "setYourInterval": "[cy] Set your interval",
+    "clearInterval": "[cy] Clear",
+    "intervalSaved": "[cy] Saved",
+    "intervalPlaceholder": "[cy] e.g. 6"
   },
   "opportunity": {
     "name": "[cy] Grant Name",
@@ -64,7 +74,16 @@
     "aiDraftsIntro": "[cy] Review these AI-drafted answers. Approve to add them to your application, or reject to discard.",
     "aiConfidence": "[cy] Confidence",
     "aiApprove": "[cy] Approve",
-    "aiReject": "[cy] Reject"
+    "aiReject": "[cy] Reject",
+    "improveWithAI": "[cy] Improve with AI",
+    "improveAllWithAI": "[cy] Review all answers with AI",
+    "cancel": "[cy] Cancel",
+    "draftFirstWithAI": "[cy] Draft with AI",
+    "refineInstructionPlaceholder": "[cy] Optional: tell the AI how to improve this answer (e.g. make it more formal)",
+    "refineSubmit": "[cy] Refine answer",
+    "refineRunning": "[cy] Refining…",
+    "refineCancel": "[cy] Cancel",
+    "refineFailed": "[cy] Couldn't refine this answer. Please try again."
   },
   "status": {
     "DRAFT": "[cy] Draft",

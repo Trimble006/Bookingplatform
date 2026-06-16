@@ -68,7 +68,7 @@ export default function ApplyPage() {
     }
 
     const created = await res.json();
-    router.push(`/dashboard/funding/applications/${created.id}`);
+    router.push(`/dashboard/funding/applications/${created.id}${created.cadenceWarning ? "?cw=1" : ""}`);
   }
 
   if (loading) return <p className="p-4">Loading…</p>;

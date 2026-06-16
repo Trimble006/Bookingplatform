@@ -21,6 +21,11 @@ import {
   type FundingApplicationDraftPayload,
 } from "@/lib/agent/committers/funding-application-draft";
 import { COMMON_QUESTIONS } from "@/lib/funding/question-templates";
+import {
+  aggregateTenantContext,
+  formatContextBlock,
+  type TenantContext,
+} from "@/lib/funding/ai";
 
 interface FundingAgentConfig {
   maxDraftsPerRun: number;
@@ -97,7 +102,7 @@ export class FundingApplicationAgent extends BaseAgent {
     }
 
     // Aggregate tenant context once (reuse TAR-style data keys).
-    const context = await this.aggregateContext(tenantId);
+    const context = await aggregateTenantContext(tenantId);
 
     let draftsEmitted = 0;
     let decisionsRecorded = 0;
@@ -215,36 +220,7 @@ export class FundingApplicationAgent extends BaseAgent {
       `and below 0.5 when mostly placeholder.`,
     ].join("\n");
 
-    const contextBlock = [
-      `--- Club profile ---`,
-      `Name: ${context.tenantName}`,
-      `Org type: ${context.orgType ?? "Not specified"}`,
-      `Country: ${context.country ?? "Not specified"}`,
-      `Locality: ${context.locality ?? "Not specified"}`,
-      context.charityNumber ? `Charity number: ${context.charityNumber}` : null,
-      `Active members: ${context.totalMembers}`,
-      context.newMembersThisYear != null ? `New members this year: ${context.newMembersThisYear}` : null,
-      ``,
-      `--- Events & activities ---`,
-      context.recentEvents.length > 0
-        ? context.recentEvents.map((e) => `• ${e.title} (${e.date})`).join("\n")
-        : "No recent events recorded.",
-      ``,
-      `--- Financial overview ---`,
-      context.financialSummary ?? "No financial data available.",
-      ``,
-      `--- Maintenance & facilities ---`,
-      context.recentMaintenance.length > 0
-        ? context.recentMaintenance.map((m) => `• ${m.description} (${m.date})`).join("\n")
-        : "No recent maintenance records.",
-      ``,
-      `--- Existing funding applications ---`,
-      context.otherApplications.length > 0
-        ? context.otherApplications.map((a) => `• ${a.opportunity} — ${a.status}`).join("\n")
-        : "No other applications.",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const contextBlock = formatContextBlock(context);
 
     const questionBlock = questions
       .map(
@@ -266,13 +242,6 @@ export class FundingApplicationAgent extends BaseAgent {
     ].join("\n");
 
     try {
-      console.log('[funding-app] LLM input:', {
-        systemPrompt,
-        userPrompt,
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.3,
-        maxTokens: 4000,
-      });
       const result = await this.provider.call({
         systemPrompt,
         userPrompt,
@@ -280,9 +249,7 @@ export class FundingApplicationAgent extends BaseAgent {
         temperature: 0.3,
         maxTokens: 4000,
       });
-      console.log('[funding-app] LLM raw result:', result);
       const parsed = result.content as LLMResponse;
-      console.log('[funding-app] LLM parsed drafts:', parsed?.drafts);
       return parsed?.drafts ?? [];
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -290,96 +257,4 @@ export class FundingApplicationAgent extends BaseAgent {
       return [];
     }
   }
-
-  /** Gather tenant data needed for drafting. */
-  private async aggregateContext(tenantId: string): Promise<TenantContext> {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-    const [tenant, charitySettings, totalMembers, newMembers, events, maintenance, otherApps] =
-      await Promise.all([
-        prisma.tenant.findUnique({
-          where: { id: tenantId },
-          select: {
-            name: true,
-            organisationType: true,
-            country: true,
-            locality: true,
-          },
-        }),
-        prisma.charitySettings.findUnique({
-          where: { tenantId },
-          select: { charityNumber: true, reservesPolicy: true },
-        }).catch(() => null),
-        prisma.membership.count({ where: { tenantId, status: "ACTIVE" } }),
-        prisma.membership.count({
-          where: {
-            tenantId,
-            status: "ACTIVE",
-            startedAt: { gte: oneYearAgo },
-          },
-        }),
-        prisma.event.findMany({
-          where: {
-            tenantId,
-            status: "PUBLISHED",
-            // `Event.date` is stored as a string (YYYY-MM-DD) in the schema,
-            // so compare using a date-string rather than a JS Date object.
-            date: { gte: oneYearAgo.toISOString().slice(0, 10) },
-          },
-          select: { title: true, date: true },
-          orderBy: { date: "desc" },
-          take: 20,
-        }),
-        prisma.maintenanceHistory.findMany({
-          where: { tenantId, performedAt: { gte: oneYearAgo } },
-          select: { description: true, performedAt: true },
-          orderBy: { performedAt: "desc" },
-          take: 10,
-        }),
-        prisma.fundingApplication.findMany({
-          where: { tenantId, status: { not: "DRAFT" } },
-          include: { opportunity: { select: { name: true } } },
-          take: 10,
-        }),
-      ]);
-
-    return {
-      tenantName: tenant?.name ?? "Unknown Club",
-      orgType: tenant?.organisationType ?? null,
-      country: tenant?.country ?? null,
-      locality: tenant?.locality ?? null,
-      charityNumber: charitySettings?.charityNumber ?? null,
-      totalMembers,
-      newMembersThisYear: newMembers,
-      recentEvents: events.map((e) => ({
-        title: e.title,
-        // `e.date` is already a string in the DB (YYYY-MM-DD), keep as-is.
-        date: e.date,
-      })),
-      financialSummary: charitySettings?.reservesPolicy ?? null,
-      recentMaintenance: maintenance.map((m) => ({
-        description: m.description ?? "Maintenance activity",
-        date: m.performedAt.toISOString().slice(0, 10),
-      })),
-      otherApplications: otherApps.map((a) => ({
-        opportunity: a.opportunity.name,
-        status: a.status,
-      })),
-    };
-  }
-}
-
-interface TenantContext {
-  tenantName: string;
-  orgType: string | null;
-  country: string | null;
-  locality: string | null;
-  charityNumber: string | null;
-  totalMembers: number;
-  newMembersThisYear: number | null;
-  recentEvents: Array<{ title: string; date: string }>;
-  financialSummary: string | null;
-  recentMaintenance: Array<{ description: string; date: string }>;
-  otherApplications: Array<{ opportunity: string; status: string }>;
 }

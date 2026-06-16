@@ -58,23 +58,68 @@ function formatPence(pence: number): string {
 }
 
 export default function ApplicationDetailPage() {
-    // Handler to improve a single answer with AI
-    async function improveWithAI(questionId: string | null, currentText: string) {
+    // Refine a single answer in place. Calls the new per-response refine
+    // endpoint with the user's optional instruction. Returns true on success.
+    async function refineResponse(
+      responseId: string,
+      instruction?: string,
+    ): Promise<boolean> {
       setSaving(true);
-      await fetch(`/api/funding/applications/${id}/draft`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId, currentText }),
-      });
-      load();
-      setSaving(false);
+      try {
+        const r = await fetch(
+          `/api/funding/applications/${id}/responses/${responseId}/refine`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ instruction: instruction ?? "" }),
+          },
+        );
+        if (!r.ok) {
+          alert(t("application.refineFailed"));
+          return false;
+        }
+        load();
+        return true;
+      } finally {
+        setSaving(false);
+      }
     }
 
-    // Handler to improve all answers with AI
+    // First-draft helper for a question that has no response yet: create an
+    // empty response, then immediately refine it. The user gets a populated
+    // answer in one click.
+    async function draftFirstAnswer(questionId: string) {
+      setSaving(true);
+      try {
+        const r = await fetch(`/api/funding/applications/${id}/responses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questionId, content: "" }),
+        });
+        if (!r.ok) return;
+        const created = await r.json();
+        if (created?.id) {
+          await fetch(
+            `/api/funding/applications/${id}/responses/${created.id}/refine`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            },
+          );
+        }
+        load();
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    // Whole-application drafting still uses the agent + proposal-inbox flow.
     async function improveAllWithAI() {
       setDrafting(true);
       await fetch(`/api/funding/applications/${id}/draft`, {
-        method: "POST" });
+        method: "POST",
+      });
       load();
       setDrafting(false);
     }
@@ -95,17 +140,20 @@ export default function ApplicationDetailPage() {
     : [];
 
 // Inline editable response component (must be top-level)
-function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWithAI }: {
+function EditableResponse({ resp, t, saving, setSaving, load, appId, onRefine }: {
   resp: Response,
   t: any,
   saving: boolean,
   setSaving: (v: boolean) => void,
   load: () => void,
   appId: string,
-  onImproveWithAI: (questionId: string | null, text: string) => Promise<void> | void,
+  onRefine: (responseId: string, instruction?: string) => Promise<boolean>,
 }) {
   const [editing, setEditing] = useState(resp.content === "");
   const [value, setValue] = useState(resp.content);
+  const [showRefine, setShowRefine] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [refining, setRefining] = useState(false);
   useEffect(() => {
     setValue(resp.content);
   }, [resp.content]);
@@ -120,6 +168,19 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
     setEditing(false);
     load();
     setSaving(false);
+  }
+
+  async function runRefine() {
+    setRefining(true);
+    try {
+      const ok = await onRefine(resp.id, instruction.trim() || undefined);
+      if (ok) {
+        setShowRefine(false);
+        setInstruction("");
+      }
+    } finally {
+      setRefining(false);
+    }
   }
 
   return (
@@ -151,17 +212,6 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
               </button>
             )}
           </div>
-          <div className="flex mt-2">
-            <button
-              onClick={() => onImproveWithAI(resp.questionId, value)}
-              disabled={saving}
-              className="btn btn-ai btn-ai--large"
-              title={t("application.improveWithAI")}
-            >
-              <span className="btn-ai__icon">✨</span>
-              {t("application.improveWithAI").toUpperCase()}
-            </button>
-          </div>
         </>
       ) : (
         <>
@@ -172,15 +222,14 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
             </p>
             <button
               onClick={() => setEditing(true)}
-              disabled={saving}
+              disabled={saving || refining}
               className="text-blue-600 text-xs underline ml-2 disabled:opacity-50"
             >
               {t("application.editResponse")}
             </button>
-            {/* Always show Improve with AI button, larger and more visible */}
             <button
-              onClick={() => onImproveWithAI(resp.questionId, resp.content)}
-              disabled={saving}
+              onClick={() => setShowRefine((v) => !v)}
+              disabled={saving || refining}
               className="btn btn-ai"
               title={t("application.improveWithAI")}
             >
@@ -188,6 +237,33 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
               {t("application.improveWithAI").toUpperCase()}
             </button>
           </div>
+          {showRefine && (
+            <div className="mt-3 border-t pt-3 space-y-2">
+              <textarea
+                className="border rounded px-3 py-1.5 w-full text-sm h-16"
+                placeholder={t("application.refineInstructionPlaceholder")}
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                disabled={refining}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={runRefine}
+                  disabled={refining}
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {refining ? t("application.refineRunning") : t("application.refineSubmit")}
+                </button>
+                <button
+                  onClick={() => { setShowRefine(false); setInstruction(""); }}
+                  disabled={refining}
+                  className="text-gray-600 border px-3 py-1 rounded text-sm hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {t("application.refineCancel")}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -458,7 +534,7 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
                       setSaving={setSaving}
                       load={load}
                       appId={app.id}
-                      onImproveWithAI={improveWithAI}
+                      onRefine={refineResponse}
                     />
                   ) : (
                     <div className="flex gap-2 mt-2">
@@ -479,13 +555,13 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
                         {t("application.startAnswer")}
                       </button>
                       <button
-                        onClick={() => improveWithAI(q.id, "")}
+                        onClick={() => draftFirstAnswer(q.id)}
                         disabled={saving}
                         className="btn btn-ai"
-                        title={t("application.improveWithAI")}
+                        title={t("application.draftFirstWithAI")}
                       >
                         <span className="btn-ai__icon">✨</span>
-                        {t("application.improveWithAI").toUpperCase()}
+                        {t("application.draftFirstWithAI").toUpperCase()}
                       </button>
                     </div>
                   )}
@@ -540,7 +616,7 @@ function EditableResponse({ resp, t, saving, setSaving, load, appId, onImproveWi
                   setSaving={setSaving}
                   load={load}
                   appId={app.id}
-                  onImproveWithAI={improveWithAI}
+                  onRefine={refineResponse}
                 />
               ))}
             </div>

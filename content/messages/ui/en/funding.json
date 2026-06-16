@@ -10,7 +10,9 @@
     "noOpportunities": "No funding opportunities available at the moment.",
     "noApplications": "You haven't started any funding applications yet.",
     "applyNow": "Apply",
+    "reapply": "Re-apply",
     "viewApplication": "View",
+    "inProgress": "In progress",
     "recommended": "Recommended for you",
     "deadline": "Deadline",
     "deadlineSoon": "{days} days left",
@@ -19,7 +21,15 @@
     "funder": "Funder",
     "allOpportunities": "All Opportunities",
     "newApplication": "New Application",
-    "addOpportunity": "Add Opportunity"
+    "addOpportunity": "Add Opportunity",
+    "rounds": "{count, plural, one {# round} other {# rounds}}",
+    "cadenceWarning": "This funder suggests waiting {months, plural, one {# more month} other {# more months}} before re-applying.",
+    "cadenceLabel": "Re-apply window",
+    "cadenceMonths": "{months, plural, one {# month} other {# months}}",
+    "setYourInterval": "Set your interval",
+    "clearInterval": "Clear",
+    "intervalSaved": "Saved",
+    "intervalPlaceholder": "e.g. 6"
   },
   "opportunity": {
     "name": "Grant Name",
@@ -64,10 +74,16 @@
     "aiDraftsIntro": "Review these AI-drafted answers. Approve to add them to your application, or reject to discard.",
     "aiConfidence": "Confidence",
     "aiApprove": "Approve",
-    "aiReject": "Reject"
-    ,
+    "aiReject": "Reject",
     "improveWithAI": "Improve with AI",
-    "improveAllWithAI": "Review all answers with AI"
+    "improveAllWithAI": "Review all answers with AI",
+    "cancel": "Cancel",
+    "draftFirstWithAI": "Draft with AI",
+    "refineInstructionPlaceholder": "Optional: tell the AI how to improve this answer (e.g. make it more formal)",
+    "refineSubmit": "Refine answer",
+    "refineRunning": "Refining…",
+    "refineCancel": "Cancel",
+    "refineFailed": "Couldn't refine this answer. Please try again."
   },
   "status": {
     "DRAFT": "Draft",

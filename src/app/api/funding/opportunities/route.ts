@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const tag = url.searchParams.get("tag");
   const activeOnly = url.searchParams.get("active") !== "false";
 
-  const [opportunities, tenant] = await Promise.all([
+  const [opportunities, tenant, tenantApps, tenantPrefs] = await Promise.all([
     prisma.fundingOpportunity.findMany({
       where: {
         OR: [{ tenantId: null }, { tenantId }],
@@ -47,6 +47,24 @@ export async function GET(req: NextRequest) {
       where: { id: tenantId },
       select: { country: true, organisationType: true },
     }),
+    // All applications by this tenant across all opportunities
+    prisma.fundingApplication.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        opportunityId: true,
+        status: true,
+        submittedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    // Tenant's custom re-apply interval overrides
+    prisma.fundingOpportunityPref.findMany({
+      where: { tenantId },
+      select: { opportunityId: true, reapplyIntervalMonths: true },
+    }),
   ]);
 
   const profile = {
@@ -56,11 +74,64 @@ export async function GET(req: NextRequest) {
   const scores = rankOpportunities(opportunities, profile);
   const scoreMap = new Map(scores.map((s) => [s.opportunityId, s]));
 
-  // Attach score to each opportunity and sort by score desc (recommended first)
-  const scored = opportunities.map((opp) => ({
-    ...opp,
-    eligibility: scoreMap.get(opp.id) ?? { score: 0, reasons: ["Not eligible"] },
-  }));
+  // Build per-opportunity application summary for this tenant
+  const TERMINAL_STATUSES = ["APPROVED", "REJECTED", "WITHDRAWN"] as const;
+  type AppStatus = typeof tenantApps[number]["status"];
+
+  const appsByOpp = new Map<string, typeof tenantApps>();
+  for (const app of tenantApps) {
+    const list = appsByOpp.get(app.opportunityId) ?? [];
+    list.push(app);
+    appsByOpp.set(app.opportunityId, list);
+  }
+  const prefMap = new Map(tenantPrefs.map((p) => [p.opportunityId, p.reapplyIntervalMonths]));
+
+  // Attach score, application summary, and cadence to each opportunity and sort by score desc
+  const scored = opportunities.map((opp) => {
+    const apps = appsByOpp.get(opp.id) ?? [];
+    // Latest app = highest createdAt
+    const latestApp = apps.length > 0 ? apps[apps.length - 1] : null;
+    const latestStatus: AppStatus | null = latestApp?.status ?? null;
+    const isActive = latestApp && !TERMINAL_STATUSES.includes(latestApp.status as typeof TERMINAL_STATUSES[number]);
+    const lastSubmittedAt = latestApp?.submittedAt ?? null;
+
+    // Effective cadence: stricter (longer) of funder cadence and tenant override
+    const funderInterval = opp.reapplyIntervalMonths ?? null;
+    const tenantInterval = prefMap.get(opp.id) ?? null;
+    const effectiveInterval =
+      funderInterval !== null && tenantInterval !== null
+        ? Math.max(funderInterval, tenantInterval)
+        : funderInterval ?? tenantInterval ?? null;
+
+    // Advisory warning: months since last application vs effective interval
+    let cadenceWarningMonths: number | null = null;
+    if (effectiveInterval !== null && lastSubmittedAt) {
+      const monthsSince =
+        (Date.now() - new Date(lastSubmittedAt).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+      if (monthsSince < effectiveInterval) {
+        cadenceWarningMonths = Math.ceil(effectiveInterval - monthsSince);
+      }
+    }
+
+    return {
+      ...opp,
+      eligibility: scoreMap.get(opp.id) ?? { score: 0, reasons: ["Not eligible"] },
+      tenantApplications: {
+        count: apps.length,
+        latestStatus,
+        latestApplicationId: latestApp?.id ?? null,
+        lastSubmittedAt,
+        isActive: !!isActive,
+        canApply: !isActive,
+      },
+      cadence: {
+        funderIntervalMonths: funderInterval,
+        tenantIntervalMonths: tenantInterval,
+        effectiveIntervalMonths: effectiveInterval,
+        warningMonthsRemaining: cadenceWarningMonths,
+      },
+    };
+  });
   scored.sort((a, b) => b.eligibility.score - a.eligibility.score);
 
   return NextResponse.json(scored);
