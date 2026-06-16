@@ -39,8 +39,8 @@ scratch.
 
 ## Recently landed
 
+- 2026-06-16 — `#charity-permissions` shipped via `feat/charity-permissions-20260518162137`: bookings/funding route gates tenant-scoped to the `Permission` enum; per-response AI refine endpoint + shared `funding/ai.ts`; multi-round funding (status-aware overview, advisory cadence, `FundingOpportunityPref`). 523 tests. `DECISIONS.md`.
 - 2026-05-10 — `#funding-applications` all 3 phases shipped: schema/CRUD/UI, eligibility scoring + 9 seeded UK grants, AI-assisted drafting via FundingApplicationAgent. Branch: `feat/funding-applications`. `DECISIONS.md`.
 - 2026-05-09 — `#permission-groups` full 6-phase feature (C1–C6) merged: permission groups, federation lifecycle, cross-club booking, federation UI. 476 tests. `DECISIONS.md`.
 - 2026-05-08 — `#i18n` string extraction complete (92/101 files, 14 namespaces). Branch: `feature/i18n-completion` (merged). `DECISIONS.md`.
 - 2026-05-07 — `#i18n` foundation + locale-aware formatting merged to main. Branch: `feature/i18n` (merged). `DECISIONS.md`.
-- 2026-05-05 — `#agents-v2` propose-not-publish loop closed end-to-end. Follow-ups parked at `parked-plans/agent-v2-followups.md`. `DECISIONS.md`.
