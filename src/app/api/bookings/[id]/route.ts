@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { hasPermission, assertPermissionOrFail, Permission } from "@/lib/permissions";
 import { getPaymentEngine } from "@/lib/payment";
 import { createNotification } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
@@ -36,25 +36,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return jsonError("Forbidden", 403);
   }
 
-  // Only admins (or platform admins impersonating as tenant admin) can approve/reserve/confirm
-  if (["APPROVED", "RESERVED", "CONFIRMED"].includes(newStatus) && !hasRole(eff.role, "TENANT_ADMIN")) {
-    return jsonError("Only admins can approve, reserve, or confirm bookings", 403);
+  // Only members with bookings management privileges can approve/reserve/confirm
+  if (["APPROVED", "RESERVED", "CONFIRMED"].includes(newStatus)) {
+    const permErr = await assertPermissionOrFail(session, booking.tenantId, Permission.bookings_manage);
+    if (permErr) return permErr;
   }
 
-  // Users can cancel their own bookings (REQUESTED or APPROVED only)
-  if (newStatus === "CANCELLED" && !hasRole(eff.role, "TENANT_ADMIN")) {
-    if (booking.userId !== session.user.id) {
-      return jsonError("Forbidden", 403);
-    }
-    if (!["REQUESTED", "APPROVED"].includes(booking.status)) {
-      return jsonError("You can only cancel bookings that are requested or approved", 400);
-    }
-    // Prevent cancellation within 24 hours of the booking date
-    const bookingDate = new Date(booking.date);
-    const now = new Date();
-    const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    if (hoursUntilBooking < 24) {
-      return jsonError("Cannot cancel bookings within 24 hours of the scheduled date. Contact an admin for assistance.", 400);
+  // Users can cancel their own bookings (REQUESTED or APPROVED only).
+  // If the caller has bookings management permission they may cancel freely.
+  if (newStatus === "CANCELLED") {
+    const canManage = await hasPermission(session, booking.tenantId, Permission.bookings_manage);
+    if (!canManage) {
+      if (booking.userId !== session.user.id) {
+        return jsonError("Forbidden", 403);
+      }
+      if (!["REQUESTED", "APPROVED"].includes(booking.status)) {
+        return jsonError("You can only cancel bookings that are requested or approved", 400);
+      }
+      // Prevent cancellation within 24 hours of the booking date
+      const bookingDate = new Date(booking.date);
+      const now = new Date();
+      const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (hoursUntilBooking < 24) {
+        return jsonError("Cannot cancel bookings within 24 hours of the scheduled date. Contact an admin for assistance.", 400);
+      }
     }
   }
 

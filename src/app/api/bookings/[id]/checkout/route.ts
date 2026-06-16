@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { hasPermission, Permission } from "@/lib/permissions";
 
 /**
  * POST /api/bookings/[id]/checkout — mark payment as PAID.
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Only the booking owner or a tenant admin (or platform admin impersonating)
   // can complete checkout. Tenant isolation is enforced via effective tenant.
   const eff = getEffective(session);
-  const isAdmin = booking.tenantId === eff.tenantId && hasRole(eff.role, "TENANT_ADMIN");
-  if (booking.userId !== session.user.id && !isAdmin) {
+  const canManagePayments = booking.tenantId === eff.tenantId && (await hasPermission(session, booking.tenantId, Permission.bookings_manage));
+  if (booking.userId !== session.user.id && !canManagePayments) {
     return jsonError("Forbidden", 403);
   }
 

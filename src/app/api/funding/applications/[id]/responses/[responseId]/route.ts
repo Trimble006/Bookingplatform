@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { isFeatureEnabled } from "@/lib/features";
-import { assertPermissionOrFail } from "@/lib/permissions";
+import { assertPermissionOrFail, Permission } from "@/lib/permissions";
 
 const FUNDING_FEATURE_KEY = "funding";
 
@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   if (!(await isFeatureEnabled(tenantId, FUNDING_FEATURE_KEY))) {
     return jsonError("Funding feature is not enabled", 403);
   }
-  const permErr = await assertPermissionOrFail(session, "funding_manage");
+  const permErr = await assertPermissionOrFail(session, tenantId, Permission.funding_manage);
   if (permErr) return permErr;
 
   let body: { content?: string };

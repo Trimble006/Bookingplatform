@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionOrFail, getEffective, jsonError, assertRoleOrFail } from "@/lib/api-utils";
-import { hasRole } from "@/lib/roles";
+import { getSessionOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { resolveTenantId } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { isGreenOpenOn, type GreenSeasonInfo } from "@/lib/season";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, assertPermissionOrFail, Permission } from "@/lib/permissions";
 import { isFeatureEnabled } from "@/lib/features";
 
 /** List bookings for the caller's tenant context (impersonation-aware). */
@@ -16,9 +15,9 @@ export async function GET(req: NextRequest) {
   const { tenantId, error: tErr } = resolveTenantId(session, req);
   if (tErr) return tErr;
 
-  const isAdmin = hasRole(getEffective(session).role, "TENANT_ADMIN");
+  const canViewAll = await hasPermission(session, tenantId, Permission.bookings_manage);
   const bookings = await prisma.booking.findMany({
-    where: { tenantId, ...(!isAdmin ? { userId: session.user.id } : {}) },
+    where: { tenantId, ...(canViewAll ? {} : { userId: session.user.id }) },
     include: {
       slots: { include: { rink: true } },
       user: { select: { id: true, name: true, email: true } },
@@ -28,7 +27,7 @@ export async function GET(req: NextRequest) {
     orderBy: { date: "desc" },
   });
 
-  if (isAdmin) {
+  if (canViewAll) {
     logAudit({ session, action: "pii.booking_players_viewed", entity: "Booking", piiAccess: true, tenantId, meta: { count: bookings.length } });
   }
 
@@ -77,7 +76,7 @@ export async function POST(req: NextRequest) {
     if (!targetTenant) return jsonError("Target club not found", 404);
 
     // User must have federation_book_at_partners permission at home club
-    if (!(await hasPermission(session, "federation_book_at_partners"))) {
+    if (!(await hasPermission(session, tenantId, Permission.federation_book_at_partners))) {
       return jsonError("You do not have permission to book at partner clubs", 403);
     }
 
@@ -110,9 +109,9 @@ export async function POST(req: NextRequest) {
   let bookedByUserId = session.user.id;
 
   if (bookForUserId && bookForUserId !== session.user.id) {
-    // Only admins can book for someone else.
-    const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
-    if (roleErr) return roleErr;
+    // Only members with the book-on-behalf permission can book for someone else.
+    const permErr = await assertPermissionOrFail(session, tenantId, Permission.bookings_manage);
+    if (permErr) return permErr;
 
     // Target user must belong to the same tenant.
     const targetUser = await prisma.user.findFirst({
@@ -129,8 +128,8 @@ export async function POST(req: NextRequest) {
   // ── Admin override logic ────────────────────────────────────
   const useOverride = adminOverride === true;
   if (useOverride) {
-    const roleErr = assertRoleOrFail(session, "TENANT_ADMIN");
-    if (roleErr) return roleErr;
+    const permErr = await assertPermissionOrFail(session, tenantId, Permission.bookings_admin_override);
+    if (permErr) return permErr;
     if (!overrideReason || typeof overrideReason !== "string" || overrideReason.trim().length === 0) {
       return jsonError("overrideReason is required when adminOverride is true", 400);
     }
