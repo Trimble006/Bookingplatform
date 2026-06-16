@@ -109,10 +109,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   if (Object.keys(data).length === 0) return jsonError("No fields to update");
 
-
   // Match GET include structure so PATCH returns all fields needed by the UI
-  const updated = await prisma.fundingApplication.findFirst({
-    where: { id, tenantId },
+  const updated = await prisma.fundingApplication.update({
+    where: { id },
+    data,
     include: {
       opportunity: {
         include: { questions: { orderBy: { sortOrder: "asc" } } },

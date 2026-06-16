@@ -76,6 +76,39 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Advisory cadence check — never blocks, but surfaces a warning in the response
+  let cadenceWarning: string | null = null;
+  const [lastApp, pref] = await Promise.all([
+    prisma.fundingApplication.findFirst({
+      where: { tenantId, opportunityId: body.opportunityId },
+      orderBy: { createdAt: "desc" },
+      select: { submittedAt: true, createdAt: true },
+    }),
+    prisma.fundingOpportunityPref.findUnique({
+      where: { tenantId_opportunityId: { tenantId, opportunityId: body.opportunityId } },
+      select: { reapplyIntervalMonths: true },
+    }),
+  ]);
+
+  if (lastApp) {
+    const funderInterval = opportunity.reapplyIntervalMonths ?? null;
+    const tenantInterval = pref?.reapplyIntervalMonths ?? null;
+    const effectiveInterval =
+      funderInterval !== null && tenantInterval !== null
+        ? Math.max(funderInterval, tenantInterval)
+        : funderInterval ?? tenantInterval ?? null;
+
+    if (effectiveInterval !== null) {
+      const referenceDate = lastApp.submittedAt ?? lastApp.createdAt;
+      const monthsSince =
+        (Date.now() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+      if (monthsSince < effectiveInterval) {
+        const remaining = Math.ceil(effectiveInterval - monthsSince);
+        cadenceWarning = `This funder's guidelines suggest waiting ${effectiveInterval} months between applications. Your last application was ${Math.floor(monthsSince)} months ago (${remaining} month${remaining !== 1 ? "s" : ""} remaining).`;
+      }
+    }
+  }
+
   const application = await prisma.fundingApplication.create({
     data: {
       tenantId,
@@ -98,5 +131,5 @@ export async function POST(req: NextRequest) {
     meta: { opportunityId: body.opportunityId, opportunityName: opportunity.name },
   });
 
-  return NextResponse.json(application, { status: 201 });
+  return NextResponse.json({ ...application, cadenceWarning }, { status: 201 });
 }

@@ -1,24 +1,5 @@
 # Decisions Log — BookingPlatform
 
-## 2026-05-17 — Park: Permission-based maintenance submission & impersonation semantics (#permissions)
-
-**Status**: parked
-
-**Context**: After debugging a "Forbidden" when members submitted maintenance tasks, the maintenance creation route was changed to require the `maintenance_create` permission and the dashboard UI was updated to call `/api/permissions/me` before showing the submit form. The dev seed was adjusted to grant `maintenance_create` to the built-in `Members` group for convenience. The session explored how impersonation affects `/api/permissions/me` and whether platform admins should be able to impersonate members (not just tenant-admin).
-
-**Decision / outcome**: Park this for later policy consideration. Implementation notes recorded here for reference:
-
-- Backend now enforces `maintenance_create` via `assertPermissionOrFail(session, Permission.maintenance_create)`.
-- Frontend queries `/api/permissions/me` and only shows the submit form when `maintenance_create` is present.
-- Dev seed grants `maintenance_create` to `Members` to simplify local testing; production policy on which groups get this permission remains undecided.
-- Impersonation currently issues an `actingAs` claim with `role: TENANT_ADMIN`; when impersonating, `getEffectivePermissions` returns the full permission set for the impersonated tenant (tenant-admin → ALL_PERMISSIONS).
-
-Open choices to resolve later: (A) keep current impersonation-as-tenant-admin behaviour; (B) implement member-level impersonation (extend the claim to include a target `memberId`/`userId` and have `getEffectivePermissions` use that id); (C) change production seeding/policy so `Members` do not automatically receive `maintenance_create`.
-
-**Rationale**: Permission-based gating is finer-grained and preferable to role-only checks, but the question of who should hold `maintenance_create` in production and whether platform admins should impersonate individual members has audit, UX, and security implications that warrant deliberate policy discussion.
-
-**Notes**: Relevant code references for follow-up: src/app/api/maintenance/route.ts, src/app/dashboard/maintenance/page.tsx, src/app/api/permissions/me/route.ts, src/lib/permissions.ts, prisma/seed.ts, src/app/api/platform/impersonation/route.ts.
-
 
 ## 2026-05-05 — Platform billing plan refined: stub-first, all-encompassing dashboards (`#billing`)
 
@@ -1556,7 +1537,55 @@ the data-layer investment pays off across features.
 **Notes**: Branch `feat/funding-applications`, commits d068bf6 (P1),
 a18b68c (P2), 7a0cc9f (P3).
 
-## 2026-05-10 — #business-insights: platform-admin enterprise MI
+## 2026-06-15 — #funding-applications: multi-round support + consolidated status view
+
+**Status**: decided / shipped
+
+**Context**: Post-ship review found three gaps: (1) the UI showed a static "Applied"
+label that permanently blocked re-applying even after withdrawal or rejection —
+despite the DB never having had a uniqueness constraint on `(tenantId, opportunityId)`;
+(2) there was no unified per-awarding-body view showing eligibility + latest status
+together; (3) the PATCH route at `/api/funding/applications/[id]` had a bug where
+it built a `data` object but called `findFirst` instead of `update`, silently
+discarding all status/amount changes including Withdraw.
+
+**Decision / outcome**:
+- **PATCH bug fixed**: `prisma.fundingApplication.update({ data })` replaces the
+  erroneous `findFirst`. Withdraw (and every other status change) now persists.
+- **Multi-round un-gated**: the overview page now computes status-awareness per
+  awarding body from the enriched `GET /api/funding/opportunities` response. An
+  "Apply" / "Re-apply" / "In progress →" action is shown based on whether the
+  latest application round is terminal or active. No DB change needed.
+- **Consolidated view**: the separate "Your Applications" list and "Opportunities"
+  catalogue are merged into one sorted list keyed by awarding body. Each row shows
+  eligibility badge, latest status, round count, deadline, max amount, cadence info,
+  and the status-aware action.
+- **Advisory cadence (two-value, stricter wins)**:
+  - `FundingOpportunity.reapplyIntervalMonths Int?` — funder-published cadence,
+    seeded for known funders (National Lottery: 12mo, Bowls England: 12mo; others null).
+  - `FundingOpportunityPref { tenantId, opportunityId, reapplyIntervalMonths, @@unique }` —
+    tenant override. Platform opportunities are shared across tenants so the override
+    cannot live on `FundingOpportunity`; a per-tenant pref model is the clean separation.
+  - Effective interval = `max(funderInterval, tenantInterval)` (stricter of the two).
+  - Warning appears inline on the overview row and as a `cadenceWarning` string in
+    the POST `/api/funding/applications` response body (never a 4xx — advisory only).
+  - Tenant sets override inline on each awarding-body row via new
+    `PATCH /api/funding/opportunities/[id]/pref`.
+- **WIP schema debt fixed**: the Workflow Engine models added by a parallel session
+  had four broken back-relations (`currentRuns`, `workflowTransitionLogs` duplicated
+  on wrong model, `performedBy` missing User back-relation, `currentStage` missing
+  relation name). Fixed as collateral to unblock the migration.
+
+**Rationale**:
+- No uniqueness constraint was ever added (deliberate, from Phase 1 addendum).
+  The DB was always ready; only the UI needed updating.
+- Two-value cadence with "stricter wins" because the club often knows their
+  relationship with a funder better than the published rules state. Neither
+  value enforces — platform respects club autonomy.
+- `FundingOpportunityPref` over stashing on `FundingApplication`: cleaner
+  separation of preference (persistent) from application history (transactional).
+
+
 
 **Status**: decided
 

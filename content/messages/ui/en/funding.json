@@ -10,7 +10,9 @@
     "noOpportunities": "No funding opportunities available at the moment.",
     "noApplications": "You haven't started any funding applications yet.",
     "applyNow": "Apply",
+    "reapply": "Re-apply",
     "viewApplication": "View",
+    "inProgress": "In progress",
     "recommended": "Recommended for you",
     "deadline": "Deadline",
     "deadlineSoon": "{days} days left",
@@ -19,7 +21,15 @@
     "funder": "Funder",
     "allOpportunities": "All Opportunities",
     "newApplication": "New Application",
-    "addOpportunity": "Add Opportunity"
+    "addOpportunity": "Add Opportunity",
+    "rounds": "{count, plural, one {# round} other {# rounds}}",
+    "cadenceWarning": "This funder suggests waiting {months, plural, one {# more month} other {# more months}} before re-applying.",
+    "cadenceLabel": "Re-apply window",
+    "cadenceMonths": "{months, plural, one {# month} other {# months}}",
+    "setYourInterval": "Set your interval",
+    "clearInterval": "Clear",
+    "intervalSaved": "Saved",
+    "intervalPlaceholder": "e.g. 6"
   },
   "opportunity": {
     "name": "Grant Name",

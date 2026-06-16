@@ -21,6 +21,7 @@ type OpportunitySeed = {
   tags: string[];
   orgTypes: OrganisationType[];
   countries: Country[];
+  reapplyIntervalMonths: number | null; // funder-published cadence
   questions: { label: string; helpText?: string }[];
 };
 
@@ -39,6 +40,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["facility", "capital", "community"],
     orgTypes: [],
     countries: ["GB"],
+    reapplyIntervalMonths: null, // rolling fund, no published minimum
     questions: [
       { label: "Describe your organisation and its purpose", helpText: "Include charity/company number if applicable." },
       { label: "What is the project you need funding for?", helpText: "Describe the asset, improvement, or facility." },
@@ -61,6 +63,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["participation", "revenue", "inclusion"],
     orgTypes: [],
     countries: ["GB"],
+    reapplyIntervalMonths: null, // rolling fund, no published minimum
     questions: [
       { label: "Describe your organisation and its purpose" },
       { label: "What activity will this funding support?" },
@@ -82,6 +85,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["bowls", "participation", "coaching", "facility"],
     orgTypes: [],
     countries: ["GB"],
+    reapplyIntervalMonths: 12, // annual programme
     questions: [
       { label: "Club name and Bowls England affiliation number" },
       { label: "Describe the project or activity" },
@@ -106,6 +110,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
       "REGISTERED_CHARITY", "CIO", "CASC", "UNINCORPORATED_ASSOCIATION",
     ],
     countries: ["GB"],
+    reapplyIntervalMonths: 12, // cannot reapply within 12 months of a previous award
     questions: [
       { label: "What would you like to do?", helpText: "Describe your project in plain language." },
       { label: "How does your project meet the needs of your community?" },
@@ -128,6 +133,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["community", "participation", "revenue", "scotland"],
     orgTypes: ["REGISTERED_CHARITY", "SCIO", "CASC", "UNINCORPORATED_ASSOCIATION"],
     countries: ["GB"],
+    reapplyIntervalMonths: 12,
     questions: [
       { label: "What would you like to do?" },
       { label: "How does your project meet community needs?" },
@@ -147,6 +153,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["community", "participation", "revenue"],
     orgTypes: ["REGISTERED_CHARITY", "CIO", "CASC", "UNINCORPORATED_ASSOCIATION"],
     countries: ["NI"],
+    reapplyIntervalMonths: 12,
     questions: [
       { label: "What would you like to do?" },
       { label: "How does your project meet community needs?" },
@@ -168,6 +175,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["facility", "capital", "environment"],
     orgTypes: ["REGISTERED_CHARITY", "CIO", "CASC"],
     countries: ["GB"],
+    reapplyIntervalMonths: null,
     questions: [
       { label: "Describe your organisation" },
       { label: "Describe the project and its environmental benefit" },
@@ -190,6 +198,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["community", "capital", "revenue", "sustainability"],
     orgTypes: ["REGISTERED_CHARITY", "CIO", "COMMUNITY_INTEREST_COMPANY", "CASC"],
     countries: ["GB"],
+    reapplyIntervalMonths: null,
     questions: [
       { label: "Describe your community business" },
       { label: "How is your organisation accountable to the community?" },
@@ -212,6 +221,7 @@ const OPPORTUNITIES: OpportunitySeed[] = [
     tags: ["participation", "revenue", "local"],
     orgTypes: [],
     countries: ["GB", "NI"],
+    reapplyIntervalMonths: null,
     questions: [
       { label: "Describe your organisation" },
       { label: "What activity or project will the grant support?" },
@@ -250,6 +260,7 @@ async function main() {
           tags: opp.tags,
           orgTypes: opp.orgTypes,
           countries: opp.countries,
+          reapplyIntervalMonths: opp.reapplyIntervalMonths,
         },
       });
       console.log(`Updated: ${opp.name} (${opp.funder})`);
@@ -268,6 +279,7 @@ async function main() {
           tags: opp.tags,
           orgTypes: opp.orgTypes,
           countries: opp.countries,
+          reapplyIntervalMonths: opp.reapplyIntervalMonths,
           questions: {
             create: opp.questions.map((q, i) => ({
               label: q.label,
