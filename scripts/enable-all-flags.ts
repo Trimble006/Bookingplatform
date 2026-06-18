@@ -15,7 +15,8 @@ async function main() {
   const allFlags = [
     "federation", "publicContent", "publicEvents", "publicAvailability",
     "events", "eventsShowExternal", "liveStreaming", "weather", "helpOverrides",
-    "funding", "businessInsights", "messaging", "agent", "charity",
+    "funding", "businessInsights", "messaging", "agent", "charity", "noShowPrediction",
+    "modelOps",
   ];
 
   for (const tenant of tenants) {

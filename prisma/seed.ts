@@ -265,6 +265,7 @@ async function main() {
 
   await seedPermissionGroups(tenant.id);
   await seedAgents(tenant.id);
+  await seedMlFeatures();
 
   // Ensure demo users have Membership rows and are added to the built-in groups
   const tenantAdminUser = await prisma.user.findUnique({ where: { email: "admin@lakeview.club" } });
@@ -441,6 +442,8 @@ async function seedAgents(demoTenantId: string) {
   const agents = [
     { slug: "detector", name: "Complaint Detector", email: "detector@agent.system",
       description: "Monitors chat messages and converts complaints into maintenance tasks." },
+    { slug: "no-show", name: "No-Show Risk Predictor", email: "noshow@agent.system",
+      description: "Predicts booking no-show risk using machine learning and sends reminder proposals." },
     { slug: "triager", name: "Triage Officer", email: "triager@agent.system",
       description: "Prioritises and assigns submitted maintenance tasks using workload, weather and history." },
     { slug: "funding-app", name: "Funding Application Drafter", email: "funding-app@agent.system",
@@ -603,4 +606,26 @@ async function upsertAgentScopedKnowledge(slug: string, category: string, title:
       data: { scope: "GLOBAL", agentId: def.id, category, title, content, priority, source: "MANUAL" },
     });
   }
+}
+
+async function seedMlFeatures() {
+  const features = [
+    { key: "lead_time_days",      label: "Lead time (days)",       kind: "NUMERIC" as const,      description: "Days between booking creation and play date. Computed as (playDate - createdAt.date)." },
+    { key: "hour_of_day",         label: "Hour of day",            kind: "NUMERIC" as const,      description: "Start hour of the booked time slot (0–23)." },
+    { key: "is_weekend",          label: "Weekend flag",           kind: "NUMERIC" as const,      description: "1 if the booking is on a Saturday or Sunday, 0 otherwise." },
+    { key: "is_all_weather",      label: "All-weather green",      kind: "NUMERIC" as const,      description: "1 if the green is designated all-weather, 0 otherwise." },
+    { key: "tenure_days",         label: "Member tenure (days)",   kind: "NUMERIC" as const,      description: "Days between the member's account creation and the play date." },
+    { key: "prior_no_show_count", label: "Prior no-shows",         kind: "NUMERIC" as const,      description: "Number of times this member has previously been marked NO_SHOW at this tenant." },
+    { key: "day_of_week",         label: "Day of week",            kind: "CATEGORICAL" as const,  description: "ISO weekday of the booking date (0 = Monday, 6 = Sunday)." },
+    { key: "month",               label: "Month",                  kind: "CATEGORICAL" as const,  description: "Calendar month of the booking date (1 = January … 12 = December)." },
+  ];
+
+  for (const f of features) {
+    await prisma.mlFeatureDefinition.upsert({
+      where: { key: f.key },
+      update: { label: f.label, description: f.description },
+      create: { key: f.key, label: f.label, kind: f.kind, status: "ENROLLED", description: f.description },
+    });
+  }
+  console.log(`ML feature definitions seeded (${features.length} features, all ENROLLED).`);
 }

@@ -14,6 +14,7 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Now
 
+- ~~`#ml-noshow` / `#modelops`~~ — ML no-show prediction + full ModelOps lifecycle shipped. See `IN_FLIGHT.md`.
 - `#business-insights` (M) — tenant-facing business analytics dashboard:
   bookings over time, revenue trend, occupancy, cancellation rate, peak
   hours, member activity, task completion. Recharts + server-side

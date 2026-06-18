@@ -8,5 +8,6 @@
 
 import "./maintenance-task-create";
 import "./funding-application-draft";
+import "./booking-noshow-reminder";
 
 export {}; // marker for ESM file with only side-effect imports

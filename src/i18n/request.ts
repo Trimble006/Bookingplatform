@@ -25,13 +25,14 @@ export default getRequestConfig(async () => {
   const charity = (await import(`../../content/messages/ui/${locale}/charity.json`)).default;
   const funding = (await import(`../../content/messages/ui/${locale}/funding.json`)).default;
   const insights = (await import(`../../content/messages/ui/${locale}/insights.json`)).default;
+  const modelops = (await import(`../../content/messages/ui/${locale}/modelops.json`)).default;
 
   return {
     locale,
     messages: {
       common, auth, bookings, maintenance, events, messaging,
       settings, streaming, help, billing, agents, admin, onboarding, charity,
-      funding, insights,
+      funding, insights, modelops,
     },
   };
 });

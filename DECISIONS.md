@@ -1,6 +1,62 @@
 # Decisions Log — BookingPlatform
 
 
+## 2026-06-17 — ML no-show prediction feature: area selection, architecture, and planted-bug strategy (`#ml-noshow`)
+
+**Status**: shipped (Phases 0–4 complete)
+
+**Context**: User requested a machine-learning exercise for training testers — a real ML feature with realistic planted bugs that QEs can discover. Needed to pick a domain, design the architecture, and ship the full feature (schema → Python sidecar → agent → eval → tests).
+
+**Decision / outcome**:
+
+1. **Domain chosen: no-show prediction for bookings.** Rationale: booking data (lead time, history, day-of-week, tenure) is a natural tabular classification target; a binary outcome (`NO_SHOW` vs attended) provides ground truth; the consequence (proactive reminder) is credible. Other candidates (midge risk, member churn) were rejected — midge risk is heuristic-not-ML, churn risk lacks a tight signal in early-stage data.
+
+2. **Python FastAPI sidecar (`ml/`)** rather than a JS ML library. Rationale: gives trainees a realistic train/serve boundary and a real HTTP contract to test. scikit-learn (logistic regression) over TensorFlow/PyTorch — appropriate for tabular data, fast to train, interpretable. Sidecar runs on port 8001 via docker-compose.
+
+3. **`usesLLM=NEVER` agent.** `NoShowRiskAgent` calls the Python sidecar, not the LLM. Rationale: keeps cost at zero, demonstrates the agent framework can integrate non-LLM predictions, and creates a different test surface than the existing detector/triager agents.
+
+4. **Planted bug #15 (ACTIVE): `EVAL_THRESHOLD = 0.5` in `scripts/eval-noshow.ts`.** The operational agent uses `riskThreshold: 0.4` and `FEATURES.md` documents "≥40%". The eval script uses 0.5, causing artificially low recall. Discovery path: run `npm run eval:noshow` → notice low recall → compare against `NoShowRiskAgent` config → compare against `FEATURES.md` → find the mismatch in the eval script. Medium difficulty. Bugs #16–19 are potential follow-on plants (label leakage, train/serve skew, stale artifact, silent NaN bias).
+
+5. **Loose version bounds in `ml/requirements.txt`** instead of strict pins. Python 3.14 (on dev machine) has cp314 binary wheels for pandas 3.x and scikit-learn 1.9+, but the pinned versions (pandas 2.3.1, scikit-learn 1.7.1) were too new to have cp314 wheels and too old to have them yet. Loose lower bounds let pip pick the right wheel for the host Python. Docker (3.12-slim) continues to resolve to older compatible versions.
+
+6. **26 pytest + 8 jest integration tests.** Python tests cover feature engineering (17 tests) and FastAPI contract (10 tests). TS jest tests cover ml-client error handling, NoShowRiskAgent proposal emission, and the reminder committer — all against a real test DB with full teardown.
+
+**Rationale**: Stub-first approach (no real email provider, seeded synthetic history) means the full pipeline is demonstrable without external dependencies. The sidecar pattern is realistic to what a production club SaaS might use. The planted threshold bug is discoverable through normal QE exploratory testing without requiring source code access.
+
+**Rejected alternatives**:
+- Pure JS ML (ONNX, brain.js) — rejected; Python/scikit-learn is the industry standard for tabular classification, more realistic test surface.
+- Planting the bug in train.py or features.py — rejected; too low-level, hard to discover without running training. Eval script is the natural QE touch-point.
+- Strict version pins in requirements.txt — rejected; broke on Python 3.14, loose bounds are appropriate for a training exercise (not a production lockfile).
+
+---
+
+## 2026-06-18 — ModelOps: end-to-end model lifecycle management (`#modelops`)
+
+**Status**: shipped (all 7 phases complete)
+
+**Context**: After `#ml-noshow` shipped (Phases 0–4), predictions were never persisted (root bug), and there was no lifecycle for training, promoting, or monitoring models. User requested "a whole lot of ModelOps missing" + a runbook for operator-driven feature control.
+
+**Decision / outcome**:
+
+1. **Persisted predictions in the agent.** Root fix: `NoShowRiskAgent` previously computed probabilities and emitted proposals but never wrote `BookingNoShowPrediction` rows. Fixed with an upsert after every successful `predictNoShow()` call. Added `@@unique([bookingId, modelVersion])` constraint.
+
+2. **Feature registry (enroll / retire) rather than code-gated flags.** Operator enrolls/retires features via the platform dashboard. Compute is always in code (`ml/features.py`), enrollment is config (DB row). Train pipeline reads ENROLLED set dynamically and builds the `ColumnTransformer` from it. Rejected: branching compute on feature flags in Python — would require redeployment for every feature change.
+
+3. **Champion/challenger gate (ROC_AUC_TOLERANCE = 0.02).** New model promoted only if its ROC-AUC ≥ champion − 0.02. Prevents silent regressions from new features with poor signal. Tolerance chosen as 2pp — meaningful in a booking-domain binary classifier; narrow enough to catch real regressions.
+
+4. **Removed planted bug #15 (EVAL_THRESHOLD = 0.5).** Deliberate ML training-scenario bugs are deferred to a future phase. The existing planted bugs (threshold mismatch) were confusing the ModelOps implementation work — they obscured whether the eval script was correct. Bug #15 is now resolved; new training-scenario bugs, if any, will be planted explicitly and tracked separately.
+
+5. **Write-authority split: train.py writes its own registry row; app layer handles promotion.** The Python sidecar is responsible for computing metrics, auto-bumping versions, and writing `MlModelVersion` rows. The TS app layer owns the champion/challenger gate and status transitions (TRAINED → ACTIVE/REJECTED). This keeps the Python side stateless w.r.t. business logic and lets the TS side audit and control promotions.
+
+6. **Drift check is windowed (30-day rolling) against training baseline.** Computes ROC-AUC and ECE over `BookingNoShowPrediction` rows with known outcomes. WARN at Δ ROC-AUC < −0.05 or ECE > 0.15; DRIFT at −0.10 / 0.25. Thresholds are in `ml/drift.py` constants — no DB config. Rationale: keeping thresholds in code makes them reviewable via git diff; operator-configurable thresholds would require a separate UI.
+
+7. **`docs/modelops-runbook.md`** — operator-facing runbook covering: adding a feature (8-step end-to-end), retiring a feature, train/serve skew guardrails, environment variables, and cron scheduling recommendations.
+
+**Rejected alternatives**:
+- Auto-enroll all computed features — rejected; operator should control what the model uses, especially when a new feature may carry data-quality risk at first.
+- Rollback UI — deferred; too much surface area for Phase 7. Manual DB approach documented in the runbook.
+
+
 ## 2026-05-05 — Platform billing plan refined: stub-first, all-encompassing dashboards (`#billing`)
 
 **Status**: decided (planned, not yet implemented)

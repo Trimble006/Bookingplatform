@@ -34,6 +34,8 @@ Status key: **Complete** — shipped to main · **WIP** — actively in developm
 | Season enforcement | Complete | Configurable season window; bookings outside season or outside opening hours are rejected |
 | Cancellation policy | Complete | Self-service cancellation up to 48 hours before play; admin-only within that window |
 | Admin override | Complete | Admins can force-book conflicting slots with a mandatory reason, notified to affected parties |
+| No-show outcome | Complete | Admins can mark a past confirmed booking as a no-show; records ground truth for the ML model |
+| No-show prediction | Complete | ML model (Python sidecar) scores upcoming bookings by no-show risk; flags bookings at ≥40% probability for a proactive reminder; non-LLM agent emits reminder proposals into the admin inbox |
 | Multi-slot booking | Planned | Select multiple slots in one transaction with aggregate pricing |
 
 ## Payments

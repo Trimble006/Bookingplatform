@@ -14,8 +14,13 @@
     "db:push": "prisma db push",
     "db:seed": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "agent:detect": "node scripts/run-agent.mjs detector",
+    "agent:noshow": "node scripts/run-agent.mjs no-show",
     "agent:triage": "node scripts/run-agent.mjs triager",
     "agent:all": "node scripts/run-agent.mjs all",
+    "ml:train": "python3 ml/train.py",
+    "ml:retrain": "node scripts/run-ml.mjs retrain",
+    "ml:drift": "node scripts/run-ml.mjs drift",
+    "eval:noshow": "npx tsx scripts/eval-noshow.ts",
     "check:i18n": "scripts/check-i18n-coverage.sh",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch"

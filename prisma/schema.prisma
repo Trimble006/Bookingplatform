@@ -39,6 +39,7 @@ model Tenant {
   auditEvents               AuditEvent[]
   federationBookingsMade    Booking[]                @relation("BookingsByHomeTenant")
   bookings                  Booking[]
+  bookingNoShowPredictions  BookingNoShowPrediction[]
   channels                  Channel[]
   charityAssetLiabilities   CharityAssetLiability[]
   charityCategories         CharityCategory[]
@@ -278,6 +279,7 @@ model Booking {
   tenant           Tenant          @relation(fields: [tenantId], references: [id])
   user             User            @relation(fields: [userId], references: [id])
   payment          BookingPayment?
+  noShowPredictions BookingNoShowPrediction[]
   slots            BookingSlot[]
   waitlistEntries  WaitlistEntry[]
 
@@ -305,6 +307,27 @@ model WaitlistEntry {
   booking   Booking  @relation(fields: [bookingId], references: [id])
 
   @@index([bookingId, createdAt])
+}
+
+/// One row per booking scored by the no-show ML model. Stores predictions
+/// for ALL upcoming bookings (not just high-risk ones), so eval can compute
+/// a proper confusion matrix once `actualNoShow` is backfilled from the
+/// booking's terminal status. `modelVersion` tracks which trained artifact
+/// produced the score, for drift / train-serve-skew monitoring.
+model BookingNoShowPrediction {
+  id           String   @id @default(cuid())
+  bookingId    String
+  tenantId     String
+  modelVersion String
+  probability  Float
+  predictedAt  DateTime @default(now())
+  actualNoShow Boolean?
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([bookingId, modelVersion])
+  @@index([tenantId, predictedAt])
+  @@index([bookingId])
 }
 
 model PlatformPlan {
@@ -1391,6 +1414,7 @@ enum BookingStatus {
   APPROVED
   RESERVED
   CONFIRMED
+  NO_SHOW
   CANCELLED
   REFUNDED
 }
@@ -1802,6 +1826,99 @@ enum FundingApplicationStatus {
   APPROVED
   REJECTED
   WITHDRAWN
+}
+
+// --- ML ModelOps ---
+
+enum MlModelStatus {
+  TRAINING   // Training in progress (written by Python at start of train run)
+  TRAINED    // Training complete; candidate awaiting promotion gate
+  ACTIVE     // Currently serving predictions (champion)
+  ARCHIVED   // Superseded by a newer ACTIVE version
+  REJECTED   // Failed the champion/challenger promotion gate
+  FAILED     // Training error
+}
+
+enum MlFeatureStatus {
+  AVAILABLE  // Compute exists; not yet enrolled for training
+  ENROLLED   // Included in the ColumnTransformer for training
+  RETIRED    // Previously enrolled; excluded from future training runs
+}
+
+enum MlFeatureKind {
+  NUMERIC
+  CATEGORICAL
+}
+
+enum MlDriftStatus {
+  HEALTHY
+  WARN
+  DRIFT
+}
+
+/// One row per trained model artifact. Records the version identifier,
+/// training metrics, feature set used, and lifecycle status.
+model MlModelVersion {
+  id               String         @id @default(cuid())
+  version          String         @unique   // e.g. "noshow-v2"
+  status           MlModelStatus  @default(TRAINING)
+  artifactPath     String?                  // path to joblib on disk / volume
+  trainedAt        DateTime?                // set when status → TRAINED
+  promotedAt       DateTime?                // set when status → ACTIVE
+  rowsTotal        Int?
+  rowsTrain        Int?
+  rowsTest         Int?
+  labelRate        Float?
+  rocAuc           Float?
+  averagePrecision Float?
+  brier            Float?
+  precision        Float?
+  recall           Float?
+  f1               Float?
+  threshold        Float?
+  featureSet       String?                  // JSON array of enrolled feature keys
+  coefficients     String?                  // JSON { featureName: coefValue } for importance panel
+  notes            String?
+  driftChecks      MlDriftCheck[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([status])
+}
+
+/// Per-feature definition. Compute lives in features.py; enrollment is config.
+/// Operator enrolls AVAILABLE → ENROLLED; next retrain picks it up.
+model MlFeatureDefinition {
+  key              String          @id      // e.g. "lead_time_days"
+  label            String                   // human-readable display name
+  kind             MlFeatureKind
+  status           MlFeatureStatus @default(AVAILABLE)
+  description      String?
+  enrolledAt       DateTime?
+  retiredAt        DateTime?
+  addedInVersion   String?                  // first model version this featured in
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+/// One row per drift-check run. Written by Python drift.py via the sidecar.
+model MlDriftCheck {
+  id               String        @id @default(cuid())
+  modelVersion     String
+  checkedAt        DateTime      @default(now())
+  windowStart      DateTime
+  windowEnd        DateTime
+  sampleCount      Int
+  rocAuc           Float?
+  calibrationError Float?        // Expected Calibration Error (ECE)
+  positiveRate     Float?
+  deltaRocAuc      Float?        // vs training rocAuc (negative = degraded)
+  deltaCalibration Float?
+  status           MlDriftStatus
+  version          MlModelVersion @relation(fields: [modelVersion], references: [version])
+
+  @@index([modelVersion, checkedAt])
+  @@index([status, checkedAt])
 }
 
 

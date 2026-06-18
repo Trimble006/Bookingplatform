@@ -11,5 +11,26 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  ml-noshow:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://booking:booking@postgres:5432/bookingplatform
+      ML_MODEL_PATH: /app/artifacts/noshow-model.joblib
+    volumes:
+      - ml_artifacts:/app/artifacts
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
+  ml_artifacts:
