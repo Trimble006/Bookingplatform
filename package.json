@@ -17,6 +17,7 @@
     "agent:noshow": "node scripts/run-agent.mjs no-show",
     "agent:triage": "node scripts/run-agent.mjs triager",
     "agent:all": "node scripts/run-agent.mjs all",
+    "ml:serve": "dotenv -e .env -- python3 -m uvicorn serve:app --app-dir ml --port 8001 --reload",
     "ml:train": "python3 ml/train.py",
     "ml:retrain": "node scripts/run-ml.mjs retrain",
     "ml:drift": "node scripts/run-ml.mjs drift",

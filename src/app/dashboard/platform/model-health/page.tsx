@@ -106,6 +106,7 @@ function fmtDate(s: string | null | undefined) {
 export default function ModelHealthPage() {
   const t = useTranslations("modelops");
   const [data, setData] = useState<HealthData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [retraining, setRetraining] = useState(false);
   const [retrainMsg, setRetrainMsg] = useState<string | null>(null);
@@ -114,10 +115,14 @@ export default function ModelHealthPage() {
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError(null);
     fetch("/api/admin/model/health")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) return r.json().then((body) => { throw new Error(body.detail ?? body.error ?? `HTTP ${r.status}`); });
+        return r.json();
+      })
       .then(setData)
-      .catch(() => {})
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, []);
 
@@ -171,6 +176,13 @@ export default function ModelHealthPage() {
   }
 
   if (loading) return <p className="text-gray-500 p-6">{t("loading")}</p>;
+  if (loadError) return (
+    <div className="p-6">
+      <p className="text-red-500 font-semibold">{t("failed")}</p>
+      <p className="mt-1 text-xs text-gray-500 font-mono">{loadError}</p>
+      <button onClick={load} className="mt-3 text-sm text-blue-600 underline">Retry</button>
+    </div>
+  );
   if (!data) return <p className="text-red-500 p-6">{t("failed")}</p>;
 
   const { activeVersion, versionHistory, latestDriftCheck, features, sidecar } = data;

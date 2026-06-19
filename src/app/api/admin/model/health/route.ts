@@ -24,6 +24,7 @@ export async function GET() {
 
   const ML_SERVICE_URL = process.env.ML_SERVICE_URL ?? "http://localhost:8001";
 
+  try {
   const [activeVersion, versionHistory, latestDriftCheck, features, sidecarHealth] =
     await Promise.allSettled([
       prisma.mlModelVersion.findFirst({ where: { status: "ACTIVE" } }),
@@ -52,4 +53,8 @@ export async function GET() {
     features: features.status === "fulfilled" ? features.value : [],
     sidecar: sidecarHealth.status === "fulfilled" ? sidecarHealth.value : { status: "unreachable" },
   });
+  } catch (err) {
+    console.error("[model/health] unhandled error:", err);
+    return NextResponse.json({ error: "Internal server error", detail: String(err) }, { status: 500 });
+  }
 }

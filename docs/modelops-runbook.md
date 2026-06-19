@@ -96,9 +96,26 @@ Thresholds (in `ml/drift.py`):
 A DRIFT result warrants retraining. A persistent WARN may indicate data shift —
 check whether the member/booking mix has changed significantly.
 
-Drift check requires ≥10 labelled predictions in the window. If the dataset is
-small, run `npm run db:seed` followed by
-`npx tsx scripts/seed-noshow-history.ts` to add synthetic history.
+Drift check requires ≥10 `BookingNoShowPrediction` rows with `actualNoShow IS NOT NULL`
+in the 30-day window. In production this accrues naturally as bookings settle to NO_SHOW
+or CONFIRMED and the agent runs nightly. For local dev / QE setup, prime the pump:
+
+```bash
+# 1. Seed base data (tenants, rinks, members)
+npx prisma db seed
+
+# 2. Seed synthetic labelled booking history
+npx tsx scripts/seed-noshow-history.ts --tenant lakeview-bowls --count 400
+
+# 3. Train a model (creates the ACTIVE version)
+curl -s -X POST http://localhost:8001/train
+
+# 4. Reload the sidecar
+curl -s -X POST http://localhost:8001/reload
+
+# 5. Backfill prediction rows with outcomes (dev only — skips the agent)
+node --env-file=.env scripts/backfill-noshow-predictions.mjs
+```
 
 ### Roll back a model
 There is no one-click rollback in the UI. To roll back to a previous version:
