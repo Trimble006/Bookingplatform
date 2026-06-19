@@ -26,6 +26,7 @@
     "sendToPayment": "[cy] Send to Payment",
     "confirm": "[cy] Confirm",
     "cancel": "[cy] Cancel",
+    "markNoShow": "[cy] Mark no-show",
     "pay": "[cy] Pay £{amount}"
   },
   "labels": {

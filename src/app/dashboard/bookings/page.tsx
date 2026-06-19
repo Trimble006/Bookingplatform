@@ -285,6 +285,7 @@ export default function BookingsPage() {
                 <span className={`text-xs font-medium px-2 py-1 rounded ${
                   b.status === "CONFIRMED" ? "bg-green-100 text-green-700" :
                   b.status === "CANCELLED" ? "bg-red-100 text-red-700" :
+                  b.status === "NO_SHOW" ? "bg-orange-100 text-orange-700" :
                   "bg-yellow-100 text-yellow-700"
                 }`}>
                   {b.status}
@@ -302,6 +303,9 @@ export default function BookingsPage() {
                     )}
                     {b.status === "RESERVED" && (
                       <button onClick={() => updateStatus(b.id, "CONFIRMED")} className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">{t("actions.confirm")}</button>
+                    )}
+                    {b.status === "CONFIRMED" && new Date(b.date).getTime() <= Date.now() && (
+                      <button onClick={() => updateStatus(b.id, "NO_SHOW")} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded hover:bg-orange-200">{t("actions.markNoShow")}</button>
                     )}
                     {["APPROVED", "RESERVED", "CONFIRMED"].includes(b.status) && (
                       <button onClick={() => updateStatus(b.id, "CANCELLED")} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200">Cancel</button>

@@ -11,7 +11,7 @@ const VALID_TRANSITIONS: Record<string, BookingStatus[]> = {
   REQUESTED: ["APPROVED", "CANCELLED"],
   APPROVED: ["RESERVED", "CANCELLED"],
   RESERVED: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["CANCELLED"],
+  CONFIRMED: ["CANCELLED", "NO_SHOW"],
   CANCELLED: ["REFUNDED"],
 };
 
@@ -40,6 +40,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (["APPROVED", "RESERVED", "CONFIRMED"].includes(newStatus)) {
     const permErr = await assertPermissionOrFail(session, booking.tenantId, Permission.bookings_manage);
     if (permErr) return permErr;
+  }
+
+  // Marking a booking as a no-show is a management action used to label the
+  // outcome of a confirmed booking once its date has passed. It is the ground
+  // truth the no-show prediction model trains and evaluates against, so it is
+  // restricted to bookings-managers and only permitted after the play date.
+  if (newStatus === "NO_SHOW") {
+    const permErr = await assertPermissionOrFail(session, booking.tenantId, Permission.bookings_manage);
+    if (permErr) return permErr;
+    const bookingDate = new Date(booking.date);
+    if (bookingDate.getTime() > Date.now()) {
+      return jsonError("Cannot mark a booking as a no-show before its scheduled date.", 400);
+    }
   }
 
   // Users can cancel their own bookings (REQUESTED or APPROVED only).
@@ -95,6 +108,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.booking.update({ where: { id }, data: { status: newStatus } });
+
+  // When a booking is labelled a no-show, backfill the ground-truth outcome on
+  // any prediction rows the model produced for it, so eval can score them.
+  if (newStatus === "NO_SHOW") {
+    await prisma.bookingNoShowPrediction.updateMany({
+      where: { bookingId: id },
+      data: { actualNoShow: true },
+    });
+  }
 
   logAudit({ session, action: `booking.${newStatus.toLowerCase()}`, entity: "Booking", entityId: id, tenantId: booking.tenantId, meta: { from: booking.status, to: newStatus } });
 

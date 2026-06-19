@@ -26,6 +26,7 @@
     "sendToPayment": "Send to Payment",
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "markNoShow": "Mark no-show",
     "pay": "Pay £{amount}"
   },
   "labels": {
