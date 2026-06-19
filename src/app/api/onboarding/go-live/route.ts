@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getSessionOrFail, assertEffectiveRoleOrFail, getEffective, jsonError } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
 import { sendEmail, sendSocial } from "@/lib/outbound";
+import { isFeatureEnabled } from "@/lib/features";
 
-// Chapters required before go-live. The Summary/Review chapter (the final one)
-// isn't required to be marked complete first — pressing Go live IS its
-// completion. The Subscription gate is checked separately via
-// `subscriptionAttestedAt`.
-const REQUIRED_CHAPTERS = [1, 2, 3, 4, 5, 6, 7, 8];
+// Chapters required before go-live. Chapter 5 (greens) is excluded when the
+// bookings capability flag is off — organisations with no facilities skip it.
+const ALL_REQUIRED_CHAPTERS = [1, 2, 3, 4, 5, 6, 7, 8];
+const BASE_REQUIRED_CHAPTERS = [1, 2, 3, 4, 6, 7, 8]; // ch5 optional without bookings
 
 function parseCompleted(json: string): number[] {
   try {
@@ -56,7 +56,9 @@ export async function GET(_req: NextRequest) {
     blockers.push("Pick your public URL in the About chapter");
   }
   const completed = new Set(progress ? parseCompleted(progress.completedChapters) : []);
-  const missing = REQUIRED_CHAPTERS.filter((n) => !completed.has(n));
+  const bookingsOn = await isFeatureEnabled(tenantId, "bookings");
+  const requiredChapters = bookingsOn ? ALL_REQUIRED_CHAPTERS : BASE_REQUIRED_CHAPTERS;
+  const missing = requiredChapters.filter((n) => !completed.has(n));
   if (missing.length) {
     blockers.push(`Complete chapter${missing.length > 1 ? "s" : ""} ${missing.join(", ")}`);
   }
@@ -111,7 +113,9 @@ export async function POST(_req: NextRequest) {
     select: { completedChapters: true, subscriptionAttestedAt: true },
   });
   const completed = new Set(progress ? parseCompleted(progress.completedChapters) : []);
-  const missing = REQUIRED_CHAPTERS.filter((n) => !completed.has(n));
+  const bookingsOn = await isFeatureEnabled(tenantId, "bookings");
+  const requiredChapters = bookingsOn ? ALL_REQUIRED_CHAPTERS : BASE_REQUIRED_CHAPTERS;
+  const missing = requiredChapters.filter((n) => !completed.has(n));
   if (missing.length) {
     return jsonError(
       `Complete chapter${missing.length > 1 ? "s" : ""} ${missing.join(", ")} before going live`,

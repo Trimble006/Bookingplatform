@@ -21,6 +21,7 @@ scratch.
 
 ## Active threads
 
+- `#modular-services` — multi-vertical capability-modular platform: Vertical enum, bookings flag, adaptive wizard, cap-gated nav, Charity Admin plan, branding. Phases 0–4 implementing. Session: `bp: #modular-services`.
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`.
 
 <!-- Format:

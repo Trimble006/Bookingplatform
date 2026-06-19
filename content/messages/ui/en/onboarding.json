@@ -1,11 +1,11 @@
 {
   "loading": "Loading…",
   "previewBanner": "Preview only — not yet published.",
-  "previewBannerHint": "Members can't see your club until you press Go live in the final chapter.",
-  "header": "Setting up your club",
+  "previewBannerHint": "Members can't see your organisation until you press Go live in the final chapter.",
+  "header": "Setting up your organisation",
   "saveAndExit": "Save & exit",
   "chapters": {
-    "about": "About your club",
+    "about": "About your organisation",
     "organisation": "Your organisation",
     "where": "Where you are",
     "hours": "When you're open",

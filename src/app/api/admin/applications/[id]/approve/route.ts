@@ -89,6 +89,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   await prisma.featureFlag.create({
     data: { tenantId: tenant.id, key: "agent", enabled: true },
   });
+  // Bookings capability — on by default; turned off for admin-only orgs
+  // (CHARITY_ADMIN vertical) when the tenant sets their vertical in the wizard.
+  await prisma.featureFlag.create({
+    data: { tenantId: tenant.id, key: "bookings", enabled: true },
+  });
 
   // Placeholder password hash that cannot match any real password — user
   // sets a real one via the invitation accept flow.

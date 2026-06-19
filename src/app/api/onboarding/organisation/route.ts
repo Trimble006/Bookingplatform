@@ -10,7 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { setFeatureFlag } from "@/lib/features";
 import { seedCharityDefaults } from "@/lib/charity/seed";
 import { CHARITY_FEATURE_KEY } from "@/lib/charity/feature-gate";
-import type { Country, OrganisationType, CharityRegulator } from "@prisma/client";
+import type { Country, OrganisationType, CharityRegulator, Vertical } from "@prisma/client";
 
 const ALLOWED_COUNTRIES = new Set<Country>(["GB", "NI", "OTHER"]);
 const ALLOWED_ORG_TYPES = new Set<OrganisationType>([
@@ -25,6 +25,11 @@ const ALLOWED_ORG_TYPES = new Set<OrganisationType>([
   "OTHER",
   "NOT_CONSTITUTED",
 ]);
+const ALLOWED_VERTICALS = new Set<Vertical>([
+  "BOWLS", "GOLF", "CRICKET", "MULTI_SPORT", "CHARITY_ADMIN", "OTHER",
+]);
+// Verticals that don't use the bookings or maintenance-agent capability.
+const ADMIN_ONLY_VERTICALS = new Set<Vertical>(["CHARITY_ADMIN"]);
 
 // Org types whose holders need charity-style accounting (R&P, funds,
 // regulator-shaped categories). CASC is included because while CASCs aren't
@@ -84,6 +89,7 @@ export async function PATCH(req: NextRequest) {
     organisationType?: string;
     financialYearEndMonth?: number;
     financialYearEndDay?: number;
+    vertical?: string;
   };
   try {
     body = await req.json();
@@ -113,6 +119,10 @@ export async function PATCH(req: NextRequest) {
 
   const country = body.country as Country;
   const organisationType = body.organisationType as OrganisationType;
+  const vertical: Vertical | undefined =
+    body.vertical && ALLOWED_VERTICALS.has(body.vertical as Vertical)
+      ? (body.vertical as Vertical)
+      : undefined;
 
   // Snapshot the previous values for the audit meta so the trail shows the
   // delta, not just the new state.
@@ -123,6 +133,7 @@ export async function PATCH(req: NextRequest) {
       organisationType: true,
       financialYearEndMonth: true,
       financialYearEndDay: true,
+      vertical: true,
     },
   });
   if (!before) return jsonError("Tenant not found", 404);
@@ -134,8 +145,22 @@ export async function PATCH(req: NextRequest) {
       organisationType,
       financialYearEndMonth: m,
       financialYearEndDay: d,
+      ...(vertical ? { vertical } : {}),
     },
   });
+
+  // Side-effect: set capability flags based on vertical.
+  // CHARITY_ADMIN → bookings off, agent off. Sports verticals → both on.
+  // These are set idempotently via upsert so re-saving the chapter is safe.
+  if (vertical) {
+    const isAdminOnly = ADMIN_ONLY_VERTICALS.has(vertical);
+    await setFeatureFlag(tenantId, "bookings", !isAdminOnly);
+    await setFeatureFlag(tenantId, "agent", !isAdminOnly);
+    if (isAdminOnly) {
+      // Ensure funding is on for admin-only orgs (charity admin relies on it)
+      await setFeatureFlag(tenantId, "funding", true);
+    }
+  }
 
   // Side-effect: charity-style org in a supported jurisdiction → enable the
   // feature and prepare CharitySettings + chart of accounts.
@@ -179,12 +204,14 @@ export async function PATCH(req: NextRequest) {
         organisationType: before.organisationType,
         financialYearEndMonth: before.financialYearEndMonth,
         financialYearEndDay: before.financialYearEndDay,
+        vertical: before.vertical,
       },
       after: {
         country,
         organisationType,
         financialYearEndMonth: m,
         financialYearEndDay: d,
+        vertical: vertical ?? before.vertical,
       },
       sideEffects: { charityEnabled, charitySettingsSeeded },
     },
@@ -197,6 +224,7 @@ export async function PATCH(req: NextRequest) {
       organisationType: tenant.organisationType,
       financialYearEndMonth: tenant.financialYearEndMonth,
       financialYearEndDay: tenant.financialYearEndDay,
+      vertical: tenant.vertical,
     },
     charityEnabled,
     charitySettingsSeeded,

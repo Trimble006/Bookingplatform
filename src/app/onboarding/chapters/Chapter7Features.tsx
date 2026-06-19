@@ -28,6 +28,7 @@ export default function Chapter7Features({ tenantId, onAdvance }: ChapterProps) 
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [agentOn, setAgentOn] = useState(false);
 
   const load = useCallback(async () => {
     if (!tenantId) return;
@@ -37,6 +38,7 @@ export default function Chapter7Features({ tenantId, onAdvance }: ChapterProps) 
     const map: Record<string, boolean> = {};
     for (const f of data) map[f.key] = f.enabled;
     setFlags(map);
+    setAgentOn(!!map.agent);
     setLoaded(true);
   }, [tenantId]);
 
@@ -126,21 +128,23 @@ export default function Chapter7Features({ tenantId, onAdvance }: ChapterProps) 
           );
         })}
 
-        {/* Mandatory feature: shown for awareness, never toggleable. */}
-        <li className="flex items-start justify-between bg-emerald-50 rounded p-3 border border-emerald-200">
-          <div className="pr-4">
-            <div className="font-medium text-gray-900 flex items-center gap-2">
-              Maintenance agent
-              <span className="text-[10px] uppercase tracking-wide bg-emerald-600 text-white px-1.5 py-0.5 rounded">
-                Always on
-              </span>
+        {/* Mandatory feature: shown for awareness only when enabled, never toggleable. */}
+        {agentOn && (
+          <li className="flex items-start justify-between bg-emerald-50 rounded p-3 border border-emerald-200">
+            <div className="pr-4">
+              <div className="font-medium text-gray-900 flex items-center gap-2">
+                Maintenance agent
+                <span className="text-[10px] uppercase tracking-wide bg-emerald-600 text-white px-1.5 py-0.5 rounded">
+                  Always on
+                </span>
+              </div>
+              <div className="text-sm text-gray-600">
+                AI agents help triage and prioritise maintenance jobs. Included with every organisation.
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
-              AI agents help triage and prioritise maintenance jobs. Included with every club.
-            </div>
-          </div>
-          <div className="text-xs text-emerald-700 mt-1 whitespace-nowrap">Included</div>
-        </li>
+            <div className="text-xs text-emerald-700 mt-1 whitespace-nowrap">Included</div>
+          </li>
+        )}
       </ul>
     </ChapterShell>
   );

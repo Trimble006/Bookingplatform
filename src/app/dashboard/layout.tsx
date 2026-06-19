@@ -31,6 +31,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [federationEnabled, setFederationEnabled] = useState(false);
   const [fundingEnabled, setFundingEnabled] = useState(false);
   const [insightsEnabled, setInsightsEnabled] = useState(false);
+  const [bookingsEnabled, setBookingsEnabled] = useState(false);
+  const [agentEnabled, setAgentEnabled] = useState(false);
 
   const role = (session?.user as any)?.role;
   const acting = (session?.user as any)?.actingAs as ActingAs;
@@ -64,6 +66,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setEventsEnabled(!!(flags && flags.events));
         setFederationEnabled(!!(flags && flags.federation));
         setInsightsEnabled(!!(flags && flags.businessInsights));
+        setBookingsEnabled(!!(flags && flags.bookings));
+        setAgentEnabled(!!(flags && flags.agent));
       })
       .catch(() => {});
     if (isTenantAdminEffective) {
@@ -97,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1">
         <aside className={`w-56 ${inPlatformMode ? "bg-slate-800" : "bg-green-800"} text-white flex flex-col p-4 gap-2`}>
           <h2 className="text-lg font-bold mb-4">
-            {inPlatformMode ? "Platform Console" : "Club Management Platform"}
+            {inPlatformMode ? "Platform Console" : "Management Platform"}
           </h2>
 
           {inPlatformMode ? (
@@ -117,21 +121,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ) : (
             <>
               <Link href="/dashboard" className="hover:bg-green-700 rounded px-3 py-2">Dashboard</Link>
-              <Link href="/dashboard/bookings" className="hover:bg-green-700 rounded px-3 py-2">Bookings</Link>
+              {bookingsEnabled && <Link href="/dashboard/bookings" className="hover:bg-green-700 rounded px-3 py-2">Bookings</Link>}
               {eventsEnabled && <Link href="/dashboard/events" className="hover:bg-green-700 rounded px-3 py-2">Events</Link>}
-              <Link href="/dashboard/maintenance" className="hover:bg-green-700 rounded px-3 py-2">Maintenance</Link>
-              {isMaintenanceEffective && <Link href="/dashboard/agents" className="hover:bg-green-700 rounded px-3 py-2">🤖 Agents</Link>}
-              {isMaintenanceEffective && <Link href="/dashboard/agents/inbox" className="hover:bg-green-700 rounded px-3 py-2">📥 Agent Inbox</Link>}
+              {agentEnabled && <Link href="/dashboard/maintenance" className="hover:bg-green-700 rounded px-3 py-2">Maintenance</Link>}
+              {agentEnabled && isMaintenanceEffective && <Link href="/dashboard/agents" className="hover:bg-green-700 rounded px-3 py-2">🤖 Agents</Link>}
+              {agentEnabled && isMaintenanceEffective && <Link href="/dashboard/agents/inbox" className="hover:bg-green-700 rounded px-3 py-2">📥 Agent Inbox</Link>}
               <Link href="/dashboard/messaging" className="hover:bg-green-700 rounded px-3 py-2">Messaging</Link>
               <Link href="/dashboard/notifications" className="hover:bg-green-700 rounded px-3 py-2 flex justify-between">
                 Notifications
                 {unread > 0 && <span className="bg-red-500 text-xs rounded-full px-2 py-0.5">{unread}</span>}
               </Link>
               {isTenantAdminEffective && <Link href="/dashboard/content" className="hover:bg-green-700 rounded px-3 py-2">Content</Link>}
-              {isTenantAdminEffective && <Link href="/dashboard/greens" className="hover:bg-green-700 rounded px-3 py-2">Greens</Link>}
+              {isTenantAdminEffective && bookingsEnabled && <Link href="/dashboard/greens" className="hover:bg-green-700 rounded px-3 py-2">Greens</Link>}
               {isTenantAdminEffective && charityAvailable && <Link href="/dashboard/charity" className="hover:bg-green-700 rounded px-3 py-2">💷 Charity</Link>}
               {isTenantAdminEffective && fundingEnabled && <Link href="/dashboard/funding" className="hover:bg-green-700 rounded px-3 py-2">📋 Funding</Link>}
-              {isTenantAdminEffective && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
+              {isTenantAdminEffective && bookingsEnabled && <Link href="/dashboard/admin" className="hover:bg-green-700 rounded px-3 py-2">Booking Admin</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/users" className="hover:bg-green-700 rounded px-3 py-2">Users</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/settings" className="hover:bg-green-700 rounded px-3 py-2">Settings</Link>}
               {isTenantAdminEffective && <Link href="/dashboard/settings/groups" className="hover:bg-green-700 rounded px-3 py-2">Groups</Link>}

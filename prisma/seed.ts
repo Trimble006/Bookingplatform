@@ -144,7 +144,7 @@ async function main() {
   });
 
   // Feature flags — enable everything in dev so we don't have to toggle manually
-  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent", "liveStreaming", "federation", "helpOverrides", "funding", "businessInsights"];
+  const enabledFlags = ["messaging", "events", "eventsShareExternal", "eventsShowExternal", "analytics", "publicContent", "publicEvents", "publicAvailability", "weather", "agent", "bookings", "liveStreaming", "federation", "helpOverrides", "funding", "businessInsights", "noShowPrediction", "modelOps"];
   const disabledFlags: string[] = [];
   for (const key of enabledFlags) {
     await prisma.featureFlag.upsert({
@@ -235,6 +235,7 @@ async function main() {
     { id: "plan_starter_001", name: "Starter", slug: "starter", description: "For small clubs getting started", priceMonthlyPence: 2500, trialDays: 30, maxMembers: 50, maxGreens: 2, includedStreamingTier: "NONE" as const, featureFlags: { messaging: true, events: true }, sortOrder: 1 },
     { id: "plan_standard_001", name: "Standard", slug: "standard", description: "For established clubs with active membership", priceMonthlyPence: 5000, trialDays: 30, maxMembers: 150, maxGreens: 4, includedStreamingTier: "BRONZE" as const, featureFlags: { messaging: true, events: true, publicEvents: true, publicAvailability: true, liveStreaming: true }, sortOrder: 2 },
     { id: "plan_premium_001", name: "Premium", slug: "premium", description: "For large clubs wanting the full platform", priceMonthlyPence: 10000, trialDays: 30, maxMembers: 500, maxGreens: 10, includedStreamingTier: "GOLD" as const, featureFlags: { messaging: true, events: true, publicEvents: true, publicAvailability: true, liveStreaming: true, analytics: true }, sortOrder: 3 },
+    { id: "plan_charity_001", name: "Charity Admin", slug: "charity-admin", description: "For registered charities and CIOs using funding and governance tools only", priceMonthlyPence: 2000, trialDays: 30, maxMembers: 200, maxGreens: 0, includedStreamingTier: "NONE" as const, featureFlags: { messaging: true, events: true, funding: true, charity: true }, sortOrder: 4 },
   ];
   for (const plan of plans) {
     await prisma.platformPlan.upsert({

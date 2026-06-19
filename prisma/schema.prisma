@@ -29,6 +29,7 @@ model Tenant {
   organisationType          OrganisationType?
   locality                  String?
   country                   Country                  @default(OTHER)
+  vertical                  Vertical                 @default(BOWLS)
   agentMetrics              AgentConfidenceMetrics[]
   agentConfigs              AgentConfig[]
   agentDecisions            AgentDecision[]
@@ -1355,6 +1356,15 @@ enum TenantStatus {
 enum Country {
   GB
   NI
+  OTHER
+}
+
+enum Vertical {
+  BOWLS
+  GOLF
+  CRICKET
+  MULTI_SPORT
+  CHARITY_ADMIN
   OTHER
 }
 

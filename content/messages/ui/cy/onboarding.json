@@ -1,11 +1,11 @@
 {
   "loading": "[cy] Loading…",
   "previewBanner": "[cy] Preview only — not yet published.",
-  "previewBannerHint": "[cy] Members can't see your club until you press Go live in the final chapter.",
-  "header": "[cy] Setting up your club",
+  "previewBannerHint": "[cy] Members can't see your organisation until you press Go live in the final chapter.",
+  "header": "[cy] Setting up your organisation",
   "saveAndExit": "[cy] Save & exit",
   "chapters": {
-    "about": "[cy] About your club",
+    "about": "[cy] About your organisation",
     "organisation": "[cy] Your organisation",
     "where": "[cy] Where you are",
     "hours": "[cy] When you're open",

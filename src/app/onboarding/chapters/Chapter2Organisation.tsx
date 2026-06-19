@@ -18,6 +18,17 @@ type OrgType =
   | "OTHER"
   | "NOT_CONSTITUTED";
 
+type VerticalValue = "BOWLS" | "GOLF" | "CRICKET" | "MULTI_SPORT" | "CHARITY_ADMIN" | "OTHER";
+
+const VERTICALS: Array<{ value: VerticalValue; label: string; desc: string }> = [
+  { value: "BOWLS", label: "Bowls club", desc: "Lawn bowls, indoor bowls, or crown green." },
+  { value: "GOLF", label: "Golf club", desc: "Golf course, driving range, or golf society." },
+  { value: "CRICKET", label: "Cricket club", desc: "Any cricket club or ground." },
+  { value: "MULTI_SPORT", label: "Multi-sport / leisure", desc: "Mixed-sport facility, sports centre, or leisure trust." },
+  { value: "CHARITY_ADMIN", label: "Charity — admin & funding only", desc: "You use the platform for charity governance, grant applications, and accounts — no facility bookings." },
+  { value: "OTHER", label: "Other", desc: "Something else — tell us via support." },
+];
+
 const ORG_TYPES: Array<{
   value: OrgType;
   label: string;
@@ -102,7 +113,8 @@ export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterPro
   const t = useTranslations("onboarding");
   const [country, setCountry] = useState<Country>("GB");
   const [orgType, setOrgType] = useState<OrgType | "">("");
-  const [yearEndMonth, setYearEndMonth] = useState(3); // March is most common UK club FY end
+  const [vertical, setVertical] = useState<VerticalValue>("BOWLS");
+  const [yearEndMonth, setYearEndMonth] = useState(3);
   const [yearEndDay, setYearEndDay] = useState(31);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -115,6 +127,7 @@ export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterPro
       .then((t) => {
         if (t.country) setCountry(t.country);
         if (t.organisationType) setOrgType(t.organisationType);
+        if (t.vertical) setVertical(t.vertical as VerticalValue);
         if (typeof t.financialYearEndMonth === "number") setYearEndMonth(t.financialYearEndMonth);
         if (typeof t.financialYearEndDay === "number") setYearEndDay(t.financialYearEndDay);
         setLoaded(true);
@@ -135,6 +148,7 @@ export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterPro
         organisationType: orgType,
         financialYearEndMonth: yearEndMonth,
         financialYearEndDay: yearEndDay,
+        vertical,
       }),
     });
     setBusy(false);
@@ -167,11 +181,38 @@ export default function Chapter2Organisation({ tenantId, onAdvance }: ChapterPro
   return (
     <ChapterShell
       title={t("chapters.organisation")}
-      intro="A few KYC questions so we can tailor the platform — accounts features, advice, and reporting periods all flow from here."
+      intro="A few questions to tailor the platform — accounts features, advice, and reporting periods all flow from here."
       onSubmit={submit}
       busy={busy}
     >
-      <Field label="Where is your club based?" hint="Determines which jurisdiction-specific features are available.">
+      {/* Vertical (capability preset) — asked first so downstream chapters adapt */}
+      <Field label="What will you use the platform for?" hint="This sets which capabilities are turned on. You can adjust individual features later.">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {VERTICALS.map((v) => (
+            <label
+              key={v.value}
+              className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer ${
+                vertical === v.value ? "border-emerald-600 bg-emerald-50" : "border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <input
+                type="radio"
+                name="vertical"
+                value={v.value}
+                checked={vertical === v.value}
+                onChange={() => setVertical(v.value)}
+                className="mt-0.5 text-emerald-600"
+              />
+              <span>
+                <span className="block font-medium text-sm">{v.label}</span>
+                <span className="block text-xs text-gray-500">{v.desc}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </Field>
+
+      <Field label="Where is your organisation based?" hint="Determines which jurisdiction-specific features are available.">
         <div className="flex gap-3 flex-wrap">
           {(["GB", "NI", "OTHER"] as Country[]).map((c) => (
             <label

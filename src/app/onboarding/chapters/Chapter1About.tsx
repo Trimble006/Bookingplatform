@@ -142,7 +142,7 @@ export default function Chapter1About({ tenantId, onAdvance }: ChapterProps) {
       onSubmit={submit}
       busy={busy}
     >
-      <Field label="Club name">
+      <Field label="Organisation name">
         <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required />
       </Field>
       <Field

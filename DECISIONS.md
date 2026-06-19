@@ -1,6 +1,36 @@
 # Decisions Log — BookingPlatform
 
 
+## 2026-06-19 — Multi-vertical platform pivot: modular services for non-bowling orgs (`#modular-services`)
+
+**Status**: decided / implementing
+
+**Context**: Interest from UK-registered CIOs wanting charity governance + funding tools with no bowling facility. Separately, interest from golf and cricket clubs where the same groundskeeping / maintenance workflow applies but "greens" and "rinks" are wrong vocabulary. Led to a re-examination of what the platform's core is: bookings and maintenance are *generic capabilities over facilities*, not bowling-specific. The Vision ("for bowling clubs worldwide") was also too narrow.
+
+**Decision / outcome**:
+
+1. **Two-axis modularisation.** Axis A (now): make bookings and maintenance toggleable capabilities, like charity and funding already are. Add a `Vertical` enum (BOWLS, GOLF, CRICKET, MULTI_SPORT, CHARITY_ADMIN, OTHER) as a preset that seeds capability flags; flags remain the source of truth. Axis B (deferred): generalise domain vocabulary (Green → Facility, Rink → Resource) — ~1,100 LoC change, own tag `#facility-generalisation`, gated on golf/cricket needing real bookings.
+
+2. **`bookings` feature flag** added as the missing off-switch for the booking capability. `agent` flag (maintenance) already existed but was mandatory; now conditional on vertical. CHARITY_ADMIN vertical turns both off and ensures `funding` is on.
+
+3. **Dashboard nav gated on flags.** Bookings / Greens / Booking Admin behind `bookings`; Maintenance / Agents behind `agent`. Previously hardcoded for all tenants.
+
+4. **Adaptive onboarding wizard.** Chapter 2 (Organisation) gains a vertical selector. Greens chapter (5) is automatically skipped when `bookings` is off; go-live blocker list excludes it dynamically. Knowledge chapter (6) adapts prompts for non-bowling verticals. Chapter 7 (Features) "agent — always on" display is conditional.
+
+5. **Charity Admin `PlatformPlan` seeded** (£20/mo, maxGreens=0, featureFlags bundle: messaging+events+funding+charity). Plan card in onboarding hides the greens limit when maxGreens=0.
+
+6. **Branding neutralised** on key shared surfaces: onboarding header + chapter titles say "organisation" not "club"; sidebar title updated; public page booking widgets gated on `bookings` flag.
+
+**Rationale**: Golf/cricket clubs have the same maintenance workflow as bowls clubs — the same groundsman might maintain all three. Splitting "booking" off as a capability flag costs very little and cleanly unblocks pure-admin charities without touching the facility domain model. The 2-axis split defers the expensive vocabulary rework until there's a real vertical that needs it.
+
+**Rejected alternatives**:
+- Flags-only (no `vertical` enum): rejected — no clean place to hang per-vertical vocabulary defaults, harder to provision sensible defaults at approval.
+- New `PlatformFee` model: rejected — `PlatformPlan` is already a dedicated fee model separate from streaming tiers and per-booking payments. Duplicating it would create divergence.
+- Pulling facility generalisation forward: rejected — ~1,100 LoC (~65% structural), not needed for any immediately interested vertical.
+- Hide booking nav when no greens exist: rejected — too implicit, fragile, confusing for admins mid-onboarding.
+
+---
+
 ## 2026-06-17 — ML no-show prediction feature: area selection, architecture, and planted-bug strategy (`#ml-noshow`)
 
 **Status**: shipped (Phases 0–4 complete)

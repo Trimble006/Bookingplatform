@@ -125,6 +125,8 @@ export default async function PublicClubPage({ params }: Params) {
 
   // Check if availability is public
   const availabilityOn = await isFeatureEnabled(tenant.id, "publicAvailability");
+  // Check if bookings capability is enabled for this org
+  const bookingsOn = await isFeatureEnabled(tenant.id, "bookings");
 
   return (
     <main className="min-h-screen">
@@ -149,12 +151,19 @@ export default async function PublicClubPage({ params }: Params) {
       })}
 
       {/* Member widgets — bookings, notifications, quick book */}
-      {isAuthenticated && (
+      {isAuthenticated && bookingsOn && (
         <section className="max-w-6xl mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <UpcomingBookings />
             <NotificationPreview />
             <QuickBookButton />
+          </div>
+        </section>
+      )}
+      {isAuthenticated && !bookingsOn && (
+        <section className="max-w-6xl mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <NotificationPreview />
           </div>
         </section>
       )}

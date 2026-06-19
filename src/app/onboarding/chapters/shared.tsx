@@ -9,6 +9,7 @@ export type ChapterProps = {
   onAdvance: () => void | Promise<void>;
   onGoTo: (chapter: number) => void;
   reload: () => Promise<void>;
+  vertical?: string | null;
 };
 
 export function ChapterShell({

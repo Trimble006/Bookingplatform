@@ -22,6 +22,7 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Next
 
+- `#modular-services` (M) — multi-vertical, capability-modular platform: `Vertical` enum preset, `bookings` flag, adaptive onboarding wizard, capability-gated nav, Charity Admin plan, branding neutralisation. Unblocks UK CIOs and non-bowling orgs. **Implementing now.** Plan: session notes + `DECISIONS.md` 2026-06-19.
 - `#i18n` (L) — `next-intl` integration, tenant-locale-driven translations
   (dashboard + public club pages), Welsh (cy) first. Phase 1 (infra) shipped;
   string extraction (Phase 2–3) + Welsh translations (Phase 4) + public pages
@@ -39,6 +40,7 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Later
 
+- `#facility-generalisation` (L) — generalise "Green / Rink" domain vocabulary to "Facility / Resource" with a `facilityType` discriminator, enabling golf/cricket real bookings. ~1,100 LoC, ~65% structural. Gated on a vertical actually needing real bookings. See `DECISIONS.md` 2026-06-19.
 - `#site-health` (L) — modular Site Advisor + Platform Health agents,
   content onboarding gate, benchmarks utility. (Phase 12.)
 - `#settings-lifecycle` (M) — tenant `/dashboard/settings` hub (branding,

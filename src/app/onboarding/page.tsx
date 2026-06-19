@@ -60,11 +60,31 @@ function OnboardingPageInner() {
   const stepParam = params.get("step");
   const [progress, setProgress] = useState<Progress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bookingsEnabled, setBookingsEnabled] = useState(true);
+  const [vertical, setVertical] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/onboarding/progress");
-    if (res.ok) setProgress(await res.json());
+    if (res.ok) {
+      const p = await res.json();
+      setProgress(p);
+      // Fetch tenant flags + vertical after we know the tenantId
+      if (p.tenantId) {
+        const [flagsRes, tenantRes] = await Promise.all([
+          fetch("/api/features"),
+          fetch(`/api/admin/tenants/${p.tenantId}`),
+        ]);
+        if (flagsRes.ok) {
+          const flags = await flagsRes.json();
+          setBookingsEnabled(!!(flags && flags.bookings));
+        }
+        if (tenantRes.ok) {
+          const t = await tenantRes.json();
+          if (t.vertical) setVertical(t.vertical);
+        }
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -92,7 +112,19 @@ function OnboardingPageInner() {
       body: JSON.stringify({ chapter, markComplete: true }),
     });
     await load();
-    if (chapter < FINAL_CHAPTER) goTo(chapter + 1);
+    let next = chapter + 1;
+    // Skip greens chapter (5) when bookings capability is off
+    if (next === 5 && !bookingsEnabled) {
+      // Auto-mark ch5 complete so go-live blocker doesn't fire
+      await fetch("/api/onboarding/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapter: 5, markComplete: true }),
+      });
+      await load();
+      next = 6;
+    }
+    if (chapter < FINAL_CHAPTER) goTo(next);
     else goTo(FINAL_CHAPTER);
   };
 
@@ -118,6 +150,11 @@ function OnboardingPageInner() {
   const sessionTenantId = session?.user ? (session.user as { tenantId?: string }).tenantId : undefined;
   const tenantId = progress.tenantId ?? sessionTenantId;
 
+  // Filter the chapter stepper: hide the greens chapter when bookings is off
+  const visibleChapters = bookingsEnabled
+    ? CHAPTERS
+    : CHAPTERS.filter((c) => c.num !== 5);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {!progress.isComplete && (
@@ -139,7 +176,7 @@ function OnboardingPageInner() {
         </div>
         <div className="max-w-4xl mx-auto px-6 pb-4">
           <ol className="flex items-center gap-1 overflow-x-auto">
-            {CHAPTERS.map((c) => {
+            {visibleChapters.map((c) => {
               const done = progress.completedChapters.includes(c.num);
               const current = c.num === currentChapter;
               return (
@@ -172,6 +209,7 @@ function OnboardingPageInner() {
           onAdvance={() => advance(currentChapter)}
           onGoTo={goTo}
           reload={load}
+          vertical={vertical}
         />
       </main>
     </div>

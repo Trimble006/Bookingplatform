@@ -82,7 +82,7 @@ export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterPro
   return (
     <ChapterShell
       title={t("chapters.subscription")}
-      intro="Choose a plan that fits your club. You can change plan later by contacting the platform team."
+      intro="Choose a plan that fits your organisation. You can change plan later by contacting the platform team."
     >
       {/* Plan Cards */}
       {plans.length > 0 && !attestedAt && (
@@ -111,7 +111,9 @@ export default function Chapter8Subscription({ tenantId, onAdvance }: ChapterPro
               )}
               <ul className="mt-3 space-y-1 text-xs text-gray-600">
                 <li>{plan.maxMembers === 0 ? "Unlimited" : plan.maxMembers} members</li>
-                <li>{plan.maxGreens === 0 ? "Unlimited" : plan.maxGreens} greens</li>
+                {plan.maxGreens > 0 && (
+                  <li>{plan.maxGreens} greens</li>
+                )}
                 <li>Streaming: {plan.includedStreamingTier === "NONE" ? "Not included" : plan.includedStreamingTier}</li>
               </ul>
             </button>
