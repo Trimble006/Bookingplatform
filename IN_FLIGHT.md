@@ -21,7 +21,6 @@ scratch.
 
 ## Active threads
 
-- `#modular-services` — multi-vertical capability-modular platform: Vertical enum, bookings flag, adaptive wizard, cap-gated nav, Charity Admin plan, branding. Phases 0–4 implementing. Session: `bp: #modular-services`.
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`.
 
 <!-- Format:
@@ -39,6 +38,7 @@ scratch.
 
 ## Recently landed
 
+- 2026-06-19 — `#modular-services` shipped: Vertical enum + bookings flag, adaptive wizard (ch5 skippable), cap-gated nav, Charity Admin plan, branding neutralised. See `DECISIONS.md`.
 - 2026-06-18 — `#modelops` fully shipped (extends `#ml-noshow`): prediction persistence root fix, MlModelVersion/MlFeatureDefinition/MlDriftCheck schema, champion/challenger retrain gate, drift check, feature registry (enroll/retire), model-health dashboard, operator runbook. Bug #15 resolved. See `DECISIONS.md`.
 - 2026-06-17 — `#ml-noshow` Phases 0–4 shipped: Python sidecar, NoShowRiskAgent, eval script, 26 pytest + 8 jest. See `DECISIONS.md`.
 - 2026-06-16 — `#business-insights` fully shipped: 9-domain KPI platform admin dashboard + tenant analytics phases A–C. All branches merged + deleted.
