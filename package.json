@@ -22,6 +22,8 @@
     "ml:retrain": "node scripts/run-ml.mjs retrain",
     "ml:drift": "node scripts/run-ml.mjs drift",
     "eval:noshow": "npx tsx scripts/eval-noshow.ts",
+    "unleash:up": "docker compose up -d postgres unleash",
+    "unleash:logs": "docker compose logs -f unleash",
     "check:i18n": "scripts/check-i18n-coverage.sh",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch"
@@ -46,7 +48,8 @@
     "recharts": "^3.8.1",
     "remark-directive": "^4.0.0",
     "remark-gfm": "^4.0.1",
-    "unist-util-visit": "^5.1.0"
+    "unist-util-visit": "^5.1.0",
+    "unleash-client": "^6.11.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",

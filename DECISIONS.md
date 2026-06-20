@@ -1,6 +1,81 @@
 # Decisions Log — BookingPlatform
 
 
+## 2026-06-20 — Feature management via self-hosted Unleash (`#feature-management`)
+
+**Status**: decided / implementing
+
+**Context**: The flag system is a per-tenant boolean table (`FeatureFlag`) read on
+every call with no targeting, no phased rollout, and no central control plane. As
+the platform took on multi-vertical provisioning (`#modular-services`) and a
+subscription model (`#billing`), the need for platform-admin-driven targeting
+(specific users, role cohorts, % rollout, whole tenants) outgrew a boolean column.
+A Plan-mode session (2026-06-19) evaluated tooling and agreed a design; this
+resumes it for implementation.
+
+**Decision / outcome**:
+
+1. **Self-host Unleash** (`unleashorg/unleash-server`, Postgres-native) as the flag
+   control plane behind the existing `isFeatureEnabled` seam. Separate `unleash`
+   database on the same Postgres server (one engine, one backup). The Node SDK
+   evaluates flags LOCALLY from an in-memory copy + writes an on-disk fs-cache, so
+   the flag tool is never in the request path and survives Unleash being down.
+
+2. **Three-way flag taxonomy** (revised from the original binary split after
+   `#modular-services` landed a capability-preset layer the same day):
+   (1) tenant-togglable → Postgres (tenant self-serve);
+   (2) capability/preset → Postgres (onboarding/plan-tier written, per-tenant
+   provisioning: `bookings`/`agent`/`funding`/`charity` + tier `liveStreaming`/
+   `analytics`);
+   (3) platform rollout → Unleash. `isFeatureEnabled` becomes a router: keys in the
+   Postgres-owned set (1 ∪ 2) read Postgres unchanged; platform keys read Unleash,
+   with a Postgres fallback while Unleash is unconfigured (so Phase 1 is a
+   zero-behaviour-change seam). Migration moves category 3 only.
+
+3. **`src/lib/flags/keys.ts` is the frozen shared taxonomy** that `#billing`
+   consumes rather than redefining (its plan tiers write flag bundles).
+
+4. **Targeting**: 5 role cohorts = the `Role` enum exactly, via the `role` context
+   field (not permission groups — guest and platform-admin don't fit the
+   tenant-scoped group model). Custom permission groups = a separate additive axis
+   by stable `grp:<cuid>` token. Management plane = platform-admin only, via the
+   Unleash UI; tenant-admins keep self-serving the togglable subset in Postgres.
+
+5. **`effectiveUserId` seam** in the context builder: session user id when not
+   impersonating; omitted under today's tenant+role impersonation; the impersonated
+   user's id once `#impersonation-user-scope` lands (zero rework). `realRole` is
+   never emitted into targeting (audit only).
+
+**Rationale**: Unleash is the only mainstream OSS flag tool that is Postgres-native
+(no second datastore) with built-in local evaluation + fail-static — so it folds
+into the existing one-Postgres operational story. The three-way taxonomy is forced
+by `#modular-services`: provisioning flags are WRITTEN to Postgres by onboarding,
+so routing their READS to Unleash would silently drop a tenant's capability bundle.
+Keeping them Postgres-owned (Q1 → A) avoids rewriting onboarding/billing writers
+against the Unleash Admin API for no user-facing gain.
+
+**Rejected alternatives**:
+- **GrowthBook**: hard MongoDB dependency, no Postgres option, no built-in
+  fail-static — would add a second datastore purely for flags.
+- **Flagsmith**: remote-evaluation by default, offline handlers still maturing —
+  weaker fit for the in-request-path-free, fail-static requirement.
+- **Move provisioning flags to Unleash too** (Q1 → B): rejected — requires
+  rewriting the onboarding vertical preset + plan-tier provisioning to call the
+  Unleash Admin API, with read/write divergence risk and no targeting benefit (these
+  flags are per-tenant state, not rollout knobs).
+- **Defer all migration / Unleash for new flags only** (Q1 → C): rejected — leaves
+  the existing platform flags without the targeting the thread exists to deliver.
+- **Permission-group targeting for cohorts**: rejected — guest (unauth, no
+  membership) and platform-admin (cross-tenant) don't fit the tenant-scoped,
+  opt-in group model; the `Role` enum maps the 5 cohorts cleanly.
+
+**Notes**: Phase 0 (infra scaffolding) + Phase 1 (SDK seam, no behaviour change)
+land 2026-06-20. Phases 2–4 (migration, cutover, targeting, management plane) need a
+live Unleash with tokens — staged in `parked-plans/feature-management.md`.
+User-scoped impersonation preview is a known gap → separate thread
+`#impersonation-user-scope`.
+
+
 ## 2026-06-19 — Multi-vertical platform pivot: modular services for non-bowling orgs (`#modular-services`)
 
 **Status**: decided / implementing

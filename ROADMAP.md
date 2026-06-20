@@ -14,6 +14,11 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Now
 
+- `#feature-management` (M) — self-host Unleash (Postgres-native) as the flag
+  control plane behind the `isFeatureEnabled` seam. Three-way taxonomy:
+  tenant-togglable + capability/preset flags stay in Postgres, platform rollout
+  flags move to Unleash (user/role/tenant/% targeting via the Unleash UI).
+  Fail-static via the SDK's fs-cache. Plan: `parked-plans/feature-management.md`.
 - ~~`#ml-noshow` / `#modelops`~~ — ML no-show prediction + full ModelOps lifecycle shipped. See `IN_FLIGHT.md`.
 - `#business-insights` (M) — tenant-facing business analytics dashboard:
   bookings over time, revenue trend, occupancy, cancellation rate, peak

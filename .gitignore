@@ -14,3 +14,8 @@ tsconfig.tsbuildinfo
 .cache-loader/
 
 seed-npm.log
+
+# ML sidecar — generated artifacts and Python cache
+ml/artifacts/
+ml/**/__pycache__/
+ml/**/*.pyc

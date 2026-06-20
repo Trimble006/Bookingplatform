@@ -31,6 +31,45 @@ services:
       timeout: 5s
       retries: 3
 
+  # Feature-flag control plane (#feature-management). Shares the Postgres
+  # server but uses a SEPARATE `unleash` database (one engine, one backup;
+  # Unleash migrations stay isolated from Prisma). The Next.js app talks to
+  # the Admin/Client API on :4242 via the unleash-client SDK, which evaluates
+  # flags locally — Unleash is a control plane, never in the request path.
+  unleash-db-init:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGPASSWORD: booking
+    depends_on:
+      - postgres
+    entrypoint:
+      - sh
+      - -c
+      - |
+        until pg_isready -h postgres -U booking; do sleep 1; done
+        psql -h postgres -U booking -tc "SELECT 1 FROM pg_database WHERE datname = 'unleash'" \
+          | grep -q 1 || psql -h postgres -U booking -c "CREATE DATABASE unleash"
+
+  unleash:
+    image: unleashorg/unleash-server:6
+    restart: unless-stopped
+    ports:
+      - "4242:4242"
+    environment:
+      DATABASE_URL: postgresql://booking:booking@postgres:5432/unleash
+      DATABASE_SSL: "false"
+      # Image ships a recent client; skip the version-check phone-home in dev.
+      CHECK_VERSION: "false"
+    depends_on:
+      - postgres
+      - unleash-db-init
+    healthcheck:
+      test: ["CMD", "/bin/sh", "-c", "wget -qO- http://localhost:4242/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   ml_artifacts:

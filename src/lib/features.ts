@@ -1,14 +1,70 @@
 import { prisma } from "@/lib/prisma";
+import { getEffectiveRole } from "@/lib/roles";
+import { isPlatformFlag } from "@/lib/flags/keys";
+import { getUnleash } from "@/lib/flags/unleash";
+import { buildContext } from "@/lib/flags/context";
+import type { AppSession } from "@/lib/api-utils";
 
-/** Check if a feature flag is enabled for a tenant. */
-export async function isFeatureEnabled(tenantId: string, key: string): Promise<boolean> {
+/** Read a tenant's boolean flag from Postgres (default false). */
+async function readPostgresFlag(tenantId: string, key: string): Promise<boolean> {
   const flag = await prisma.featureFlag.findUnique({
     where: { tenantId_key: { tenantId, key } },
   });
   return flag?.enabled ?? false;
 }
 
-/** Set a feature flag for a tenant (upsert). */
+/**
+ * Check if a feature flag is enabled for a tenant.
+ *
+ * Router (#feature-management): PLATFORM flags resolve from Unleash when it is
+ * configured; tenant-togglable, capability/preset, and unknown keys resolve from
+ * Postgres. While Unleash is unconfigured (pre-cutover / dev / tests) every key
+ * reads Postgres, so behaviour is unchanged.
+ *
+ * This signature has only `tenantId` — it evaluates with per-tenant stickiness
+ * (a synthetic `tenant:<id>` userId) so percentage rollouts bucket deterministically
+ * per tenant. For per-user targeting use {@link flagIsOn}.
+ */
+export async function isFeatureEnabled(tenantId: string, key: string): Promise<boolean> {
+  if (isPlatformFlag(key)) {
+    const unleash = getUnleash();
+    if (unleash) {
+      return unleash.isEnabled(key, {
+        userId: `tenant:${tenantId}`,
+        properties: { tenantId },
+      });
+    }
+  }
+  return readPostgresFlag(tenantId, key);
+}
+
+/**
+ * Session-aware flag check for per-user / role / group / rollout targeting on
+ * PLATFORM flags. Falls back to the tenant's Postgres boolean for Postgres-owned
+ * keys or when Unleash is unconfigured.
+ */
+export async function flagIsOn(
+  key: string,
+  session: AppSession | null,
+  req?: Request,
+): Promise<boolean> {
+  if (isPlatformFlag(key)) {
+    const unleash = getUnleash();
+    if (unleash) {
+      const context = await buildContext(session, req);
+      return unleash.isEnabled(key, context);
+    }
+  }
+
+  // Postgres-owned flag, or Unleash unconfigured: read the tenant boolean.
+  if (!session) return false;
+  const eff = getEffectiveRole(session.user);
+  const tenantId = eff.tenantId ?? session.user.tenantId ?? null;
+  if (!tenantId) return false;
+  return readPostgresFlag(tenantId, key);
+}
+
+/** Set a feature flag for a tenant (upsert). Postgres-owned flags only. */
 export async function setFeatureFlag(tenantId: string, key: string, enabled: boolean) {
   return prisma.featureFlag.upsert({
     where: { tenantId_key: { tenantId, key } },
@@ -21,3 +77,4 @@ export async function setFeatureFlag(tenantId: string, key: string, enabled: boo
 export async function getTenantFlags(tenantId: string) {
   return prisma.featureFlag.findMany({ where: { tenantId } });
 }
+

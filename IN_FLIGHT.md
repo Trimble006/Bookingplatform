@@ -21,6 +21,7 @@ scratch.
 
 ## Active threads
 
+- `#feature-management` — self-host Unleash as the flag control plane behind the `isFeatureEnabled` seam; hybrid routing (Postgres for tenant-togglable + capability/preset flags, Unleash for platform rollout flags). Phase 0 (infra scaffolding) + Phase 1 (SDK seam, no behaviour change) landing; Phases 2–4 (migration, cutover, targeting) need a live Unleash. Plan: `parked-plans/feature-management.md`. Session: `bp: #feature-management`.
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`.
 
 <!-- Format:
