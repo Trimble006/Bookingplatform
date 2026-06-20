@@ -21,7 +21,7 @@ scratch.
 
 ## Active threads
 
-- `#feature-management` — self-host Unleash as the flag control plane behind the `isFeatureEnabled` seam; hybrid routing (Postgres for tenant-togglable + capability/preset flags, Unleash for platform rollout flags). Phases 0–2 shipped (SDK seam, live Unleash, 9 flags migrated + cut over, parity 18/18). Phase 3 in progress: nav gating now routes category-3 through Unleash (`/api/features` + `evaluatePlatformFlags`), admin flags route de-duped against the taxonomy. Remaining: `page.tsx` publicContent direct-query → router; Unleash UI targeting recipes (incl. `grp:<cuid>` spike); Phase 4 runbook. Plan: `parked-plans/feature-management.md`. Session: `bp: #feature-management`.
+- `#feature-management` — self-host Unleash as the flag control plane behind the `isFeatureEnabled` seam; hybrid routing (Postgres for tenant-togglable + capability/preset flags, Unleash for platform rollout flags). Phases 0–3 shipped (SDK seam, live Unleash, 9 flags migrated + cut over, parity 18/18; nav gating + router-aware `page.tsx`; admin route de-duped; targeting recipes verified incl. the `grp:<cuid>` STR_CONTAINS spike 7/7 — collision-safe on fixed-length cuids). Remaining: Phase 4 runbook + retire the parked-plan. Plan: `parked-plans/feature-management.md`. Session: `bp: #feature-management`.
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`.
 
 <!-- Format:

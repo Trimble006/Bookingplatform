@@ -132,9 +132,9 @@ repo. Remaining: `src/app/page.tsx:26` reads `FeatureFlag` directly and won't se
 Unleash post-cutover — a Phase 3 migration item.
 
 
-## 2026-06-20 — Feature management Phase 3 (partial): nav gating + targeting seam (`#feature-management`)
+## 2026-06-20 — Feature management Phase 3: nav gating + router-aware homepage + targeting recipes (`#feature-management`)
 
-**Status**: decided / partially shipped (extends the Phase 2 entry above)
+**Status**: decided / shipped (extends the Phase 2 entry above)
 
 **Context**: Post-cutover, anything still reading category-3 flags straight from
 Postgres shows stale state. The dashboard nav was one such reader. Phase 3 also has to
@@ -173,11 +173,26 @@ could be read) would have mis-targeted tenant-scoped gates like federation. Eval
 once per nav load (not once per flag) keeps the group-membership query from being
 amplified ×9.
 
-**Notes**: Still open in Phase 3 — `src/app/page.tsx` homepage `publicContent` filter
-(direct SQL subquery; needs a fetch-then-SDK-eval restructure, deferred as low-risk
-while Postgres rows remain) and the Unleash UI targeting recipes (live experimentation,
-incl. the `grp:<cuid>` STR_CONTAINS spike). Phase 4 (runbook + retire the parked-plan)
-unchanged.
+**Notes**: Closed out the two items left open earlier in the phase. (a) `src/app/
+page.tsx` homepage was restructured from a direct SQL `featureFlag` subquery (which
+mixed all three public flags) to fetching active tenants with their Postgres-owned
+flags and SDK-evaluating `publicContent` per tenant via `isFeatureEnabled`; smoke =
+live homepage 200 with Browse Clubs present. (b) The Unleash UI targeting recipes were
+verified against the live instance — `tenantId IN` (already proven by the Phase 2
+migration), `role IN` cohorts (same operator, registered field), `userWithId` allow/
+deny, `flexibleRollout` %, and custom groups via `groups STR_CONTAINS grp:<cuid>`.
+
+**Group-targeting spike conclusion (non-obvious, worth recording)**: a throwaway script
+(run then deleted, not committed) created temp `STR_CONTAINS` features on live Unleash
+and evaluated 7 membership/collision cases through the real SDK — all 7 as expected. The
+load-bearing finding: `groups STR_CONTAINS grp:<cuid>` over a space-delimited token list
+is collision-safe **only because `Group.id` is `@default(cuid())` = fixed 25-char**, so
+no token can be a substring of another. The spike's control case proved the hazard is
+real for the variable-length case (a deliberately truncated 12-char prefix false-matched
+the full token). **Constraint for the future: do not switch group ids to a
+variable-length scheme without revisiting this** — the fallback would be a small custom
+strategy that splits on the delimiter. No fallback needed for v1. Only Phase 4 (runbook +
+retire the parked-plan) remains.
 
 
 ## 2026-06-19 — Multi-vertical platform pivot: modular services for non-bowling orgs (`#modular-services`)

@@ -4,8 +4,10 @@
 revised + implementation started 2026-06-20. **Phases 0–2 shipped**: infra
 scaffolding, server SDK seam (no behaviour change), live Unleash stood up, the 9
 category-3 platform flags migrated + cut over, parity proven 18/18, test suite kept
-hermetic. Phase 3 (targeting + management plane) and Phase 4 (ops/docs/ledger)
-remain.
+hermetic. **Phase 3 (targeting + management plane) shipped** 2026-06-20: nav gating
+routed through Unleash, homepage made router-aware, admin route reconciled, and the
+Unleash UI targeting recipes verified (group STR_CONTAINS spike 7/7). Only Phase 4
+(ops/docs/ledger) remains.
 
 ## Why here
 
@@ -118,7 +120,7 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
 - Deferred: retiring category-3 rows in Postgres (optional cleanup migration) — left
   in place so cutover stays reversible by unsetting the env; revisit in Phase 4.
 
-### Phase 3 — Targeting + management plane (M) — PARTIAL 2026-06-20
+### Phase 3 — Targeting + management plane (M) — DONE 2026-06-20
 - ✅ Nav gating routed through Unleash. `/api/features` (which `dashboard/layout.tsx`
   consumes) now overlays category-3 keys via the new `evaluatePlatformFlags(session,
   req, PLATFORM_FLAGS)` router helper — so `federation` / `businessInsights` nav links
@@ -144,11 +146,29 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
   200 with Browse Clubs present. Accepted tradeoff: in the Unleash-unconfigured
   fallback this is N per-tenant Postgres reads instead of one `some` filter — fine
   for the public directory's small active-tenant bound.
-- ⏳ TODO Unleash UI recipes: user allow/deny via `userId`; tenant lists via `tenantId`
-  IN; % via `flexibleRollout` (stickiness `userId` or custom `tenantId`); role cohorts =
-  equality on `role`; dogfooding = `role = PLATFORM_ADMIN`; custom groups = STR_CONTAINS
-  on `grp:<cuid>` (THE SPIKE — confirm no substring collisions on the delimited token
-  list; fallback = a small custom strategy). Live experimentation, not code.
+- ✅ Unleash UI targeting recipes verified (2026-06-20). Each is a `default` strategy
+  with a constraint (or a built-in strategy); platform-admin authors them in the UI:
+  - **Tenant lists** → constraint `tenantId IN (<ids>)`. Proven end-to-end — the whole
+    Phase 2 migration writes exactly this and parity is 18/18.
+  - **Role cohorts** → constraint `role IN (TENANT_ADMIN, …)`; dogfooding = `role IN
+    (PLATFORM_ADMIN)`. Mechanically identical to `tenantId IN` (same operator, the
+    `role` context field is registered), so it inherits the same proof.
+  - **User allow/deny** → built-in `userWithId` strategy, or constraint `userId
+    IN/NOT_IN`. Standard Unleash; `buildContext` emits `userId` (omitted under
+    impersonation by design).
+  - **Percentage** → built-in `flexibleRollout`, stickiness `userId` (per-user) or
+    custom `tenantId` (whole-club bucketing). Standard.
+  - **Custom permission groups** → constraint `groups STR_CONTAINS grp:<cuid>`.
+    **SPIKE DONE — 7/7 against live Unleash** (throwaway script, run then deleted, not
+    committed): full-token membership matches at any position in the space-delimited
+    list; a non-member (`grp:<OTHER>` only) correctly evaluates false — **no
+    cross-token substring collision**. This is safe *because* `Group.id` is
+    `@default(cuid())` = fixed 25-char, so no token can be a substring of another. The
+    spike's truncated-prefix control case *did* false-positive (a 12-char prefix
+    matched the full token), proving the safety rests on fixed-length ids — **if we
+    ever switch group ids to a variable-length scheme, STR_CONTAINS membership must be
+    revisited** (fallback = a small custom strategy splitting on the delimiter). No
+    fallback needed for v1. Cross-ref `DECISIONS.md` 2026-06-20.
 
 ### Phase 4 — Ops, docs, ledger (S)
 - Runbook: Unleash on the same Postgres (separate DB) — one backup; kill-switch
