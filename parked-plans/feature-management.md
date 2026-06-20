@@ -1,13 +1,17 @@
 # Parked plan: Feature Management via self-hosted Unleash (`#feature-management`)
 
-**Status as of 2026-06-20**: in flight. Design agreed 2026-06-19 (Plan mode);
-revised + implementation started 2026-06-20. **Phases 0–2 shipped**: infra
-scaffolding, server SDK seam (no behaviour change), live Unleash stood up, the 9
-category-3 platform flags migrated + cut over, parity proven 18/18, test suite kept
-hermetic. **Phase 3 (targeting + management plane) shipped** 2026-06-20: nav gating
-routed through Unleash, homepage made router-aware, admin route reconciled, and the
-Unleash UI targeting recipes verified (group STR_CONTAINS spike 7/7). Only Phase 4
-(ops/docs/ledger) remains.
+**Status**: shipped 2026-06-20 — all phases (0–4) complete. See `DECISIONS.md`
+2026-06-20 (4 entries) and the operational successor `docs/unleash-runbook.md`. This
+file is kept (not deleted) for its pivot narrative + three-way-taxonomy derivation,
+which have standalone reference value (parked-plans/README.md sanctions keep-with-
+shipped-header).
+
+**Status as of 2026-06-20**: shipped. Design agreed 2026-06-19 (Plan mode);
+implemented 2026-06-20 across Phases 0–4 — infra + server SDK seam (no behaviour
+change), live Unleash, the 9 category-3 platform flags migrated + cut over (parity
+18/18), nav + homepage router-aware, admin route reconciled, targeting recipes
+verified (group STR_CONTAINS spike 7/7), and the ops runbook landed. Test suite kept
+hermetic. Cutover reversible by unsetting the env.
 
 ## Why here
 
@@ -170,11 +174,17 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
     revisited** (fallback = a small custom strategy splitting on the delimiter). No
     fallback needed for v1. Cross-ref `DECISIONS.md` 2026-06-20.
 
-### Phase 4 — Ops, docs, ledger (S)
-- Runbook: Unleash on the same Postgres (separate DB) — one backup; kill-switch
-  (~15s poll propagation); token rotation; fs-cache restart behaviour.
-- When the thread fully ships: land outcomes in `DECISIONS.md`, move `IN_FLIGHT.md`
-  Active → Recently landed, and delete (or mark shipped) this file.
+### Phase 4 — Ops, docs, ledger (S) — DONE 2026-06-20
+- ✅ Runbook `docs/unleash-runbook.md`: flag taxonomy (which store owns which flag),
+  bring-up, verified targeting recipes, ~15s-poll kill-switch, client-token-vs-PAT
+  split + rotation, migrate/parity scripts, fail-static behaviour, shared-server/
+  separate-DB backup note, cutover reversal, troubleshooting.
+- ✅ `UNLEASH_ADMIN_TOKEN` documented in `.env.example` (ops scripts need it; the app
+  does not).
+- ✅ Ledgers: `DECISIONS.md` Phase 4 entry; `IN_FLIGHT.md` Active → Recently landed;
+  `ROADMAP.md` Now item struck; this file marked shipped (kept for reference value).
+- Deferred (unchanged): optional cleanup migration retiring the shadowed category-3
+  Postgres rows — left in place so cutover stays reversible.
 
 ### Reconcile while here
 - ✅ The admin flags route comment that called `agent` "mandatory/locked" is fixed

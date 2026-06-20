@@ -3,7 +3,7 @@
 
 ## 2026-06-20 — Feature management via self-hosted Unleash (`#feature-management`)
 
-**Status**: decided / implementing
+**Status**: decided / shipped (all phases; see the Phase 2–4 entries below)
 
 **Context**: The flag system is a per-tenant boolean table (`FeatureFlag`) read on
 every call with no targeting, no phased rollout, and no central control plane. As
@@ -193,6 +193,42 @@ the full token). **Constraint for the future: do not switch group ids to a
 variable-length scheme without revisiting this** — the fallback would be a small custom
 strategy that splits on the delimiter. No fallback needed for v1. Only Phase 4 (runbook +
 retire the parked-plan) remains.
+
+
+## 2026-06-20 — Feature management Phase 4: ops runbook + thread complete (`#feature-management`)
+
+**Status**: decided / shipped — closes `#feature-management`
+
+**Context**: Phases 0–3 stood up Unleash, cut the 9 platform flags over, made the
+read surfaces router-aware, and verified the targeting recipes. What remained was
+purely operational: capturing how to run the thing so a future operator (or a cold
+parallel session) isn't reverse-engineering it from `docker-compose.yml` and the SDK
+config.
+
+**Decision / outcome**:
+- Added `docs/unleash-runbook.md` — the operational successor to the parked plan.
+  Covers the flag taxonomy (which store owns which flag — the #1 way to waste an hour
+  is editing the wrong one), bring-up, the verified targeting recipes, the ~15s-poll
+  kill-switch, the client-token-vs-PAT split + rotation, the migrate/parity scripts,
+  fail-static behaviour, the shared-server/separate-DB backup note, and reversing the
+  cutover.
+- Documented `UNLEASH_ADMIN_TOKEN` in `.env.example` — it was undocumented, yet the
+  ops scripts need it (the running app does not). A new operator following the runbook
+  would otherwise hit a missing-token error on `flags:migrate`.
+- Retired `parked-plans/feature-management.md` by marking it **shipped** rather than
+  deleting it: the pivot narrative (`#modular-services` reshaping the taxonomy) and the
+  three-way-taxonomy derivation have standalone reference value the per-phase DECISIONS
+  entries don't fully duplicate (parked-plans/README.md sanctions either).
+
+**Rationale**: A runbook earns its keep only by capturing what the code and compose
+file *can't* say — the taxonomy ownership rule, the fail-**closed** direction on a cold
+cache, the two-token split, and the fixed-length-cuid dependency behind group
+targeting. Those are the load-bearing operational facts; the rest is signposting to
+scripts that already self-document.
+
+**Notes**: No code/behaviour change this phase — docs + ledgers only. Deferred
+(unchanged): the optional cleanup migration to retire the now-shadowed category-3
+Postgres rows, left in place so the cutover stays reversible by unsetting the env.
 
 
 ## 2026-06-19 — Multi-vertical platform pivot: modular services for non-bowling orgs (`#modular-services`)
