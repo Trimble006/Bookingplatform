@@ -132,6 +132,54 @@ repo. Remaining: `src/app/page.tsx:26` reads `FeatureFlag` directly and won't se
 Unleash post-cutover — a Phase 3 migration item.
 
 
+## 2026-06-20 — Feature management Phase 3 (partial): nav gating + targeting seam (`#feature-management`)
+
+**Status**: decided / partially shipped (extends the Phase 2 entry above)
+
+**Context**: Post-cutover, anything still reading category-3 flags straight from
+Postgres shows stale state. The dashboard nav was one such reader. Phase 3 also has to
+decide *which* call sites want session-aware (per-user) targeting vs tenant-level
+evaluation — they are not interchangeable.
+
+**Decision / outcome**:
+
+1. **Nav gating routes category-3 through Unleash.** `/api/features` (consumed by
+   `dashboard/layout.tsx`) was returning raw Postgres rows, so `federation` /
+   `businessInsights` nav links read stale Postgres post-cutover. It now overlays the
+   platform keys via a new `evaluatePlatformFlags(session, req, keys)` router helper.
+
+2. **`evaluatePlatformFlags` builds the Unleash context once** for many keys, rather
+   than calling `flagIsOn` per key (which would rebuild context + re-query group
+   membership each time). It mirrors `flagIsOn`'s Postgres fallback when Unleash is
+   unconfigured, so it's behaviour-preserving pre-cutover.
+
+3. **Session-aware (`flagIsOn` / `evaluatePlatformFlags`) is for surfaces where the
+   *viewer* is the targeting subject; tenant-level (`isFeatureEnabled(tid,key)`) is for
+   whole-tenant capability gates.** Concretely, the federation API routes
+   (`/api/federations/**`) deliberately KEEP `isFeatureEnabled` — federation is a
+   whole-club capability (you don't enable it for one admin but not another in the same
+   tenant), so tenant-level eval with `tenant:<id>` stickiness is the correct semantics.
+   The nav, by contrast, is the current user's own view, so it gets session context.
+
+4. **Admin flags route de-duplicated against the taxonomy.** `/api/admin/tenants/[id]/
+   flags` imported a local `TENANT_TOGGLABLE_FLAGS` Set that duplicated `keys.ts`; it now
+   imports the canonical one so the gate can't drift, and the stale "`agent` is
+   mandatory" comment is corrected (agent is vertical-conditional category-2 since
+   `#modular-services`).
+
+**Rationale**: The viewer-vs-tenant distinction is the load-bearing call here — blindly
+threading `session` into every category-3 site (as "thread session into call sites"
+could be read) would have mis-targeted tenant-scoped gates like federation. Evaluating
+once per nav load (not once per flag) keeps the group-membership query from being
+amplified ×9.
+
+**Notes**: Still open in Phase 3 — `src/app/page.tsx` homepage `publicContent` filter
+(direct SQL subquery; needs a fetch-then-SDK-eval restructure, deferred as low-risk
+while Postgres rows remain) and the Unleash UI targeting recipes (live experimentation,
+incl. the `grp:<cuid>` STR_CONTAINS spike). Phase 4 (runbook + retire the parked-plan)
+unchanged.
+
+
 ## 2026-06-19 — Multi-vertical platform pivot: modular services for non-bowling orgs (`#modular-services`)
 
 **Status**: decided / implementing

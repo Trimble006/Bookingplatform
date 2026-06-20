@@ -15,7 +15,7 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { isFeatureEnabled, flagIsOn } from "@/lib/features";
+import { isFeatureEnabled, flagIsOn, evaluatePlatformFlags } from "@/lib/features";
 import type { AppSession } from "@/lib/api-utils";
 
 const unleashMod = jest.requireMock("@/lib/flags/unleash");
@@ -131,5 +131,61 @@ describe("flagIsOn", () => {
     unleashMod.getUnleash.mockReturnValue(null);
     expect(await flagIsOn("messaging", null)).toBe(false);
     expect(prismaMock.featureFlag.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("evaluatePlatformFlags", () => {
+  test("Unleash configured → builds context once, evaluates each platform key, ignores non-platform keys", async () => {
+    const client = fakeClient(true);
+    unleashMod.getUnleash.mockReturnValue(client);
+    contextMod.buildContext.mockResolvedValue({ userId: "u1", properties: { role: "TENANT_ADMIN" } });
+
+    const result = await evaluatePlatformFlags(adminSession, undefined, [
+      "federation",
+      "businessInsights",
+      "messaging", // non-platform → dropped
+    ]);
+
+    expect(result).toEqual({ federation: true, businessInsights: true });
+    expect(contextMod.buildContext).toHaveBeenCalledTimes(1);
+    expect(client.isEnabled).toHaveBeenCalledTimes(2);
+    expect(client.isEnabled).toHaveBeenCalledWith("federation", { userId: "u1", properties: { role: "TENANT_ADMIN" } });
+    expect(client.isEnabled).toHaveBeenCalledWith("businessInsights", { userId: "u1", properties: { role: "TENANT_ADMIN" } });
+  });
+
+  test("Unleash NOT configured + session → Postgres fallback per platform key on effective tenant", async () => {
+    unleashMod.getUnleash.mockReturnValue(null);
+    setPostgres(true);
+
+    const result = await evaluatePlatformFlags(adminSession, undefined, ["federation", "weather"]);
+
+    expect(result).toEqual({ federation: true, weather: true });
+    expect(contextMod.buildContext).not.toHaveBeenCalled();
+    expect(prismaMock.featureFlag.findUnique).toHaveBeenCalledWith({
+      where: { tenantId_key: { tenantId: "t1", key: "federation" } },
+    });
+    expect(prismaMock.featureFlag.findUnique).toHaveBeenCalledWith({
+      where: { tenantId_key: { tenantId: "t1", key: "weather" } },
+    });
+  });
+
+  test("Unleash NOT configured + no session → all platform keys false, no Postgres reads", async () => {
+    unleashMod.getUnleash.mockReturnValue(null);
+
+    const result = await evaluatePlatformFlags(null, undefined, ["federation", "weather"]);
+
+    expect(result).toEqual({ federation: false, weather: false });
+    expect(prismaMock.featureFlag.findUnique).not.toHaveBeenCalled();
+  });
+
+  test("no platform keys → empty result, Unleash never consulted", async () => {
+    const client = fakeClient(true);
+    unleashMod.getUnleash.mockReturnValue(client);
+
+    const result = await evaluatePlatformFlags(adminSession, undefined, ["messaging", "bookings"]);
+
+    expect(result).toEqual({});
+    expect(unleashMod.getUnleash).not.toHaveBeenCalled();
+    expect(client.isEnabled).not.toHaveBeenCalled();
   });
 });

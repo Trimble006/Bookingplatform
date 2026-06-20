@@ -64,6 +64,44 @@ export async function flagIsOn(
   return readPostgresFlag(tenantId, key);
 }
 
+/**
+ * Evaluate several PLATFORM flags for one session, building the Unleash context
+ * once (#feature-management). Non-platform keys are ignored — callers read those
+ * from {@link getTenantFlags}. This is the many-keys companion to {@link flagIsOn}:
+ * a dashboard nav load needs several platform flags at once, and evaluating them
+ * via `flagIsOn` would rebuild the context (and re-query group membership) per key.
+ *
+ * When Unleash is unconfigured (pre-cutover / dev / tests) every key falls back to
+ * the session's effective-tenant Postgres boolean, matching {@link flagIsOn}.
+ */
+export async function evaluatePlatformFlags(
+  session: AppSession | null,
+  req: Request | undefined,
+  keys: readonly string[],
+): Promise<Record<string, boolean>> {
+  const result: Record<string, boolean> = {};
+  const platformKeys = keys.filter(isPlatformFlag);
+  if (platformKeys.length === 0) return result;
+
+  const unleash = getUnleash();
+  if (unleash) {
+    const context = await buildContext(session, req);
+    for (const key of platformKeys) {
+      result[key] = unleash.isEnabled(key, context);
+    }
+    return result;
+  }
+
+  // Unleash unconfigured: fall back to the session's effective-tenant booleans.
+  const tenantId = session
+    ? getEffectiveRole(session.user).tenantId ?? session.user.tenantId ?? null
+    : null;
+  for (const key of platformKeys) {
+    result[key] = tenantId ? await readPostgresFlag(tenantId, key) : false;
+  }
+  return result;
+}
+
 /** Set a feature flag for a tenant (upsert). Postgres-owned flags only. */
 export async function setFeatureFlag(tenantId: string, key: string, enabled: boolean) {
   return prisma.featureFlag.upsert({

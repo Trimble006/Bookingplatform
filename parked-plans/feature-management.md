@@ -118,17 +118,34 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
 - Deferred: retiring category-3 rows in Postgres (optional cleanup migration) — left
   in place so cutover stays reversible by unsetting the env; revisit in Phase 4.
 
-### Phase 3 — Targeting + management plane (M)
-- Thread `session` into priority category-3 call sites: `isFeatureEnabled(tid,key)`
-  → `flagIsOn(key, session, req)` where per-user targeting is wanted. Incremental.
-- `dashboard/layout.tsx` nav gating: Postgres (1 + 2) + Unleash (3), server-eval.
-- Admin flags API `/api/admin/tenants/[id]/flags`: keep tenant-togglable subset;
-  remove the platform (category-3) branch → Unleash UI.
-- Unleash UI recipes: user allow/deny via `userId`; tenant lists via `tenantId` IN;
-  % via `flexibleRollout` (stickiness `userId` or custom `tenantId`); role cohorts =
-  equality on `role`; dogfooding = `role = PLATFORM_ADMIN`; custom groups =
-  STR_CONTAINS on `grp:<cuid>` (THE SPIKE — confirm no substring collisions on the
-  delimited token list; fallback = a small custom strategy).
+### Phase 3 — Targeting + management plane (M) — PARTIAL 2026-06-20
+- ✅ Nav gating routed through Unleash. `/api/features` (which `dashboard/layout.tsx`
+  consumes) now overlays category-3 keys via the new `evaluatePlatformFlags(session,
+  req, PLATFORM_FLAGS)` router helper — so `federation` / `businessInsights` nav links
+  reflect Unleash targeting post-cutover instead of stale Postgres rows. Helper builds
+  the Unleash context ONCE (avoids a per-key group-membership re-query) and keeps the
+  Postgres fallback when Unleash is unconfigured. 4 new router tests.
+- ✅ Admin flags API `/api/admin/tenants/[id]/flags` reconciled: imports the canonical
+  `TENANT_TOGGLABLE_FLAGS` from `keys.ts` (was a divergent local Set) and the stale
+  "`agent` is mandatory" comment is fixed (agent is vertical-conditional category-2
+  since #modular-services). Behaviour already correct (non-togglable keys → 403);
+  this removes the drift + corrects the rationale.
+- DECISION: federation API routes (`/api/federations/**`) keep `isFeatureEnabled(tid,
+  key)` (tenant-level), NOT `flagIsOn`. Federation is a whole-tenant capability — you
+  don't roll it out to one admin but not another in the same club — so tenant-level
+  eval with `tenant:<id>` stickiness is the correct semantics. They already route
+  through Unleash correctly. `flagIsOn` is for surfaces where the *viewer* is the
+  targeting subject (the nav), not tenant-scoped gates.
+- ⏳ TODO `src/app/page.tsx` homepage public-club listing still filters `publicContent`
+  via a direct SQL `featureFlag` subquery — needs router-awareness so it sees Unleash.
+  Deferred: restructure has a perf tradeoff (fetch active tenants, then SDK-eval
+  publicContent per tenant) and is low-risk while the Postgres rows remain (migration
+  left them for reversibility). Next Phase 3 increment.
+- ⏳ TODO Unleash UI recipes: user allow/deny via `userId`; tenant lists via `tenantId`
+  IN; % via `flexibleRollout` (stickiness `userId` or custom `tenantId`); role cohorts =
+  equality on `role`; dogfooding = `role = PLATFORM_ADMIN`; custom groups = STR_CONTAINS
+  on `grp:<cuid>` (THE SPIKE — confirm no substring collisions on the delimited token
+  list; fallback = a small custom strategy). Live experimentation, not code.
 
 ### Phase 4 — Ops, docs, ledger (S)
 - Runbook: Unleash on the same Postgres (separate DB) — one backup; kill-switch
@@ -137,15 +154,15 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
   Active → Recently landed, and delete (or mark shipped) this file.
 
 ### Reconcile while here
-- The admin flags route comment still calls `agent` "mandatory/locked" — stale since
-  `#modular-services` made it vertical-conditional (category 2). Fix when category 2
-  is formalised. (Phase 3.)
+- ✅ The admin flags route comment that called `agent` "mandatory/locked" is fixed
+  (2026-06-20) — agent is vertical-conditional (category 2) since #modular-services;
+  the route now imports the canonical `TENANT_TOGGLABLE_FLAGS` so it can't drift.
 - ✅ `publicContent` / `weather` re-confirmed category-3 (2026-06-20): no onboarding
   or plan-tier writer provisions them, so routing their reads to Unleash is safe.
   Both migrated in Phase 2.
-- `src/app/page.tsx:26` reads the `FeatureFlag` table directly (not via
+- ⏳ `src/app/page.tsx` reads the `FeatureFlag` table directly (not via
   `isFeatureEnabled`), so it won't see Unleash post-cutover — migrate to the router
-  in Phase 3.
+  in a Phase 3 increment (see Phase 3 TODO above).
 
 ## Relevant files
 

@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrFail, getEffective, jsonError, rejectIfImpersonating, type AppSession } from "@/lib/api-utils";
 import { setFeatureFlag, getTenantFlags } from "@/lib/features";
+import { TENANT_TOGGLABLE_FLAGS } from "@/lib/flags/keys";
 import { logAudit } from "@/lib/audit";
 
-// Flags TENANT_ADMINs may toggle on their own tenant via the onboarding
-// wizard / settings UI. Anything tier-gated or platform-controlled stays
-// PLATFORM_ADMIN-only.
+// The set a TENANT_ADMIN may flip on their own tenant via the onboarding wizard /
+// settings UI is exactly the canonical TENANT_TOGGLABLE taxonomy in
+// `@/lib/flags/keys` — imported here so this gate can't drift from it.
 //
-// `agent` is intentionally NOT in this set: the maintenance agent is
-// mandatory for every club (the platform relies on the training data it
-// produces), so tenant admins can't switch it off. Only a non-impersonating
-// PLATFORM_ADMIN can flip it.
-const TENANT_TOGGLABLE_FLAGS = new Set([
-  "messaging",
-  "publicEvents",
-  "events",
-  "publicAvailability",
-]);
+// Everything else stays PLATFORM_ADMIN-only:
+//   - capability/preset flags (category 2: bookings/agent/funding/charity/…) are
+//     provisioned per-tenant by the onboarding vertical preset + plan tier, not
+//     self-served. `agent`, for instance, is vertical-conditional since
+//     #modular-services — it's platform-controlled state, not a tenant toggle.
+//   - platform rollout flags (category 3) are targeted via the Unleash UI.
+const TENANT_TOGGLABLE = new Set<string>(TENANT_TOGGLABLE_FLAGS);
 
 function gateFor(session: AppSession, tenantId: string, key: string | null): NextResponse | null {
   const eff = getEffective(session);
@@ -25,7 +23,7 @@ function gateFor(session: AppSession, tenantId: string, key: string | null): Nex
     return rejectIfImpersonating(session);
   }
   if ((eff.role === "TENANT_ADMIN" || eff.role === "PLATFORM_ADMIN") && eff.tenantId === tenantId) {
-    if (key !== null && !TENANT_TOGGLABLE_FLAGS.has(key)) {
+    if (key !== null && !TENANT_TOGGLABLE.has(key)) {
       return jsonError("This flag is platform-controlled.", 403);
     }
     return null;
