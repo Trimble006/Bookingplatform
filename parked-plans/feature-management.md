@@ -136,11 +136,14 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
   eval with `tenant:<id>` stickiness is the correct semantics. They already route
   through Unleash correctly. `flagIsOn` is for surfaces where the *viewer* is the
   targeting subject (the nav), not tenant-scoped gates.
-- ⏳ TODO `src/app/page.tsx` homepage public-club listing still filters `publicContent`
-  via a direct SQL `featureFlag` subquery — needs router-awareness so it sees Unleash.
-  Deferred: restructure has a perf tradeoff (fetch active tenants, then SDK-eval
-  publicContent per tenant) and is low-risk while the Postgres rows remain (migration
-  left them for reversibility). Next Phase 3 increment.
+- ✅ `src/app/page.tsx` homepage public-club listing is router-aware (2026-06-20).
+  Was a direct SQL `featureFlag` subquery mixing all three public flags; now fetches
+  active tenants with their Postgres-owned flags (`publicEvents`/`publicAvailability`
+  — tenant-togglable, authoritative in Postgres) and SDK-evals `publicContent`
+  (PLATFORM/Unleash) per tenant via `isFeatureEnabled`. Smoke: live homepage renders
+  200 with Browse Clubs present. Accepted tradeoff: in the Unleash-unconfigured
+  fallback this is N per-tenant Postgres reads instead of one `some` filter — fine
+  for the public directory's small active-tenant bound.
 - ⏳ TODO Unleash UI recipes: user allow/deny via `userId`; tenant lists via `tenantId`
   IN; % via `flexibleRollout` (stickiness `userId` or custom `tenantId`); role cohorts =
   equality on `role`; dogfooding = `role = PLATFORM_ADMIN`; custom groups = STR_CONTAINS
@@ -160,9 +163,9 @@ Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
 - ✅ `publicContent` / `weather` re-confirmed category-3 (2026-06-20): no onboarding
   or plan-tier writer provisions them, so routing their reads to Unleash is safe.
   Both migrated in Phase 2.
-- ⏳ `src/app/page.tsx` reads the `FeatureFlag` table directly (not via
-  `isFeatureEnabled`), so it won't see Unleash post-cutover — migrate to the router
-  in a Phase 3 increment (see Phase 3 TODO above).
+- ✅ `src/app/page.tsx` migrated off the direct `FeatureFlag` query for `publicContent`
+  (2026-06-20) — now routes through `isFeatureEnabled` so it sees Unleash post-cutover;
+  the tenant-togglable `publicEvents`/`publicAvailability` reads stay on Postgres.
 
 ## Relevant files
 

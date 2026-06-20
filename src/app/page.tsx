@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isFeatureEnabled } from "@/lib/features";
 import EventCard from "@/components/events/EventCard";
 import { getTranslations } from "next-intl/server";
 
@@ -10,26 +11,58 @@ export default async function HomePage() {
   const session = await getServerSession(authOptions) as { user: { tenantId?: string | null; role?: string } } | null;
   const isAuthenticated = !!session?.user;
 
-  // Fetch public clubs and global public events for the platform view
-  const publicEventFlags = await prisma.featureFlag.findMany({
-    where: { key: "publicEvents", enabled: true },
-    select: { tenantId: true },
-  });
-  const publicTenantIds = publicEventFlags.map((f) => f.tenantId);
-
+  // Fetch public clubs and global public events for the platform view.
+  //
+  // publicEvents + publicAvailability are TENANT_TOGGLABLE (#feature-management
+  // category 1) → Postgres is authoritative, so they can be read/filtered directly.
+  // publicContent is a PLATFORM flag (category 3) owned by Unleash post-cutover, so
+  // it must be evaluated through the router rather than read from the now-advisory
+  // FeatureFlag rows. We therefore fetch active tenants (with their Postgres public
+  // flags) and SDK-eval publicContent per tenant in-memory.
   const today = new Date().toISOString().slice(0, 10);
 
-  const [publicClubs, publicEvents] = await Promise.all([
-    prisma.tenant.findMany({
-      where: {
-        active: true,
-        featureFlags: { some: { key: { in: ["publicContent", "publicEvents", "publicAvailability"] }, enabled: true } },
+  const activeTenants = await prisma.tenant.findMany({
+    where: { active: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      brandColor: true,
+      logoUrl: true,
+      locality: true,
+      featureFlags: {
+        where: { key: { in: ["publicEvents", "publicAvailability"] }, enabled: true },
+        select: { key: true },
       },
-      select: { id: true, name: true, slug: true, brandColor: true, logoUrl: true, locality: true },
-      orderBy: { name: "asc" },
-    }),
+    },
+    orderBy: { name: "asc" },
+  });
+
+  const contentOn = await Promise.all(
+    activeTenants.map((tnt) => isFeatureEnabled(tnt.id, "publicContent")),
+  );
+
+  // A club is listed if it has opted into any public surface: publicEvents /
+  // publicAvailability (Postgres) or publicContent (Unleash).
+  const publicClubs = activeTenants
+    .filter((tnt, i) => tnt.featureFlags.length > 0 || contentOn[i])
+    .map((tnt) => ({
+      id: tnt.id,
+      name: tnt.name,
+      slug: tnt.slug,
+      brandColor: tnt.brandColor,
+      logoUrl: tnt.logoUrl,
+      locality: tnt.locality,
+    }));
+
+  // Events surface from tenants with publicEvents on (tenant-togglable → Postgres).
+  const publicTenantIds = activeTenants
+    .filter((tnt) => tnt.featureFlags.some((f) => f.key === "publicEvents"))
+    .map((tnt) => tnt.id);
+
+  const publicEvents =
     publicTenantIds.length > 0
-      ? prisma.event.findMany({
+      ? await prisma.event.findMany({
           where: {
             tenantId: { in: publicTenantIds },
             status: "PUBLISHED",
@@ -41,8 +74,7 @@ export default async function HomePage() {
           orderBy: { date: "asc" },
           take: 6,
         })
-      : Promise.resolve([]),
-  ]);
+      : [];
 
   return (
     <main className="min-h-screen">
