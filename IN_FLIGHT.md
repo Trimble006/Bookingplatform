@@ -39,6 +39,7 @@ scratch.
 
 ## Recently landed
 
+- 2026-06-20 — `#feature-management` Phases 0–2 shipped (pushed `e76aed2`): SDK seam (Postgres/Unleash router, no behaviour change), live Unleash, 9 platform flags migrated + cut over via `tenantId IN […]` strategies, parity 18/18, tests hermetic. Phases 3–4 (targeting UI + runbook) still Active. See `DECISIONS.md`.
 - 2026-06-19 — `#modular-services` shipped: Vertical enum + bookings flag, adaptive wizard (ch5 skippable), cap-gated nav, Charity Admin plan, branding neutralised. See `DECISIONS.md`.
 - 2026-06-18 — `#modelops` fully shipped (extends `#ml-noshow`): prediction persistence root fix, MlModelVersion/MlFeatureDefinition/MlDriftCheck schema, champion/challenger retrain gate, drift check, feature registry (enroll/retire), model-health dashboard, operator runbook. Bug #15 resolved. See `DECISIONS.md`.
 - 2026-06-17 — `#ml-noshow` Phases 0–4 shipped: Python sidecar, NoShowRiskAgent, eval script, 26 pytest + 8 jest. See `DECISIONS.md`.
