@@ -5,6 +5,7 @@ module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
   roots: ["<rootDir>/src"],
+  setupFiles: ["<rootDir>/jest.setup.env.cjs"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

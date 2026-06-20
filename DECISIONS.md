@@ -76,6 +76,62 @@ User-scoped impersonation preview is a known gap → separate thread
 `#impersonation-user-scope`.
 
 
+## 2026-06-20 — Feature management Phase 2: live cutover of platform flags (`#feature-management`)
+
+**Status**: decided / shipped (extends the design entry above)
+
+**Context**: With the Phase 1 seam in place (router + Postgres fallback, no behaviour
+change), Phase 2 stood up a live Unleash, moved the 9 category-3 platform flags into
+it, and cut reads over — under the invariant that the cutover must be provably
+behaviour-preserving and reversible.
+
+**Decision / outcome**:
+
+1. **Migration faithfully reproduces the Postgres truth table.** Each platform flag
+   becomes one Unleash feature carrying a single `default` strategy constrained
+   `tenantId IN [ids of tenants with FeatureFlag.enabled=true]`; a flag with no
+   enabled tenants is left disabled. New tenants absent from the list evaluate OFF —
+   matching Postgres absent-row = false. The migration never mutates Postgres rows, so
+   cutover is reversible by unsetting `UNLEASH_URL`/`UNLEASH_API_TOKEN` (router falls
+   back to Postgres). `scripts/migrate-flags-to-unleash.ts`, `--apply` gated, idempotent.
+
+2. **Custom context fields `tenantId`/`role`/`groups` are registered as part of
+   migration.** The Unleash Admin API rejects constraints that reference unregistered
+   context fields, so they must exist before the `tenantId IN …` strategy can be
+   written. Registering all three now also lays the Phase 3 targeting foundation (role
+   cohorts, `grp:<cuid>` groups) at no extra cost.
+
+3. **Admin-API automation authenticates via a Personal Access Token, not an
+   admin-TYPE API token.** Minting an admin-type token needs a root ADMIN permission
+   the default admin session lacks (403); a PAT (`POST /api/admin/user/tokens`)
+   inherits the user's full admin rights and works. This is the documented ops path
+   for the runbook; the client SDK uses a separate client token.
+
+4. **Tests stay hermetic by clearing the Unleash env.** `jest.setup.env.cjs` (a
+   `setupFiles` entry) deletes `UNLEASH_URL`/`UNLEASH_API_TOKEN`/`UNLEASH_ADMIN_TOKEN`
+   before any test runs, so the suite always exercises the Postgres fallback
+   regardless of a developer's live `.env` — matching CI (no Unleash) and keeping
+   flag-routing tests deterministic. Without this, a configured `.env` silently routes
+   platform-flag tests at live Unleash.
+
+5. **Parity is the cutover acceptance gate.** `scripts/check-flag-parity.ts` compares
+   Postgres ground truth against a live SDK evaluation for every (tenant × platform
+   flag), plus a synthetic negative-control tenant, using an in-memory storage
+   provider to force a fresh fetch. 18/18 matched at cutover.
+
+**Rationale**: Reproducing the exact enablement set as an `IN` constraint (rather than
+flipping each flag globally on/off) is what makes the cutover parity-checkable and
+keeps per-tenant semantics identical across the seam. The env-clear is the cheapest way
+to guarantee the test suite mirrors CI no matter what a developer has configured
+locally.
+
+**Notes**: `docker-compose` db-init fixed to connect to the `postgres` maintenance DB
+(`-d postgres`) — `psql -U booking` was defaulting dbname to the username and crash-
+looping Unleash on a missing database. Tokens live in the gitignored `.env`, not in the
+repo. Remaining: `src/app/page.tsx:26` reads `FeatureFlag` directly and won't see
+Unleash post-cutover — a Phase 3 migration item.
+
+
 ## 2026-06-19 — Multi-vertical platform pivot: modular services for non-bowling orgs (`#modular-services`)
 
 **Status**: decided / implementing

@@ -1,9 +1,11 @@
 # Parked plan: Feature Management via self-hosted Unleash (`#feature-management`)
 
 **Status as of 2026-06-20**: in flight. Design agreed 2026-06-19 (Plan mode);
-revised + implementation started 2026-06-20. Phase 0 (infra scaffolding) + Phase 1
-(server SDK seam, no behaviour change) landing now. Phases 2–4 (migration, cutover,
-targeting, management plane) remain — they require a live Unleash with tokens.
+revised + implementation started 2026-06-20. **Phases 0–2 shipped**: infra
+scaffolding, server SDK seam (no behaviour change), live Unleash stood up, the 9
+category-3 platform flags migrated + cut over, parity proven 18/18, test suite kept
+hermetic. Phase 3 (targeting + management plane) and Phase 4 (ops/docs/ledger)
+remain.
 
 ## Why here
 
@@ -88,19 +90,33 @@ into targeting (audit only).
   fallback when Unleash is unconfigured (zero behaviour change pre-cutover); new
   `flagIsOn(key, session, req)` for per-user/rollout targeting; unit tests via SDK
   bootstrap fixtures + mocked Postgres path.
+- Phase 2: live Unleash up via `docker-compose` (db-init fixed to use the `postgres`
+  maintenance DB — `psql -U booking` was crash-looping on a missing `booking` DB);
+  `scripts/migrate-flags-to-unleash.ts` (registers `tenantId`/`role`/`groups`
+  context fields, then per platform flag writes a `default` strategy constrained
+  `tenantId IN (<enabled ids>)`, idempotent, `--apply` gated); cut reads over by
+  configuring Unleash env; `scripts/check-flag-parity.ts` proved 18/18 parity
+  (Postgres truth vs live SDK eval + a negative-control tenant); `jest.setup.env.cjs`
+  clears `UNLEASH_*` so the suite always exercises the Postgres fallback (matches CI).
+  Admin-API automation uses a PAT (admin-type tokens need a root perm the default
+  session lacks). Migration never mutates Postgres rows → cutover reversible by
+  unsetting the env.
 
-Cross-ref `DECISIONS.md` 2026-06-20.
+Cross-ref `DECISIONS.md` 2026-06-20 (design entry + Phase 2 cutover entry).
 
 ## What's left (refined plan)
 
-### Phase 2 — Migration + cutover (M) — category-3 flags only
-- `scripts/migrate-flags-to-unleash.ts`: per PLATFORM key, create the Unleash
-  feature (default off) + a strategy with constraint `tenantId IN (<enabled ids>)`
-  reproducing current Postgres enablement. Admin token; idempotent. Categories
-  1 + 2 NOT migrated.
-- Cutover: set Unleash env so the router sends category-3 keys to Unleash. Parity:
-  every (tenant, platform-key) Unleash eval matches the old Postgres boolean.
-- Retire category-3 rows in Postgres (optional cleanup migration); leave 1 + 2.
+### Phase 2 — Migration + cutover (M) — category-3 flags only — DONE 2026-06-20
+- ✅ `scripts/migrate-flags-to-unleash.ts`: registers `tenantId`/`role`/`groups`
+  context fields (Admin API rejects constraints on unregistered fields), then per
+  PLATFORM key creates the Unleash feature + a `default` strategy with constraint
+  `tenantId IN (<enabled ids>)` reproducing current Postgres enablement. PAT auth;
+  idempotent; `--apply` gated. Categories 1 + 2 NOT migrated.
+- ✅ Cutover: Unleash env set so the router sends category-3 keys to Unleash.
+  Parity proven by `scripts/check-flag-parity.ts` — 18/18 (every (tenant,
+  platform-key) live SDK eval matches the old Postgres boolean) + negative control.
+- Deferred: retiring category-3 rows in Postgres (optional cleanup migration) — left
+  in place so cutover stays reversible by unsetting the env; revisit in Phase 4.
 
 ### Phase 3 — Targeting + management plane (M)
 - Thread `session` into priority category-3 call sites: `isFeatureEnabled(tid,key)`
@@ -123,9 +139,13 @@ Cross-ref `DECISIONS.md` 2026-06-20.
 ### Reconcile while here
 - The admin flags route comment still calls `agent` "mandatory/locked" — stale since
   `#modular-services` made it vertical-conditional (category 2). Fix when category 2
-  is formalised.
-- `publicContent` / `weather` are classified category-3 by inference, not a verified
-  writer — re-confirm before the Phase 2 migration.
+  is formalised. (Phase 3.)
+- ✅ `publicContent` / `weather` re-confirmed category-3 (2026-06-20): no onboarding
+  or plan-tier writer provisions them, so routing their reads to Unleash is safe.
+  Both migrated in Phase 2.
+- `src/app/page.tsx:26` reads the `FeatureFlag` table directly (not via
+  `isFeatureEnabled`), so it won't see Unleash post-cutover — migrate to the router
+  in Phase 3.
 
 ## Relevant files
 
@@ -141,7 +161,12 @@ Cross-ref `DECISIONS.md` 2026-06-20.
 - `src/app/api/admin/tenants/[id]/flags/route.ts` — shrink to tenant-togglable (Ph 3).
 - `src/app/api/onboarding/organisation/route.ts` — vertical preset writer; STAYS Postgres.
 - `src/app/dashboard/layout.tsx` — nav gating (Phase 3).
-- `scripts/migrate-flags-to-unleash.ts` (new, Phase 2).
+- `scripts/migrate-flags-to-unleash.ts` (Phase 2, done) — registers context fields +
+  writes `tenantId IN (...)` strategies; `--apply` gated, idempotent.
+- `scripts/check-flag-parity.ts` (Phase 2, done) — Postgres-truth vs live-SDK parity
+  gate; run after any migration/cutover change.
+- `jest.setup.env.cjs` (Phase 2) — clears `UNLEASH_*` so the suite stays on the
+  Postgres fallback (hermetic, matches CI); wired via `setupFiles` in `jest.config.cjs`.
 - `.env.example` — `UNLEASH_URL`, `UNLEASH_API_TOKEN`, `UNLEASH_APP_NAME`.
 
 ## Resume signals

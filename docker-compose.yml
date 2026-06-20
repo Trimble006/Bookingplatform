@@ -48,8 +48,8 @@ services:
       - -c
       - |
         until pg_isready -h postgres -U booking; do sleep 1; done
-        psql -h postgres -U booking -tc "SELECT 1 FROM pg_database WHERE datname = 'unleash'" \
-          | grep -q 1 || psql -h postgres -U booking -c "CREATE DATABASE unleash"
+        psql -h postgres -U booking -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'unleash'" \
+          | grep -q 1 || psql -h postgres -U booking -d postgres -c "CREATE DATABASE unleash"
 
   unleash:
     image: unleashorg/unleash-server:6
@@ -62,8 +62,10 @@ services:
       # Image ships a recent client; skip the version-check phone-home in dev.
       CHECK_VERSION: "false"
     depends_on:
-      - postgres
-      - unleash-db-init
+      postgres:
+        condition: service_started
+      unleash-db-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "/bin/sh", "-c", "wget -qO- http://localhost:4242/health || exit 1"]
       interval: 10s

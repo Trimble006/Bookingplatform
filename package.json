@@ -24,6 +24,8 @@
     "eval:noshow": "npx tsx scripts/eval-noshow.ts",
     "unleash:up": "docker compose up -d postgres unleash",
     "unleash:logs": "docker compose logs -f unleash",
+    "flags:migrate": "npx tsx scripts/migrate-flags-to-unleash.ts",
+    "flags:parity": "npx tsx scripts/check-flag-parity.ts",
     "check:i18n": "scripts/check-i18n-coverage.sh",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch"
