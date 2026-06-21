@@ -22,7 +22,6 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`.
-- `#hosting` — zero-cost blue/green deploy + Better Stack observability. **Local full-fidelity stack + obs (Phases 0/1/4) SHIPPED & verified** (8090 entry, blue/green swap, http login, structured obs to stdout); cloud (Oracle ARM + Coolify, Phase 2) + cron/backups (Phase 3) are the open remainder. Session: `bp: #hosting`. See `DECISIONS.md` 2026-06-21.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).

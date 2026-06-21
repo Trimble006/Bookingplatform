@@ -23,11 +23,10 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
   bookings over time, revenue trend, occupancy, cancellation rate, peak
   hours, member activity, task completion. Recharts + server-side
   aggregation. Feature-flag gated (`businessInsights`).
-- `#hosting` (M) — zero-cost blue/green deployment + observability. **Local
-  full-fidelity stack SHIPPED** (Docker Compose blue/green behind Caddy on
-  :8090, zero-downtime swap, public `/api/health`, `migrate deploy` +
-  seed-if-empty, Better Stack seam) + verified end-to-end. Cloud (Oracle ARM
-  + Coolify, Neon data, R2 backups) deferred — the open remainder. See
+- ~~`#hosting` (local)~~ — zero-cost blue/green **local stack + observability
+  SHIPPED** (Docker Compose blue/green behind Caddy :8090, zero-downtime swap,
+  public `/api/health`, `migrate deploy` + seed-if-empty, Better Stack seam),
+  verified end-to-end. Cloud variant → Later (`#hosting-cloud`). See
   `DECISIONS.md` 2026-06-21.
 
 ## Next
@@ -50,6 +49,11 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
 
 ## Later
 
+- `#hosting-cloud` (M) — deploy the same Compose topology to an Oracle
+  Always-Free ARM VM via Coolify (push-to-deploy, auto-TLS); durable Postgres
+  off-box on Neon, nightly `pg_dump` → Cloudflare R2, Better Stack uptime +
+  heartbeats. Local stack already shipped (`#hosting`); Render+Neon kept as a
+  documented zero-management fallback. See `DECISIONS.md` 2026-06-21.
 - `#facility-generalisation` (L) — generalise "Green / Rink" domain vocabulary to "Facility / Resource" with a `facilityType` discriminator, enabling golf/cricket real bookings. ~1,100 LoC, ~65% structural. Gated on a vertical actually needing real bookings. See `DECISIONS.md` 2026-06-19.
 - `#site-health` (L) — modular Site Advisor + Platform Health agents,
   content onboarding gate, benchmarks utility. (Phase 12.)
