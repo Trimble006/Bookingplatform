@@ -22,6 +22,7 @@ scratch.
 ## Active threads
 
 - `#billing` — platform subscription model + financial dashboards. Phase A (schema) done; Phase B (API) next. Session: `bp: #billing`.
+- `#hosting` — zero-cost blue/green deploy + Better Stack observability. **Local full-fidelity stack + obs (Phases 0/1/4) SHIPPED & verified** (8090 entry, blue/green swap, http login, structured obs to stdout); cloud (Oracle ARM + Coolify, Phase 2) + cron/backups (Phase 3) are the open remainder. Session: `bp: #hosting`. See `DECISIONS.md` 2026-06-21.
 
 <!-- Format:
 - `#<tag>` — one-sentence intent. Session: `bp: #<tag>`. Branch: `<name>` (optional).
@@ -38,11 +39,10 @@ scratch.
 
 ## Recently landed
 
+- 2026-06-21 — `#hosting` LOCAL stack landed (Phases 0/1/4): Dockerised blue/green (app-blue/green) + Postgres + Unleash + ML sidecar behind Caddy; zero-downtime `bin/swap.sh`; public `/api/health` with `color`+`release`; `migrate deploy` + seed-if-empty init; Better Stack observability seam (`@logtail/next`, inert without token) emitting structured JSON to stdout. Verified end-to-end incl. http login on :8090. Cloud (Oracle ARM + Coolify) deferred. See `DECISIONS.md`.
 - 2026-06-20 — `#feature-management` FULLY SHIPPED (Phases 0–4): self-hosted Unleash control plane behind the `isFeatureEnabled` seam; 9 platform flags migrated + cut over (`tenantId IN […]`), parity 18/18; nav + homepage router-aware; targeting recipes verified (incl. `grp:<cuid>` STR_CONTAINS spike 7/7, collision-safe on fixed-length cuids); ops runbook `docs/unleash-runbook.md`. Reversible by unsetting the env. See `DECISIONS.md` (4 entries).
 - 2026-06-19 — `#modular-services` shipped: Vertical enum + bookings flag, adaptive wizard (ch5 skippable), cap-gated nav, Charity Admin plan, branding neutralised. See `DECISIONS.md`.
 - 2026-06-18 — `#modelops` fully shipped (extends `#ml-noshow`): prediction persistence root fix, MlModelVersion/MlFeatureDefinition/MlDriftCheck schema, champion/challenger retrain gate, drift check, feature registry (enroll/retire), model-health dashboard, operator runbook. Bug #15 resolved. See `DECISIONS.md`.
 - 2026-06-17 — `#ml-noshow` Phases 0–4 shipped: Python sidecar, NoShowRiskAgent, eval script, 26 pytest + 8 jest. See `DECISIONS.md`.
-- 2026-06-16 — `#business-insights` fully shipped: 9-domain KPI platform admin dashboard + tenant analytics phases A–C. All branches merged + deleted.
-- 2026-06-16 — `#charity-permissions` shipped via `feat/charity-permissions-20260518162137`: bookings/funding route gates tenant-scoped to the `Permission` enum; per-response AI refine endpoint + shared `funding/ai.ts`; multi-round funding (status-aware overview, advisory cadence, `FundingOpportunityPref`). 523 tests. `DECISIONS.md`.
 
-_(Older shipped threads — `#funding-applications`, `#permission-groups`, `#i18n`, … — live in `DECISIONS.md`.)_
+_(Older shipped threads — `#business-insights`, `#charity-permissions`, `#funding-applications`, `#permission-groups`, `#i18n`, … — live in `DECISIONS.md`.)_

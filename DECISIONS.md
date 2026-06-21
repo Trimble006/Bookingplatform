@@ -1,6 +1,88 @@
 # Decisions Log — BookingPlatform
 
 
+## 2026-06-21 — Zero-cost blue/green hosting + observability (`#hosting`)
+
+**Status**: local stack + observability (Phases 0/1/4) SHIPPED & verified 2026-06-21; cloud (Phase 2) + cron/backups (Phase 3) deferred.
+
+**Context**: Need to deploy and run the app at genuinely zero cost, tolerate
+cold starts, never lose data once in real use, and offer a blue/green
+demo/training surface for the test team — ideally the same topology locally.
+A Plan-mode session (2026-06-21) researched free-tier hosting + observability.
+
+**Decision / outcome**:
+
+1. **One topology, local and cloud**: a Docker Compose stack with two app
+   colours (`app-blue` + `app-green`) sharing one Postgres + Unleash + ML
+   sidecar, fronted by a **Caddy** reverse proxy. Blue/green is a Caddy
+   upstream swap (`bin/swap.sh`) — zero-downtime; SSE clients auto-reconnect.
+2. **Shared database per topology** (not one DB per colour) — simpler, and
+   the no-data-loss guarantee comes from `prisma migrate deploy` + an
+   expand/contract migration discipline rather than DB-per-colour isolation.
+3. **Cloud = Oracle Always-Free ARM VM + Coolify** (deferred): the same
+   compose runs 24/7 free; Coolify gives a managed feel (push-to-deploy,
+   auto-TLS, R2 backups) without a paid PaaS. Data on **Neon** (durable,
+   off-box) so no-data-loss never hinges on a single VM volume. Render+Neon
+   kept as a documented zero-management fallback at reduced cloud fidelity.
+4. **Observability = Better Stack** via the `@logtail/next` client, wired
+   once and shared by both colours. Inert without a source token (same
+   optional-SDK pattern as Unleash). Server-side `onRequestError` owns
+   attribution: every event tagged `deployment.color` + `release` (the git
+   SHA already computed in `next.config.ts`) + tenant/role → a bad phased
+   rollout is attributable to colour × release × flag cohort. Uptime
+   monitors hit a new public `/api/health` per colour; heartbeats wrap the
+   cron jobs and the nightly backup (paged if backups silently stop).
+5. **Backups = nightly `pg_dump` → Cloudflare R2** (deferred to Phase 3).
+
+**Rationale**: The constraints form a trilemma — full-fidelity, zero-cost,
+zero-server-management: pick two. Oracle VM buys full-fidelity-always-on at
+zero cash but costs management; managed PaaS (Render) is zero-management but
+its 750-hr/month cap + spin-down can't run four always-on services, cutting
+fidelity; a managed always-on box costs ~$5–10/mo. Coolify on the Oracle VM
+plus treating the box as disposable cattle (Neon off-box, Cloudflare Tunnel
+= no inbound ports, unattended-upgrades, Better Stack paging) shrinks the
+residual management to "occasional patch + paged if down" — the best fit for
+the stated wants. Self-hosting observability was rejected: extra containers
+blow the budget, and observing yourself from the same box blinds you on an
+outage (deferred; if ever done, on its own box).
+
+**Notes**: Phase 0 hardening (git-SHA-tolerant build + `output: 'standalone'`,
+app Dockerfile, public `/api/health`, `migrate deploy` + conditional first-boot
+seed) is the shared prerequisite. Render free Postgres ruled out (expires 30
+days, no backups); Fly.io ruled out (free allowances discontinued for new
+orgs). Full plan in the `bp: #hosting` session notes.
+
+**Landed (2026-06-21) — local stack verified end-to-end**: all six services
+healthy (postgres, app-blue, app-green, caddy, ml-noshow, unleash); blue/green
+swap works both ways via `bin/swap.sh` (`caddy reload`, zero-downtime), with
+`/api/health` flipping `color` blue↔green and carrying `release` (git SHA);
+structured observability boot log lands on stdout (`{level,message:"app
+boot",color,release,node}`), Better Stack inert without a token; full NextAuth
+credentials login works over plain `http://localhost:8090` (cookies
+`HttpOnly; SameSite=Lax`, NOT `Secure` — derived from the `http://`
+`NEXTAUTH_URL`), returning the seeded `PLATFORM_ADMIN`. Implementation
+refinements made while standing it up:
+
+- **Demo entry port is 8090, not 8080** — 8080 was held by an unrelated
+  process; Caddy maps `8090:80` and `NEXTAUTH_URL` matches.
+- **Host-sensitive URLs are hardcoded in compose** for the dockerised colours
+  (`NEXTAUTH_URL: http://localhost:8090`, `UNLEASH_URL: http://unleash:4242/api/`)
+  rather than `${VAR:-default}`, so a dev's local `.env` (`localhost:3000` /
+  `localhost:4242`) can't leak host-localhost values into the containers and
+  break the auth callback / Unleash dialling. Secrets still inherit from `.env`.
+- **Build hardening** (all in the Dockerfile): copy `.npmrc`
+  (`legacy-peer-deps=true`) into the deps stage so `npm ci` resolves the
+  `ts-jest`/`typescript` peer conflict; set a placeholder `DATABASE_URL` ENV in
+  the builder so `prisma.config.ts`'s `env()` resolves during
+  `prisma generate` / `next build`; drop the non-existent `public/` COPY; ml
+  healthcheck uses stdlib `python urllib` (the python image has no `curl`).
+- **Known follow-up (not blocking)**: ml `/health` reports
+  `modelLoaded:false` — `serve.py`'s `_find_active_artifact()` prefers the DB
+  registry path, which isn't baked into the image, and `load()` doesn't fall
+  back to `ML_MODEL_PATH` when that path is absent on disk. Logged on the repo
+  backlog.
+
+
 ## 2026-06-20 — Feature management via self-hosted Unleash (`#feature-management`)
 
 **Status**: decided / shipped (all phases; see the Phase 2–4 entries below)

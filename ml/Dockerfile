@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY ml /app
 
-ENV ML_MODEL_PATH=/app/artifacts/noshow-model.joblib
+ENV ML_MODEL_PATH=/app/artifacts/noshow-v1.joblib
 
 EXPOSE 8001
 

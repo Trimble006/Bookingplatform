@@ -10,6 +10,11 @@ services:
       POSTGRES_DB: bookingplatform
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d bookingplatform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   ml-noshow:
     build:
@@ -20,13 +25,16 @@ services:
       - "8001:8001"
     environment:
       DATABASE_URL: postgresql://booking:booking@postgres:5432/bookingplatform
-      ML_MODEL_PATH: /app/artifacts/noshow-model.joblib
-    volumes:
-      - ml_artifacts:/app/artifacts
+      # Points at the committed artifact name. No volume mount, so the model
+      # baked into the image is visible (an empty named volume would mask it,
+      # and a diskless cloud host has no volume at all).
+      ML_MODEL_PATH: /app/artifacts/noshow-v1.joblib
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      # The python image has no curl; probe /health with stdlib urllib instead.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/health').getcode()==200 else 1)"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -42,7 +50,8 @@ services:
     environment:
       PGPASSWORD: booking
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     entrypoint:
       - sh
       - -c
@@ -72,6 +81,104 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Blue/green app stack (#hosting) ────────────────────────────────
+  # One-shot DB initialiser: applies migrations + seeds an empty database.
+  # Built from the "builder" stage so it carries the Prisma CLI + seed
+  # toolchain; the slim app colours never run migrations. Both colours wait
+  # on this completing successfully, so the two servers never race to migrate.
+  app-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+      args:
+        APP_VERSION: ${APP_VERSION:-1.0.0-dev}
+    image: bookingplatform-migrate:local
+    restart: "no"
+    command: ["sh", "docker/init.sh"]
+    environment:
+      DATABASE_URL: postgresql://booking:booking@postgres:5432/bookingplatform
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Blue colour. Builds the shared runtime image; green reuses it.
+  app-blue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        APP_VERSION: ${APP_VERSION:-1.0.0-dev}
+    image: bookingplatform-app:local
+    restart: unless-stopped
+    environment:
+      APP_COLOR: blue
+      DATABASE_URL: postgresql://booking:booking@postgres:5432/bookingplatform
+      # Hardcoded (not ${...}) so a dev's local .env can't leak host-localhost
+      # values into the container: the browser reaches the app through Caddy on
+      # 8090, and Unleash is addressed by its in-network compose service name.
+      NEXTAUTH_URL: http://localhost:8090
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-me}
+      UNLEASH_URL: http://unleash:4242/api/
+      UNLEASH_API_TOKEN: ${UNLEASH_API_TOKEN:-}
+      AGENT_SECRET: ${AGENT_SECRET:-}
+      NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN: ${NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN:-}
+      NEXT_PUBLIC_BETTER_STACK_INGESTING_URL: ${NEXT_PUBLIC_BETTER_STACK_INGESTING_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Green colour. Same image as blue, different COLOR tag for attribution.
+  app-green:
+    image: bookingplatform-app:local
+    restart: unless-stopped
+    environment:
+      APP_COLOR: green
+      DATABASE_URL: postgresql://booking:booking@postgres:5432/bookingplatform
+      # Hardcoded (not ${...}) so a dev's local .env can't leak host-localhost
+      # values into the container: the browser reaches the app through Caddy on
+      # 8090, and Unleash is addressed by its in-network compose service name.
+      NEXTAUTH_URL: http://localhost:8090
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-me}
+      UNLEASH_URL: http://unleash:4242/api/
+      UNLEASH_API_TOKEN: ${UNLEASH_API_TOKEN:-}
+      AGENT_SECRET: ${AGENT_SECRET:-}
+      NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN: ${NEXT_PUBLIC_BETTER_STACK_SOURCE_TOKEN:-}
+      NEXT_PUBLIC_BETTER_STACK_INGESTING_URL: ${NEXT_PUBLIC_BETTER_STACK_INGESTING_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app-migrate:
+        condition: service_completed_successfully
+      app-blue:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Swappable router. Proxies to whichever colour the imported upstream snippet
+  # names; bin/swap.sh rewrites it and runs `caddy reload` (zero-downtime).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/live-upstream.caddy:/etc/caddy/live-upstream.caddy:ro
+    depends_on:
+      - app-blue
+      - app-green
+
 volumes:
   pgdata:
-  ml_artifacts:

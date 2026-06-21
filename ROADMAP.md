@@ -23,6 +23,12 @@ first; promotion to **Next** signals it's queued for the upcoming sprint;
   bookings over time, revenue trend, occupancy, cancellation rate, peak
   hours, member activity, task completion. Recharts + server-side
   aggregation. Feature-flag gated (`businessInsights`).
+- `#hosting` (M) — zero-cost blue/green deployment + observability. **Local
+  full-fidelity stack SHIPPED** (Docker Compose blue/green behind Caddy on
+  :8090, zero-downtime swap, public `/api/health`, `migrate deploy` +
+  seed-if-empty, Better Stack seam) + verified end-to-end. Cloud (Oracle ARM
+  + Coolify, Neon data, R2 backups) deferred — the open remainder. See
+  `DECISIONS.md` 2026-06-21.
 
 ## Next
 
