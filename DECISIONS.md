@@ -1,6 +1,60 @@
 # Decisions Log — BookingPlatform
 
 
+## 2026-06-26 — Cross-platform container tooling + free runtime for the tester lab (`#hosting`)
+
+**Status**: SHIPPED 2026-06-26 (tooling + workshop doc); GHCR images / compose
+profiles / Codespaces fallback considered but deferred.
+
+**Context**: Reframe from the 2026-06-21 entry: the blue/green stack isn't a
+passive demo to *watch* — it's a hands-on rig where **each tester runs the
+containers themselves** to practise managing deploys and feature toggles on
+container infra. Two blockers surfaced when handing it over: (a) **Docker
+Desktop isn't free** for the org (its licence is paid above 250 staff / $10M
+revenue), and (b) the `stack:*` npm scripts used a **Bash-only idiom**
+(`APP_VERSION=$(git …) docker compose …`) and `swap` was a **Bash script** —
+both fail on Windows `cmd`/PowerShell, and the team is Windows-heavy (the
+existing workshop doc is Windows-first).
+
+**Decision / outcome**:
+
+1. **Sanctioned free runtime = Rancher Desktop with the `dockerd (moby)`
+   backend.** It provides real `docker` + `docker compose`, so our tooling runs
+   verbatim, plus a GUI for watching containers/logs while learning, on
+   Windows/macOS/Linux. **Podman Desktop** documented as the free alternative
+   (set `COMPOSE_CMD="podman compose"`). **OrbStack and Docker Desktop excluded**
+   — both are paid for commercial use.
+2. **Tooling made shell-agnostic.** Rewrote the compose lifecycle and the
+   colour swap as Node (`bin/stack.mjs`, `bin/swap.mjs`) — Node is already a
+   prerequisite, so no Git Bash/WSL needed on Windows. Dropped the Bash-only
+   `APP_VERSION` inline (compose already defaults it; the wrapper still stamps
+   the git SHA cross-platform). Container engine is overridable everywhere via
+   a single `COMPOSE_CMD` env var. Deleted `bin/swap.sh`.
+3. **Standalone "Blue/Green Infrastructure Lab" track** added to
+   `docs/WORKSHOP-SETUP.md` — separate from the bare-Node Project Phoenix
+   exercise. Covers runtime install, `npm run stack:up`, a blue/green deploy
+   via `npm run swap` (watch `/api/health`), a feature-flag flip in Unleash,
+   and data-safe teardown (`pgdata` persists across `down`/`up`).
+
+**Rationale**: Each tester needs an isolated, resettable stack they can break
+and rebuild — that *is* the exercise — so "hand them one URL" was the wrong
+model. Rancher/moby was chosen over Podman to keep zero tooling churn (no
+`docker`→`podman` alias friction); both are free-for-commercial, but moby is
+verbatim-compatible. Keeping the toolchain `docker compose`-shaped (rather than
+forking to podman-native) means the skills transfer to the eventual cloud
+target (`#hosting-cloud`). The Node rewrite removes the only hard Windows
+barrier while preserving the exact same `npm run` entry points.
+
+**Notes**: GHCR pre-built images (skip the slow local Next build), compose
+`profiles` for a "lite" lab (skip the ML sidecar), and a `.devcontainer` +
+Codespaces fallback for locked-down machines were all considered and **deferred**
+— GHCR in particular pushes to a shared registry, so it waits for an explicit
+go-ahead. Verified against the running stack: `npm run swap` (now
+`bin/swap.mjs`) flips blue↔green with a graceful Caddy reload and `/api/health`
+tracks the colour; `bin/stack.mjs` resolves the engine and passes flags
+through; both scripts pass `node --check`. Cross-references the 2026-06-21
+`#hosting` entry.
+
 ## 2026-06-21 — Zero-cost blue/green hosting + observability (`#hosting`)
 
 **Status**: local stack + observability (Phases 0/1/4) SHIPPED & verified 2026-06-21; cloud (Phase 2) + cron/backups (Phase 3) deferred.

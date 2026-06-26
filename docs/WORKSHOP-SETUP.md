@@ -197,3 +197,118 @@ npm run dev
 
 - If you see an error about `lsof`, ignore it — that's the `restart` script (Unix only)
 - `npm run dev` itself is cross-platform and should work fine
+
+---
+
+## Blue/Green Infrastructure Lab (optional, container-based)
+
+> **Separate from the main exercise above.** The Project Phoenix assessment
+> runs the app the "bare" way (`npm run dev` + local Postgres). This lab is a
+> standalone, hands-on rig for practising **deployment and feature-flag
+> management on container infrastructure** — the kind of operational testing
+> you'd do against a real blue/green production setup. Each tester runs their
+> own copy locally; break it, reset it, that's the point.
+
+### What you'll practise
+
+- Running a multi-service stack (two app "colours", Postgres, a feature-flag
+  control plane, an ML sidecar) behind a reverse proxy.
+- Promoting a **zero-downtime blue/green deploy** and watching traffic move.
+- Flipping a **feature flag** and observing it take effect at runtime.
+- Tearing down and bringing back up **without losing data**.
+
+### Prerequisite: a free container runtime
+
+You need something that provides the `docker` and `docker compose` commands.
+**Docker Desktop is _not_ required** (and its licence isn't free for larger
+companies). Use one of these instead:
+
+| Runtime | OS | Notes |
+|---|---|---|
+| **Rancher Desktop** (recommended) | Win / macOS / Linux | Free (Apache 2.0). Pick the **`dockerd (moby)`** backend in Preferences → Container Engine. Gives you real `docker` + `docker compose`, plus a GUI to watch containers/logs. |
+| Podman Desktop | Win / macOS / Linux | Free (CNCF). Works, but set `COMPOSE_CMD="podman compose"` (see below). |
+| Colima | macOS / Linux | Free, CLI-only. No Windows. |
+
+> Verify your install before the day: `docker compose version` should print a
+> version. With Rancher Desktop's moby backend, every command below works
+> exactly as written.
+
+### Run the stack
+
+From the repo root:
+
+```bash
+npm run stack:up
+```
+
+The first run **builds the images and can take several minutes**. Subsequent
+runs are fast. When it settles you'll have:
+
+| URL | What |
+|---|---|
+| http://localhost:8090 | The app (served through Caddy → the live colour) |
+| http://localhost:8090/api/health | Liveness JSON: `{ color, release, … }` |
+| http://localhost:4242 | Unleash — the feature-flag control plane |
+
+No `.env` is needed for this lab — the compose file supplies safe local
+defaults. (The AI agent features stay inert without API keys; they're not part
+of this lab.)
+
+Log in with the seeded accounts from the **Demo Accounts** table above
+(e.g. `admin@lakeview.club` / `club123`). The Unleash admin console at
+:4242 uses `admin` / `unleash4all`.
+
+### Exercise 1 — promote a blue/green deploy
+
+1. Check which colour is live:
+   ```bash
+   curl http://localhost:8090/api/health
+   ```
+   Note the `"color"` (e.g. `blue`) and `"release"` fields.
+2. Promote the other colour (zero-downtime graceful reload):
+   ```bash
+   npm run swap
+   ```
+3. Re-check `/api/health` — `"color"` has flipped. Refresh the app in the
+   browser; you stayed logged in and saw no downtime. Run `npm run swap`
+   again to flip back. (Force a specific colour with
+   `node bin/swap.mjs blue` / `green`.)
+
+### Exercise 2 — flip a feature flag
+
+1. Open Unleash at http://localhost:4242 and log in (`admin` / `unleash4all`).
+2. Find a feature flag, toggle it for the development environment, and save.
+3. The app's flag SDK polls every ~15 seconds — wait, then refresh the app and
+   observe the gated behaviour change. Toggle it back to compare.
+
+### Teardown (data is safe)
+
+```bash
+npm run stack:down     # stops containers; the Postgres volume persists
+npm run stack:up       # back up again — your data and logins are still there
+npm run stack:logs     # tail all service logs (Ctrl-C to stop)
+```
+
+Only the `pgdata` volume holds state. Removing containers never loses data; you
+would have to explicitly delete that volume to start clean.
+
+### Podman users
+
+The tooling defaults to `docker compose`. If you're on Podman, prefix the
+commands with the engine override:
+
+```bash
+COMPOSE_CMD="podman compose" npm run stack:up
+COMPOSE_CMD="podman compose" npm run swap
+```
+
+### Troubleshooting the lab
+
+- **`docker: command not found`** — your container runtime isn't installed or
+  isn't on `PATH`. Re-check the prerequisite step; with Rancher Desktop ensure
+  it's running and the moby backend is selected.
+- **Port 8090 / 4242 / 5432 already in use** — another process (often a local
+  Postgres or a previous run) holds the port. Stop it, or run `npm run
+  stack:down` to clear a prior stack.
+- **First `stack:up` looks stuck** — it's building images. Watch progress in
+  another terminal with `npm run stack:logs`, or in your runtime's GUI.
