@@ -3,8 +3,8 @@
 
 ## 2026-06-26 — Cross-platform container tooling + free runtime for the tester lab (`#hosting`)
 
-**Status**: SHIPPED 2026-06-26 (tooling + workshop doc); GHCR images / compose
-profiles / Codespaces fallback considered but deferred.
+**Status**: SHIPPED 2026-06-26 (tooling + workshop doc + GHCR pull path);
+compose profiles / Codespaces fallback considered but deferred.
 
 **Context**: Reframe from the 2026-06-21 entry: the blue/green stack isn't a
 passive demo to *watch* — it's a hands-on rig where **each tester runs the
@@ -35,6 +35,17 @@ existing workshop doc is Windows-first).
    exercise. Covers runtime install, `npm run stack:up`, a blue/green deploy
    via `npm run swap` (watch `/api/health`), a feature-flag flip in Unleash,
    and data-safe teardown (`pgdata` persists across `down`/`up`).
+4. **GHCR pull path for prebuilt images.** A GitHub Action
+   (`.github/workflows/build-images.yml`) builds all three images
+   (`bookingplatform-app`/`-migrate`/`-ml`) **multi-arch (amd64 + arm64)** — one
+   tag set covers Apple Silicon Macs and amd64 Windows/Linux — and pushes them
+   to GHCR (manual `workflow_dispatch` or a `v*` tag). A compose overlay
+   (`docker-compose.ghcr.yml`, layered by `npm run stack:pull` /
+   `stack:up:ghcr` through a new `--ghcr` flag on `bin/stack.mjs`) swaps the
+   locally-built images for the published ones, so testers **download instead
+   of running the multi-minute Next build**. The baseline ML model
+   (`ml/artifacts/noshow-v1.joblib`) is now force-tracked (gitignore negation)
+   so CI and clean clones bake a complete sidecar.
 
 **Rationale**: Each tester needs an isolated, resettable stack they can break
 and rebuild — that *is* the exercise — so "hand them one URL" was the wrong
@@ -45,15 +56,18 @@ forking to podman-native) means the skills transfer to the eventual cloud
 target (`#hosting-cloud`). The Node rewrite removes the only hard Windows
 barrier while preserving the exact same `npm run` entry points.
 
-**Notes**: GHCR pre-built images (skip the slow local Next build), compose
-`profiles` for a "lite" lab (skip the ML sidecar), and a `.devcontainer` +
-Codespaces fallback for locked-down machines were all considered and **deferred**
-— GHCR in particular pushes to a shared registry, so it waits for an explicit
-go-ahead. Verified against the running stack: `npm run swap` (now
-`bin/swap.mjs`) flips blue↔green with a graceful Caddy reload and `/api/health`
-tracks the colour; `bin/stack.mjs` resolves the engine and passes flags
-through; both scripts pass `node --check`. Cross-references the 2026-06-21
-`#hosting` entry.
+**Notes**: Of the earlier deferrals, **GHCR prebuilt images are now shipped**
+(point 4). Still deferred: compose `profiles` for a "lite" lab (skip the ML
+sidecar) and a `.devcontainer` + Codespaces fallback for locked-down machines.
+GHCR packages must be made **public** after the first publish so testers pull
+without authenticating (documented in the workflow + workshop doc). Multi-arch
+arm64 layers build under QEMU emulation in CI (slow but unattended; a native
+arm64-runner matrix is the future speed-up). Verified: the GHCR overlay merges
+and resolves to the four `ghcr.io/...` refs with `build:` dropped via `!reset`
+(so the pull path never silently rebuilds), the base compose still builds from
+source, and `bin/stack.mjs` passes `node --check`. Earlier tooling checks (swap
+flips blue↔green with a graceful reload; `/api/health` tracks colour) unchanged.
+Cross-references the 2026-06-21 `#hosting` entry.
 
 ## 2026-06-21 — Zero-cost blue/green hosting + observability (`#hosting`)
 

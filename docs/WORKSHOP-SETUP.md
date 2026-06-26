@@ -233,6 +233,25 @@ companies). Use one of these instead:
 > version. With Rancher Desktop's moby backend, every command below works
 > exactly as written.
 
+### Faster start (optional): pull prebuilt images
+
+Building the images locally works, but the first build takes several minutes.
+If the facilitator has published the images, you can **pull prebuilt,
+multi-arch images** (Apple Silicon + Intel/AMD) from GHCR and skip the build
+entirely:
+
+```bash
+npm run stack:pull      # download the published images
+npm run stack:up:ghcr   # start the stack from them (no local build)
+```
+
+Everything else in this lab is identical — same URLs, same `npm run swap`, same
+teardown. To switch back to building from source, just use `npm run stack:up`.
+
+> Pulling from a different account? If you forked and published the images
+> yourself, point the overlay at your namespace with a `.env` entry:
+> `GHCR_OWNER=<your-lowercased-github-owner>`.
+
 ### Run the stack
 
 From the repo root:
@@ -312,3 +331,13 @@ COMPOSE_CMD="podman compose" npm run swap
   stack:down` to clear a prior stack.
 - **First `stack:up` looks stuck** — it's building images. Watch progress in
   another terminal with `npm run stack:logs`, or in your runtime's GUI.
+
+### Publishing the prebuilt images (facilitator only)
+
+Testers pull whatever you've published to GHCR. To (re)publish: run the
+**Build & publish stack images** GitHub Action (Actions tab → Run workflow),
+or push a `v*` tag. It builds all three images (`bookingplatform-app`,
+`-migrate`, `-ml`) for amd64 + arm64 and pushes them to GHCR. After the first
+run, make those three packages **public** (GitHub profile → Packages → each
+package → Package settings → Change visibility → Public) so testers can pull
+without authenticating.

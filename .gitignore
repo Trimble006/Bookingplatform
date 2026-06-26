@@ -15,7 +15,10 @@ tsconfig.tsbuildinfo
 
 seed-npm.log
 
-# ML sidecar — generated artifacts and Python cache
-ml/artifacts/
+# ML sidecar — Python cache and generated artifacts. The baseline model ships
+# inside the image and a clean clone needs it, so it's force-kept; retrained or
+# experimental artifacts and training metrics stay ignored.
+ml/artifacts/*
+!ml/artifacts/noshow-v1.joblib
 ml/**/__pycache__/
 ml/**/*.pyc

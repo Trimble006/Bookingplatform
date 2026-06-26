@@ -12,17 +12,32 @@
 //   node bin/stack.mjs down            # stop (pgdata volume persists)
 //   node bin/stack.mjs logs -f         # tail logs
 //
+// Pull path (prebuilt multi-arch images from GHCR, no local build):
+//   node bin/stack.mjs pull --ghcr     # download the published images
+//   node bin/stack.mjs up --ghcr -d    # start from them
+// The --ghcr flag layers docker-compose.ghcr.yml over the base compose file.
+//
 // Engine override: any Docker-compatible runtime works (Rancher Desktop,
 // Podman, Colima, …). Default is `docker compose`; point it elsewhere with
 //   COMPOSE_CMD="podman compose" npm run stack:up
 import { spawnSync, execSync } from "node:child_process";
 
-const sub = process.argv[2];
+// --ghcr (anywhere in the args) layers the GHCR overlay so services use the
+// published images instead of building. Strip it before forwarding to compose.
+const rawArgs = process.argv.slice(2);
+const useGhcr = rawArgs.includes("--ghcr");
+const args = rawArgs.filter((a) => a !== "--ghcr");
+const sub = args[0];
 if (!sub) {
-  console.error("Usage: node bin/stack.mjs <build|up|down|logs|…> [args…]");
+  console.error(
+    "Usage: node bin/stack.mjs [--ghcr] <build|up|down|logs|pull|…> [args…]",
+  );
   process.exit(1);
 }
-const passthrough = process.argv.slice(3);
+const passthrough = args.slice(1);
+const fileArgs = useGhcr
+  ? ["-f", "docker-compose.yml", "-f", "docker-compose.ghcr.yml"]
+  : [];
 
 // Stamp /api/health with the short git SHA so testers can see which build a
 // colour is serving. Off a git checkout we fall back to "dev"; compose also
@@ -43,7 +58,7 @@ const [bin, ...baseArgs] = (process.env.COMPOSE_CMD || "docker compose")
   .split(" ")
   .filter(Boolean);
 
-const res = spawnSync(bin, [...baseArgs, sub, ...passthrough], {
+const res = spawnSync(bin, [...baseArgs, ...fileArgs, sub, ...passthrough], {
   stdio: "inherit",
   shell: true, // resolve `docker`/`podman` via PATH on Windows too
   env: { ...process.env, APP_VERSION: process.env.APP_VERSION || appVersion },

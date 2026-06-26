@@ -29,6 +29,8 @@
     "stack:up": "node bin/stack.mjs up -d --build",
     "stack:down": "node bin/stack.mjs down",
     "stack:logs": "node bin/stack.mjs logs -f",
+    "stack:pull": "node bin/stack.mjs pull --ghcr",
+    "stack:up:ghcr": "node bin/stack.mjs up --ghcr -d",
     "swap": "node bin/swap.mjs",
     "flags:migrate": "npx tsx scripts/migrate-flags-to-unleash.ts",
     "flags:parity": "npx tsx scripts/check-flag-parity.ts",

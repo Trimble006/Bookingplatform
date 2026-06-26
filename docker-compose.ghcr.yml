@@ -1,0 +1,31 @@
+# Overlay: pull prebuilt, multi-arch images from GHCR instead of building
+# locally. Layer it on top of docker-compose.yml.
+#
+#   npm run stack:pull       # download the published images
+#   npm run stack:up:ghcr    # start the stack using them (no local build)
+#
+# Both wrap `docker compose -f docker-compose.yml -f docker-compose.ghcr.yml`.
+# `build: !reset null` drops each service's build section so compose uses the
+# pulled image (and never silently rebuilds from source). Requires Docker
+# Compose v2.24+ for the !reset tag — Rancher Desktop's moby backend ships far
+# newer; if your compose is older, build from source with `npm run stack:up`.
+#
+# Defaults target the canonical publisher. A fork that ran the publish workflow
+# under its own account can repoint these via a .env file in the repo root:
+#   GHCR_OWNER=<your-lowercased-github-owner>
+#   GHCR_TAG=<sha-or-latest>   # defaults to latest
+services:
+  ml-noshow:
+    build: !reset null
+    image: ghcr.io/${GHCR_OWNER:-trimble006}/bookingplatform-ml:${GHCR_TAG:-latest}
+
+  app-migrate:
+    build: !reset null
+    image: ghcr.io/${GHCR_OWNER:-trimble006}/bookingplatform-migrate:${GHCR_TAG:-latest}
+
+  app-blue:
+    build: !reset null
+    image: ghcr.io/${GHCR_OWNER:-trimble006}/bookingplatform-app:${GHCR_TAG:-latest}
+
+  app-green:
+    image: ghcr.io/${GHCR_OWNER:-trimble006}/bookingplatform-app:${GHCR_TAG:-latest}
